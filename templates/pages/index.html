@@ -1,0 +1,86 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+{% block content %}
+
+  <!-- [ Main Content ] start -->
+  <div class="row">
+    <!-- [ Morris Chart ] start -->
+    <div class="col-xl-6">
+      <div class="card">
+        <div class="card-header">
+          <h5>Tareas por Estado para {{ cliente }}</h5>
+        </div>
+        <div class="card-block">
+          <div id="morris-tareas" style="height:300px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-6">
+      <div class="card">
+        <div class="card-header">
+          <h5>Tareas por meses para {{ cliente }}</h5>
+        </div>
+        <div class="card-block">
+          <div id="morris-meses" style="height:300px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-12">
+      <div class="card">
+        <div class="card-header">
+          <h5>Tareas para {{ cliente }}</h5>
+        </div>
+        <div class="col-md-4">
+          <a href="{% url 'admin:syh_movimientos_changelist' %}" class="col-md-4 btn btn-primary">Ver mas</a>
+        </div>
+        <div class="card-block">
+          <div class="card-block table-border-style">
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>{% if request.user.is_superuser%}Cliente{%endif%}</th>
+                    <th>Periodo</th>
+                    <th>Hallazgo</th>
+                    <th>Responsable</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {%for tarea in tareas%}
+                  <tr>
+                    <th scope="row">{% if request.user.is_superuser%}{{tarea.cliente}}{%endif%}</th>
+                    <td>{{tarea.periodo}}</td>
+                    <td>{{tarea.hallazgo|truncatechars:35}}</td>
+                    <td>{{tarea.responsable}}</td>
+                  </tr>
+                  {%endfor%}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <!-- [ Main Content ] end -->
+
+{% endblock content %}
+{% block extra_js %}
+<script>
+  // Datos que provienen del backend, pasados desde la vista Django
+  var datos = {{ datos_grafico|safe }};
+  // Definir colores personalizados para cada ítem
+  var colores = ['#3498db', '#2ecc71', '#e74c3c', '#f1c40f'];
+  
+  // Creación del gráfico de torta utilizando Morris.js
+  Morris.Donut({
+      element: 'morris-tareas',
+      data: datos,
+      colors: colores
+  });
+</script>
+{% endblock extra_js %}
