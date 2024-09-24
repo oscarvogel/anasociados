@@ -192,7 +192,7 @@ class MovimientosAdmin(admin.ModelAdmin):
 class ParametroSistemaAdmin(admin.ModelAdmin):
     list_display = ('parametro', 'valor', 'detalle')
     search_fields = ('parametro', 'valor', 'detalle')
-    list_filter = ('parametro', 'valor')
+    list_filter = ('parametro',)
     list_per_page = 10
     list_max_show_all = 100
     list_display_links = ('parametro',)
