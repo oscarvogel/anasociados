@@ -2,7 +2,7 @@ import os
 import tempfile
 import datetime
 import locale
-from facturacion.models import ParametroSistema
+from syh.models import ParametroSistema
 
 def obtener_parametro(parametro_deseado, valor_por_defecto):
     try:
@@ -38,3 +38,14 @@ def FormatoFecha(fecha: object = datetime.datetime.today(), formato: object = 'l
             retorno = datetime.datetime.strftime(fecha, "%A")
 
     return retorno
+
+def dividir_texto(texto, longitud):
+    lineas = []
+    while len(texto) > longitud:
+        espacio = texto.rfind(' ', 0, longitud)
+        if espacio == -1:
+            espacio = longitud
+        lineas.append(texto[:espacio])
+        texto = texto[espacio:].strip()
+    lineas.append(texto)
+    return lineas

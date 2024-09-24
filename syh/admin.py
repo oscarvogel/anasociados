@@ -1,6 +1,17 @@
 from django.contrib import admin
+from django.contrib.admin import DateFieldListFilter, SimpleListFilter
+from django.http import HttpResponse
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4, landscape
+from syh.forms import MovimientosForm
 from usuarios.models import Profile
-from .models import Cliente, Area, Movimientos
+from utiles.funciones_usuario import FormatoFecha, dividir_texto
+from utiles.impresiones import Impresiones
+from .models import Cliente, Area, Evidencia, Movimientos, ParametroSistema
+import io
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Table, TableStyle, Paragraph
+from reportlab.lib import colors
 
 # Register your models here.
 @admin.register(Cliente)
@@ -29,7 +40,7 @@ class ClienteAdmin(admin.ModelAdmin):
 class AreaAdmin(admin.ModelAdmin):
     list_display = ('id', 'cliente', 'detalle')
     search_fields = ('id', 'cliente', 'detalle')
-    list_filter = ('id', 'cliente', 'detalle')
+    list_filter = ('cliente',)
     list_per_page = 10
     list_max_show_all = 100
     list_editable = ('cliente', 'detalle')
@@ -46,6 +57,42 @@ class AreaAdmin(admin.ModelAdmin):
             'fields': ('id', 'cliente', 'detalle')
         }),
     )
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Si el objeto ya existe (es una instancia existente)
+            return ['parametro'] + self.readonly_fields
+        return self.readonly_fields
+
+
+# Creamos un filtro personalizado para filtrar áreas según el cliente del usuario
+class AreaClienteFilter(SimpleListFilter):
+    title = 'Área'  # Nombre que se mostrará en el filtro
+    parameter_name = 'area'  # Parámetro que se usará en la URL
+
+    def lookups(self, request, model_admin):
+        # Si el usuario es superusuario, mostramos todas las áreas
+        if request.user.is_superuser:
+            return [(area.id, area.detalle) for area in Area.objects.all()]
+        
+        # Si no es superusuario, solo mostramos las áreas asociadas al cliente del usuario
+        try:
+            profile = Profile.objects.get(user=request.user)
+            areas = Area.objects.filter(cliente=profile.cliente)
+            return [(area.id, area.detalle) for area in areas]
+        except Profile.DoesNotExist:
+            return []  # Si no tiene perfil, no mostramos ninguna área
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(area__id=self.value())
+        return queryset
+
+# @admin.register(Evidencia)
+class EvidenciaAdmin(admin.TabularInline):
+    model = Evidencia
+    extra = 1
+    readonly_fields = ('imagen_thumbnail',)
+    fields = ('fecha', 'detalle', 'imagen_thumbnail', 'archivo')
 
 @admin.register(Movimientos)
 class MovimientosAdmin(admin.ModelAdmin):
@@ -54,6 +101,8 @@ class MovimientosAdmin(admin.ModelAdmin):
     list_max_show_all = 100
     ordering = ('-fecha', 'cliente', 'estado')
     search_fields = ('id', 'area__detalle', 'periodo', 'hallazgo')
+    inlines = [EvidenciaAdmin]
+    # form = MovimientosForm
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -70,11 +119,61 @@ class MovimientosAdmin(admin.ModelAdmin):
     def get_list_filter(self, request):
         if request.user.is_superuser:
             # Si es superusuario, mostramos todos los filtros disponibles
-            return ('cliente', 'area', 'periodo', 'estado')
+            return ('cliente', AreaClienteFilter, ('fecha', DateFieldListFilter), 'periodo', 'estado')
         else:
             # Si es un cliente, limitamos los filtros a solo ciertos campos
-            return ('area', 'periodo', 'estado')
+            return (AreaClienteFilter, ('fecha', DateFieldListFilter), 'periodo', 'estado')
+    
+    # Acción para exportar a PDF
+    actions = ['export_to_pdf']
+
+    def export_to_pdf(self, request, queryset):
+        impresion = Impresiones()
+        impresion.inicia()
+        impresion.ubicacion = {
+            'Fecha': 10,
+            'Periodo': 65,
+            'Hallazgo': 120,
+            'Estado': 500
+        }
+        # Obtener el cliente y el área para el título
+        if queryset.exists():
+            cliente = queryset.first().cliente
+            area = queryset.first().area
+            titulo = f"Reporte de Movimientos para {cliente} - Área: {area}"
+        else:
+            titulo = "Reporte de Movimientos"
+
+        impresion.titulo = titulo
+        # Crear el PDF
+        impresion.cabecera()
+
+        # Crear la tabla
+        data = [
+            ['Fecha', 'Periodo', 'Hallazgo', 'Estado']
+        ]
+        for movimiento in queryset:
+            impresion.fila -=10
+            impresion.pdf.drawString(x=impresion.ubicacion['Fecha'], y=impresion.fila, text=FormatoFecha(movimiento.fecha, formato='dma'))
+            impresion.pdf.drawString(x=impresion.ubicacion['Periodo'], y=impresion.fila, text=str(movimiento.periodo))
+            impresion.pdf.drawString(x=impresion.ubicacion['Estado'], y=impresion.fila, text=str(movimiento.estado))
+            lineas = dividir_texto(movimiento.hallazgo, 80)
+            for linea in lineas:
+                impresion.pdf.drawString(x=impresion.ubicacion['Hallazgo'], y=impresion.fila, text=linea)
+                impresion.fila -= 10
+            # Paragraph(movimiento.hallazgo, getSampleStyleSheet()['BodyText'])
+            data.append([
+                str(movimiento.fecha),
+                movimiento.periodo,
+                movimiento.hallazgo,
+                movimiento.estado
+            ])
+        impresion.finaliza()
+        return impresion.response
         
+
+    export_to_pdf.short_description = "Exportar a PDF"
+
     def get_list_display(self, request):
         if request.user.is_superuser:
             # Si es superusuario, mostramos todos los campos
@@ -89,14 +188,11 @@ class MovimientosAdmin(admin.ModelAdmin):
         else:
             return ('id', 'area', 'periodo', 'hallazgo', 'estado')
 
-    # def changelist_view(self, request, extra_context=None):
-    #     response = super().changelist_view(request, extra_context)
-    #     if hasattr(response, 'context_data'):
-    #         for result in response.context_data['cl']:
-    #             if result['estado'] == 'Incumplido':
-    #                 result['row_class'] = 'row-incumplido'
-    #             elif result['estado'] == 'Gestion':
-    #                 result['row_class'] = 'row-en-gestion'
-    #             elif result['estado'] == 'Cumplido':
-    #                 result['row_class'] = 'row-cumplido'
-    #     return response
+@admin.register(ParametroSistema)
+class ParametroSistemaAdmin(admin.ModelAdmin):
+    list_display = ('parametro', 'valor', 'detalle')
+    search_fields = ('parametro', 'valor', 'detalle')
+    list_filter = ('parametro', 'valor')
+    list_per_page = 10
+    list_max_show_all = 100
+    list_display_links = ('parametro',)

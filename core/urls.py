@@ -16,6 +16,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from rest_framework.authtoken.views import obtain_auth_token # <-- NEW
+from django.conf.urls.static import static
+from core import settings
 
 urlpatterns = [
     path('', include('home.urls')),
@@ -33,3 +35,6 @@ try:
     urlpatterns.append( path("login/jwt/", view=obtain_auth_token) )
 except:
     pass
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

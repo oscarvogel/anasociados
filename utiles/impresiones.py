@@ -38,7 +38,7 @@ class Impresiones:
         # Utilizamos el archivo logo_django.png que está guardado en la carpeta media/imagenes
         archivo_imagen = f'{os.path.join(settings.MEDIA_ROOT, obtener_parametro("logo_mini", "logo_mini.png"))}'
         # Definimos el tamaño de la imagen a cargar y las coordenadas correspondientes
-        pdf.drawImage(archivo_imagen, 0, 750 - self.diferencia_hoja, 120, 90, preserveAspectRatio=True)
+        pdf.drawImage(archivo_imagen, 0, 750 - self.diferencia_hoja, 80, 90, preserveAspectRatio=True)
         pdf.setFont(self.nombre_fuente, 14)
         pdf.drawString(x=self.titulos['encabezado'], y=830 - self.diferencia_hoja, text=f"{obtener_parametro('nombre_institucion', 'Fundacion Lapacho')}")
         pdf.drawString(x=self.titulos['encabezado'], y=818 - self.diferencia_hoja, text=f"{obtener_parametro('iniciales_institucion', 'IAES')}")
@@ -55,8 +55,8 @@ class Impresiones:
         pdf.drawString(x=350, y=750 - self.diferencia_hoja, text=f"{obtener_parametro('email_institucion', 'nivelprimario@iaes.edu.ar')}")
         pdf.setFont(self.nombre_fuente, 10)
         if self.titulo:
-            pdf.drawString(x=self.titulos['encabezado'], y=740 - self.diferencia_hoja, text=f"{self.titulo}")
-        self.fila -= 15
+            pdf.drawString(x=self.titulos['encabezado'], y=720 - self.diferencia_hoja, text=f"{self.titulo}")
+        self.fila -= 30
         self.encabezadodetalle()
         self.fila -= 15
 

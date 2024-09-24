@@ -1,7 +1,24 @@
+import datetime
 from django.db import models
 from django.db.models import Count
+from django.utils.html import mark_safe
+from django.utils import timezone
 
 # Create your models here.
+
+from django.db import models
+
+class ParametroSistema(models.Model):
+    parametro = models.CharField(max_length=30, default='', primary_key=True)
+    valor = models.CharField(max_length=80, default='')
+    detalle = models.TextField(default='')
+
+    def __str__(self) -> str:
+        return self.parametro
+    
+    class Meta:
+        db_table = 'parametro_sistema'
+        verbose_name_plural = "Parámetros del sistema"
 
 class Cliente(models.Model):
     id = models.CharField(primary_key=True, max_length=10)
@@ -23,6 +40,7 @@ class Area(models.Model):
     id = models.CharField(primary_key=True, max_length=10)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, db_column='cliente')
     detalle = models.CharField(max_length=100)
+    responsable = models.CharField(max_length=80)
 
     def __str__(self):
         return self.detalle
@@ -42,12 +60,26 @@ class Movimientos(models.Model):
         ('Incumplido', 'Incumplido'),
         ('Cerrado', 'Cerrado'),
     ]
+    PERIODO_CHOICES = [
+        ('Enero', 'Enero'),
+        ('Febrero', 'Febrero'),
+        ('Marzo', 'Marzo'),
+        ('Abril', 'Abril'),
+        ('Mayo', 'Mayo'),
+        ('Junio', 'Junio'),
+        ('Julio', 'Julio'),
+        ('Agosto', 'Agosto'),
+        ('Septiembre', 'Septiembre'),
+        ('Octubre', 'Octubre'),
+        ('Noviembre', 'Noviembre'),
+        ('Diciembre', 'Diciembre'),
+    ]
 
     id = models.CharField(primary_key=True, max_length=10)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, db_column='cliente')
     area = models.ForeignKey(Area, on_delete=models.CASCADE, db_column='area')
     fecha = models.DateField()
-    periodo = models.CharField(max_length=20)
+    periodo = models.CharField(max_length=20, choices=PERIODO_CHOICES)
     hallazgo = models.TextField()
     responsable = models.CharField(max_length=80)
     plazo = models.IntegerField()
@@ -75,3 +107,19 @@ class Movimientos(models.Model):
             return cls.objects.all().values('estado').annotate(cantidad=Count('estado'))
         else:
             return cls.objects.filter(cliente=cliente).values('estado').annotate(cantidad=Count('estado'))
+
+class Evidencia(models.Model):
+    id = models.AutoField(primary_key=True)
+    movimiento = models.ForeignKey(Movimientos, on_delete=models.CASCADE, db_column='movimiento')
+    fecha = models.DateField(default=timezone.now, blank=True)
+    detalle = models.TextField(blank=True)
+    archivo = models.ImageField(upload_to='evidencias/', blank=True)
+
+    def __str__(self):
+        return f'{self.movimiento.cliente.nombre} - {self.movimiento.fecha}'
+
+    def imagen_thumbnail(self):
+        if self.imagen:
+            return mark_safe(f'<img src="{self.imagen.url}" width="50" height="50" />')
+        return ""
+    imagen_thumbnail.short_description = 'Imagen'
