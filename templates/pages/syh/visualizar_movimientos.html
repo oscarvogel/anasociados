@@ -1,0 +1,145 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="container">
+    <h1>Visualizar Movimientos</h1>
+    <form method="get">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <select id="cliente-select" class="form-control" name="cliente">
+                    <option value="">--Selecciona un cliente--</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if cliente.id == request.GET.cliente %}selected{% endif %}>{{ cliente.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <select id="area-select" class="form-control" name="area">
+                    <option value="">--Selecciona un área--</option>
+                    {% for area in areas %}
+                    <option value="{{ area.id }}" {% if area.id == request.GET.area %}selected{% endif %}>{{ area.detalle }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="row">
+            <div class="form-group col-6">
+                <select multiple class="form-control" id="estado" name="estado">
+                    {% for estado in estados %}
+                        <option value="{{ estado }}" {% if estado in filtro_estados %}selected{% endif %}>{{ estado }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="row">
+            <button type="submit" class="btn btn-primary">Aplicar Filtro</button>
+            <button type="button" id="btnImprimir" class="btn btn-secondary">Imprimir</button>
+        </div>
+    </form>
+    <table class="table table-striped mt-5">
+        <thead>
+        <tr>
+            <th>Cliente</th>
+            <th>Área</th>
+            <th>Fecha</th>
+            <th>Periodo</th>
+            <th>Hallazgo</th>
+            <th>Responsable</th>
+            <th>Plazo</th>
+            <th>Estado</th>
+            <th>Fecha Cumplimiento</th>
+            <th>Ubicación</th>
+            <th>Fecha Realizado</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for mov in movimientos %}
+            <tr>
+                <td>{{ mov.cliente.nombre }}</td>
+                <td>{{ mov.area.detalle }}</td>
+                <td>{{ mov.fecha }}</td>
+                <td>{{ mov.periodo }}</td>
+                <td>{{ mov.hallazgo }}</td>
+                <td>{{ mov.responsable }}</td>
+                <td>{{ mov.plazo }}</td>
+                <td>{{ mov.estado }}</td>
+                <td>{{ mov.fecha_cumplimiento }}</td>
+                <td>{{ mov.ubicacion }}</td>
+                <td>{{ mov.fecha_realizado }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <nav aria-label="Page navigation example">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not movimientos.has_previous %}disabled{% endif %}">
+                <a class="page-link" href="?page=1&cliente={{ request.GET.cliente }}&area={{ request.GET.area }}&{% for estado in filtro_estados %}estado={{ estado }}&{% endfor %}">Primera</a>
+            </li>
+            {%if movimientos.has_previous %}
+                <li class="page-item {% if not movimientos.has_previous %}disabled{% endif %}">
+                    <a class="page-link" href="?page={{ movimientos.previous_page_number }}&cliente={{ request.GET.cliente }}&area={{ request.GET.area }}&{% for estado in filtro_estados %}estado={{ estado }}&{% endfor %}">Anterior</a>
+                </li>
+            {% endif %}
+            {% if movimientos.number > 3 %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+    
+            {% for num in page_range %}
+                {% if movimientos.number == num %}
+                    <li class="page-item active">
+                        <a class="page-link" href="#">{{ num }} <span class="sr-only">(current)</span></a>
+                    </li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}&cliente={{ request.GET.cliente }}&area={{ request.GET.area}}&{% for estado in filtro_estados %}estado={{ estado }}&{% endfor %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+    
+            {% if movimientos.number < movimientos.paginator.num_pages %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+    
+            {%if movimientos.has_next %}
+                <li class="page-item {% if not movimientos.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="?page={{ movimientos.next_page_number }}&cliente={{ request.GET.cliente }}&area={{ request.GET.area}}&{% for estado in filtro_estados %}estado={{ estado }}&{% endfor %}">Siguiente</a>
+                </li>
+            {%endif%}
+            <li class="page-item {% if not movimientos.has_next %}disabled{% endif %}">
+                <a class="page-link" href="?page={{ movimientos.paginator.num_pages }}&cliente={{ request.GET.cliente }}&area={{ request.GET.area }}&{% for estado in filtro_estados %}estado={{ estado }}&{% endfor %}">Última</a>
+            </li>
+        </ul>
+    </nav>    
+</div>
+
+{%endblock%}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        $('#cliente-select').change(function() {
+            var clienteId = $(this).val();
+            $.ajax({
+                url: '{% url "syh:obtener_areas" %}',
+                data: {
+                    'cliente': clienteId
+                },
+                success: function(data) {
+                    var $area = $('#area-select');
+                    $area.empty();
+                    $area.append('<option value="">--Selecciona un área--</option>');
+                    $.each(data, function(key, value) {
+                        $area.append('<option value="' + key + '">' + value + '</option>');
+                    });
+                }
+            });
+        });
+        $('#btnImprimir').click(function() {
+            window.location.href = '{% url "syh:imprimir_movimientos" %}?' + $('form').serialize();
+        });
+    });
+</script>
+{% endblock extra_js %}

@@ -1,3 +1,170 @@
 from django.shortcuts import render
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import ExcesosVelocidad
+import json
+
+from usuarios.models import Profile
+from utiles.impresiones import ImprimeHallazgos
 
 # Create your views here.
+from .models import Movimientos, Cliente, Area
+
+def visualizar_movimientos(request):
+
+    try:
+        profile = Profile.objects.get(user=request.user)
+        cliente = profile.cliente  # Obtener el cliente asociado al perfil
+    except Profile.DoesNotExist:
+        # Si no tiene un perfil, puedes manejar el caso con un mensaje de error o redirección
+        cliente = None
+    
+    if cliente:
+        clientes = Cliente.objects.filter(id = cliente.id)
+        areas = Area.objects.filter(cliente = cliente.id)
+        queryset = Movimientos.objects.filter(cliente = cliente.id)
+    else:
+        clientes = Cliente.objects.all()
+        areas = Area.objects.all()
+        queryset = Movimientos.objects.all()
+
+
+    estados = ['Gestión en Curso', 'Cumplido', 'Incumplido', 'Cerrado']
+
+    filtro_cliente = request.GET.get('cliente')
+    filtro_area = request.GET.get('area')
+    filtro_estados = request.GET.getlist('estado')
+
+    if filtro_cliente:
+        queryset = queryset.filter(cliente_id=filtro_cliente)
+    
+    if filtro_area:
+        queryset = queryset.filter(area_id=filtro_area)
+
+    if filtro_estados:
+        queryset = queryset.filter(estado__in=filtro_estados)
+
+    print(queryset.query)
+    paginator = Paginator(queryset, 10)  # 10 elementos por página
+    page = request.GET.get('page', 1)
+    
+    try:
+        movimientos = paginator.page(page)
+    except PageNotAnInteger:
+        movimientos = paginator.page(1)
+    except EmptyPage:
+        movimientos = paginator.page(paginator.num_pages)
+    
+    # Crear el rango de páginas para la paginación
+    index = movimientos.number - 1  # Page index starts from 0
+    max_index = len(paginator.page_range)
+    start_index = index - 2 if index >= 2 else 0
+    end_index = index + 3 if index <= max_index - 3 else max_index
+    page_range = paginator.page_range[start_index:end_index]
+    context = {
+        'clientes': clientes,
+        'areas': areas,
+        'estados': estados,
+        'movimientos': movimientos,
+        'page_range': page_range,  # Añadir el rango de páginas al contexto
+        'filtro_estados': filtro_estados
+    }
+    return render(request, 'pages/syh/visualizar_movimientos.html', context)
+
+def imprimir_movimientos(request):
+    
+    filtro_cliente = request.GET.get('cliente')
+    filtro_area = request.GET.get('area')
+    filtro_estados = request.GET.getlist('estado')
+
+    queryset = Movimientos.objects.all()
+
+    if filtro_cliente:
+        queryset = queryset.filter(cliente_id=filtro_cliente)
+    
+    if filtro_area:
+        queryset = queryset.filter(area_id=filtro_area)
+
+    if filtro_estados:
+        queryset = queryset.filter(estado__in=filtro_estados)
+    
+    impresion = ImprimeHallazgos()
+    
+    return impresion.imprime_hallazgo(queryset=queryset)
+
+
+def obtener_areas(request):
+    cliente_id = request.GET.get('cliente')
+    if cliente_id:
+        areas = Area.objects.filter(cliente_id=cliente_id)
+    else:
+        areas = Area.objects.all()
+    areas_data = {area.id: area.detalle for area in areas}
+    return JsonResponse(areas_data)
+
+def obtener_areas_vue(request):
+    cliente_id = request.GET.get('cliente')
+    print(cliente_id)
+    if cliente_id:
+        areas = Area.objects.filter(cliente=cliente_id).values('id', 'detalle')
+    else:
+        areas = []
+    print(areas)
+    return JsonResponse(list(areas), safe=False)
+
+@csrf_exempt
+def excesos_list(request):
+    if request.method == 'GET':
+        excesos = list(ExcesosVelocidad.objects.all().values('id', 'cliente', 'area', 'anio', 'mes','excesos', 'cliente__nombre', 'area__detalle')[:100])
+        return JsonResponse(excesos, safe=False)
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            print(data)
+            exceso = ExcesosVelocidad.objects.create(
+                cliente_id=data['cliente'],
+                area_id=data['area'],
+                anio=data['anio'],
+                mes=data['mes'],
+                excesos=data['excesos']
+            )
+            return JsonResponse({'id': exceso.id}, status=201)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+def excesos_detail(request, id):
+    try:
+        exceso = ExcesosVelocidad.objects.get(id=id)
+    except ExcesosVelocidad.DoesNotExist:
+        return JsonResponse({'error': 'No encontrado'}, status=404)
+
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            exceso.cliente_id = data['cliente']
+            exceso.area_id = data['area']
+            exceso.anio = data['anio']
+            exceso.mes = data['mes']
+            exceso.excesos = data['excesos']
+            exceso.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    elif request.method == 'DELETE':
+        exceso.delete()
+        return JsonResponse({'success': True})
+
+
+def clientes_list(request):
+    # Consultamos todos los clientes y seleccionamos los campos que queremos enviar como JSON
+    clientes = Cliente.objects.all().values('id', 'nombre', 'celular', 'email')
+    
+    # Convertimos el QuerySet en una lista y devolvemos una respuesta JSON
+    return JsonResponse(list(clientes), safe=False)
+
+def excesos_plantilla(request):
+    return render(request, 'pages/syh/excesos_velocidad.html')

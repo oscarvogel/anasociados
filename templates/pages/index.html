@@ -6,25 +6,87 @@
 {% block content %}
 
   <!-- [ Main Content ] start -->
+  <div class="card">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <select id="cliente-select" class="form-control">
+                    <option value="">--Selecciona un cliente--</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if cliente.id == cliente_id_selected %}selected{% endif %}>
+                        {{ cliente.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <select id="area-select" class="form-control">
+                    <option value="">--Selecciona un área--</option>
+                    {% for area in areas %}
+                    <option value="{{ area.id }}" data-cliente="{{ area.cliente.id }}" {% if area.id == area_id_selected %}selected{% endif %}>
+                        {{ area.detalle }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3 d-flex align-items-end">
+                <button id="filter-button" class="btn btn-primary w-100">Filtrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+  
   <div class="row">
-    <!-- [ Morris Chart ] start -->
     <div class="col-xl-6">
       <div class="card">
         <div class="card-header">
           <h5>Tareas por Estado para {{ cliente }}</h5>
         </div>
-        <div class="card-block">
-          <div id="morris-tareas" style="height:300px"></div>
+        <div class="card-block d-flex justify-content-center align-items-center text-center" >
+          <div id="morris-tareas" style="height:300px">
+            <canvas id="graficoAreas" ></canvas>
+          </div>
         </div>
       </div>
     </div>
     <div class="col-xl-6">
       <div class="card">
         <div class="card-header">
-          <h5>Tareas por meses para {{ cliente }}</h5>
+          <h5>Emisión kg CO2 para {{ cliente }}</h5>
         </div>
         <div class="card-block">
-          <div id="morris-meses" style="height:300px"></div>
+          <div id="morris-tareas">
+            <canvas id="graficoEmisiones"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Promedio de Plazos</h5>
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              General
+              <span class="">{{ promedio_general|floatformat:2 }} días</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Plazos promedio por cliente</h5>
+          <ul class="list-group list-group-flush">
+            {%for cliente in plazo_promedio_clientes%}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              {{cliente.cliente__nombre}}
+              <span class="">{{cliente.promedio_plazo|floatformat:2}} días</span>
+            </li>
+            {%endfor%}
+          </ul>
         </div>
       </div>
     </div>
@@ -70,17 +132,145 @@
 
 {% endblock content %}
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  // Datos que provienen del backend, pasados desde la vista Django
   var datos = {{ datos_grafico|safe }};
-  // Definir colores personalizados para cada ítem
-  var colores = ['#3498db', '#2ecc71', '#e74c3c', '#f1c40f'];
+  var colores = ['#28a745', '#dc3545', '#ffc107']; // Verde, rojo, amarillo
+  var total = datos.reduce((sum, item) => sum + item.value, 0);
   
-  // Creación del gráfico de torta utilizando Morris.js
-  Morris.Donut({
-      element: 'morris-tareas',
-      data: datos,
-      colors: colores
+  var ctx_area = document.getElementById('graficoAreas').getContext('2d');
+  var chartTareas = new Chart(ctx_area, {
+      type: 'doughnut',
+      data: {
+          labels: datos.map(item => item.label),
+          datasets: [{
+              data: datos.map(item => item.value),
+              backgroundColor: colores
+          }]
+      },
+      options: {
+          responsive: true,
+          plugins: {
+              tooltip: {
+                  callbacks: {
+                      label: function(tooltipItem) {
+                          var value = tooltipItem.raw;
+                          var porcentaje = (value / total * 100).toFixed(2);
+                          return `${tooltipItem.label}: ${porcentaje}%`;
+                      }
+                  }
+              },
+              legend: {
+                  labels: {
+                      generateLabels: function(chart) {
+                          var data = chart.data;
+                          return data.labels.map(function(label, index) {
+                              var value = data.datasets[0].data[index];
+                              var porcentaje = (value / total * 100).toFixed(2);
+                              return {
+                                  text: `${label}: ${porcentaje}%`,
+                                  fillStyle: data.datasets[0].backgroundColor[index],
+                                  hidden: isNaN(data.datasets[0].data[index]),
+                                  lineCap: 'butt',
+                                  lineDash: [],
+                                  lineDashOffset: 0,
+                                  lineJoin: 'miter',
+                                  borderCapStyle: 'butt',
+                                  borderDash: [],
+                                  borderDashOffset: 0,
+                                  borderJoinStyle: 'miter',
+                                  pointStyle: 'circle',
+                                  rotation: 0,
+                              };
+                          });
+                      }
+                  }
+              }
+          }
+      }
+  });
+  
+  $(document).ready(function() {
+    $('#cliente-select').change(function() {
+        var clienteId = $(this).val();
+        
+        // Limpiar las opciones del select de áreas
+        $('#area-select').find('option').hide();
+
+        if (clienteId) {
+            // Mostrar las áreas relacionadas con el cliente seleccionado
+            $('#area-select').find('option[data-cliente="' + clienteId + '"]').show();
+        } else {
+            $('#area-select').val('');  // Si no hay cliente, deseleccionar área
+        }
+    });
+  });
+
+  document.getElementById('filter-button').addEventListener('click', function() {
+    // Obtener los valores seleccionados de cliente y área
+    var clienteId = document.getElementById('cliente-select').value;
+    var areaId = document.getElementById('area-select').value;
+
+    // Comprobar si ambos valores están seleccionados
+    if (clienteId && areaId) {
+        // Redirigir a la URL pasando los parámetros mediante GET
+        window.location.href = '?cliente=' + clienteId + '&area=' + areaId;
+    } else if (clienteId) {
+        // Redirigir a la URL pasando los parámetros mediante GET
+        window.location.href = '?cliente=' + clienteId ;
+    }else {
+        alert('Por favor, selecciona un cliente.');
+    }
+  });
+
+
+  var ctx = document.getElementById('graficoEmisiones').getContext('2d');
+  var periodos = {{ periodos|safe }};
+  var valores = {{ valores|safe }};
+  var myChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+          labels: periodos,
+          datasets: [{
+              label: 'Emisión kg CO2 ',
+              data: valores,
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1,
+              fill: false
+          }]
+      },
+      options: {
+          scales: {
+              x: {
+                  title: {
+                      display: true,
+                      text: 'Periodo (Año-Mes)'
+                  }
+              },
+              y: {
+                  title: {
+                      display: true,
+                      text: 'Emisión Total (CO2/litro)'
+                  }
+              }
+          },
+          responsive: true,
+          plugins: {
+              legend: {
+                  display: true,
+                  position: 'top'
+              },
+              tooltip: {
+                  callbacks: {
+                      label: function(tooltipItem) {
+                          return tooltipItem.raw.toFixed(2) + ' CO2/litro';
+                      }
+                  }
+              }
+          }
+      }
   });
 </script>
+
 {% endblock extra_js %}

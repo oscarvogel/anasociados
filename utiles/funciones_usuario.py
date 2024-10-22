@@ -2,6 +2,7 @@ import os
 import tempfile
 import datetime
 import locale
+import uuid
 from syh.models import ParametroSistema
 
 def obtener_parametro(parametro_deseado, valor_por_defecto):

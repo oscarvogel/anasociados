@@ -5,7 +5,7 @@
     <a class="mobile-menu" id="mobile-collapse1" href="javascript:"><span></span></a>
     <a href="{% url 'index' %}" class="b-brand">
       <div class="b-bg">
-        <i class="feather icon-trending-up"></i>
+        <img src="{% static 'assets/images/icono_almada_neri.png' %}" alt="logo">
       </div>
       <span class="b-title">AN & Asociados</span>
     </a>
@@ -109,7 +109,7 @@
           </a>
           <div class="dropdown-menu dropdown-menu-right profile-notification">
             <div class="pro-head">
-              <img src="{% static 'assets/images/user/avatar-1.jpg' %}" class="img-radius" alt="User-Profile-Image">
+              <img src="{% static 'assets/images/user/avatar-2.jpg' %}" class="img-radius" alt="User-Profile-Image">
               <span>{{ request.user.username }}</span>
               {% if request.user.is_authenticated %}
                 <a href="{% url 'usuarios:logout' %}" class="dud-logout" title="Logout">

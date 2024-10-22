@@ -1,0 +1,257 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+{% block content %}
+
+
+<div id="app-exceso" class="container mt-4">
+    <div class="row mb-2">
+        <div class="col-md-6">
+            <input v-model="searchQuery" class="form-control" placeholder="Buscar por cliente o área...">
+        </div>
+        <div class="col-md-6 text-right">
+            <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> </button>
+        </div>
+    </div>
+
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Área</th>
+                <th>Año</th>
+                <th>Mes</th>
+                <th>Excesos</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="exceso in filteredExcesos" :key="exceso.id">
+                <td>[[ exceso.cliente__nombre ]]</td>
+                <td>[[ exceso.area__detalle ]]</td>
+                <td>[[ exceso.anio ]]</td>
+                <td>[[ exceso.mes ]]</td>
+                <td>[[ exceso.excesos ]]</td>
+                <td>
+                    <button class="btn btn-warning btn-sm" @click="openModal('edit', exceso)">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" @click="deleteExceso(exceso.id)">
+                        <i class="fas fa-trash"></i> 
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Modal para Agregar/Editar Exceso -->
+    <div class="modal" tabindex="-1" role="dialog" id="modal-form">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">[[ modalTitle ]]</h5>
+                    <button type="button" class="close" @click="closeModal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form @submit.prevent="saveExceso">
+                        <div class="form-group">
+                            <label for="cliente">Cliente</label>
+                            <select v-model="formData.cliente" @change="fetchAreas" class="form-control">
+                                <option value="">-- Seleccione un cliente --</option>
+                                <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">[[ cliente.nombre ]]</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="area">Área</label>
+                            <select v-model="formData.area" class="form-control">
+                                <option value="">-- Seleccione un área --</option>
+                                <option v-for="area in areas" :key="area.id" :value="area.id">[[ area.detalle ]]</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="anio">Año</label>
+                            <select v-model="formData.anio" class="form-control">
+                                <option value="">-- Seleccione un año --</option>
+                                <option v-for="year in years" :key="year" :value="year">[[ year ]]</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="mes">Mes</label>
+                            <select v-model="formData.mes" class="form-control">
+                                <option value="">-- Seleccione un mes --</option>
+                                <option v-for="(month, index) in months" :key="index + 1" :value="index + 1">[[ month ]]</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="excesos">Excesos</label>
+                            <input v-model="formData.excesos" type="number" class="form-control" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-success">[[ modalButtonLabel ]]</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+<script>
+new Vue({
+    el: '#app-exceso',
+    delimiters: ['[[', ']]'],
+    data() {
+        return {
+            excesos: [],  // Lista de excesos de velocidad
+            clientes: [], // Lista de clientes
+            areas: [],    // Lista de áreas relacionadas al cliente seleccionado
+            searchQuery: '',
+            formData: {
+                id: null,
+                cliente: '',
+                area: '',
+                anio: 0,
+                mes: 0,
+                excesos: 0
+            },
+            years: Array.from({ length: 32 }, (v, k) => k + 2023),  // Genera los años desde 2000 hasta 2031
+            months: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+            modalTitle: '',
+            modalButtonLabel: ''
+        };
+    },
+    computed: {
+        filteredExcesos() {
+            // Filtra los excesos según la búsqueda
+            return this.excesos.filter(exceso => {
+                return (
+                    exceso.cliente__nombre.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                    exceso.area__detalle.toLowerCase().includes(this.searchQuery.toLowerCase())
+                );
+            });
+        }
+    },
+    mounted() {
+        this.fetchExcesos();
+        this.loadClientes();
+    },
+    methods: {
+        // Cargar los excesos desde el servidor
+        fetchExcesos() {
+            fetch('/syh/api/excesos/')
+                .then(response => response.json())
+                .then(data => {
+                    this.excesos = data;
+                });
+        },
+        // Cargar clientes desde el servidor
+        loadClientes() {
+            fetch('/syh/api/clientes/')
+                .then(response => response.json())
+                .then(data => {
+                    this.clientes = data;
+                });
+        },
+        // Cargar áreas relacionadas cuando se selecciona un cliente
+        fetchAreas() {
+            if (!this.formData.cliente) {
+                this.areas = [];
+                return Promise.resolve();  // Retorna una promesa resuelta si no hay cliente seleccionado
+            }
+            fetch(`/syh/api/obtener-areas-vue/?cliente=${this.formData.cliente}`)
+                .then(response => response.json())
+                .then(data => {
+                    this.areas = data;
+                });
+        },
+        openModal(action, exceso = null) {
+            if (action === 'add') {
+                this.modalTitle = 'Agregar Exceso de Velocidad';
+                this.modalButtonLabel = 'Agregar';
+                this.formData = {
+                    id: null,
+                    cliente: '',
+                    area: '',
+                    anio: 0,
+                    mes: 0,
+                    excesos: 0
+                };
+            } else if (action === 'edit') {
+                this.modalTitle = 'Editar Exceso de Velocidad';
+                this.modalButtonLabel = 'Guardar Cambios';
+        
+                // Asignamos los datos del exceso al formulario
+                this.formData = { ...exceso };
+
+                this.formData.area = exceso.area.id;
+                console.log(exceso);
+            }
+            $('#modal-form').modal('show');
+        },
+        closeModal() {
+            $('#modal-form').modal('hide');
+        },
+        saveExceso() {
+            const url = this.formData.id ? `/syh/api/excesos/${this.formData.id}/` : '/syh/api/excesos/';
+            const method = this.formData.id ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(this.formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.fetchExcesos(); // Refrescar la tabla
+                this.closeModal();
+                toastr.success('Registro guardado correctamente.'); // Notificación de éxito
+            })
+            .catch(error => {
+                toastr.error(`Error: ${error.message}`); // Notificación de error
+            });
+        },
+        deleteExceso(id) {
+            // Mostrar cuadro de confirmación con SweetAlert2
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "No podrás revertir esto",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Si el usuario confirma, entonces eliminar el registro
+                    fetch(`/syh/api/excesos/${id}/`, { method: 'DELETE' })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Error al eliminar el registro.');
+                            }
+                            this.fetchExcesos(); // Refrescar la tabla
+                            toastr.success('Registro eliminado correctamente.');
+                        })
+                        .catch(error => {
+                            toastr.error(`Error: ${error.message}`);
+                        });
+                }
+            });
+        }
+    }
+});
+</script>
+{% endblock extra_js %}

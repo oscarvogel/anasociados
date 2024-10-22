@@ -5,7 +5,7 @@
     <div class="navbar-brand header-logo">
       <a href="{% url 'index' %}" class="b-brand">
         <div class="b-bg">
-          <i class="feather icon-trending-up"></i>
+          <img src="{% static 'assets/images/icono_almada_neri.png' %}" alt="logo">
         </div>
         <span class="b-title">AN & Asociados</span>
       </a>
@@ -80,6 +80,14 @@
               class="pcoded-micon"><i class="feather icon-user"></i></span><span class="pcoded-mtext">Perfil</span></a>
         </li>
         {% endif %}
+        <li class="nav-item pcoded-hasmenu" data-username="informes">
+          <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-bar-chart-2"></i></span><span
+              class="pcoded-mtext">Informes</span></a>
+              <ul class="pcoded-submenu">
+                <li class=""><a href="{% url 'syh:visualizar_movimientos' %}" class="nav-link" >Hallazgos</a></li>
+                <li class=""><a href="{% url 'syh:excesos_plantilla' %}" class="nav-link" >Excesos de Velocidad</a></li>
+              </ul>
+        </li>
       </ul>
     </div>
   </div>

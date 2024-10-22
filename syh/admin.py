@@ -1,17 +1,16 @@
+from reportlab.lib.pagesizes import letter
 from django.contrib import admin
 from django.contrib.admin import DateFieldListFilter, SimpleListFilter
-from django.http import HttpResponse
-from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4, landscape
-from syh.forms import MovimientosForm
+from syh.forms import EmisionCarbonoForm, ExcesosVelocidadAdminForm, IndiceAccidentabilidadAdminForm
 from usuarios.models import Profile
-from utiles.funciones_usuario import FormatoFecha, dividir_texto
-from utiles.impresiones import Impresiones
-from .models import Cliente, Area, Evidencia, Movimientos, ParametroSistema
-import io
+from utiles.impresiones import Impresiones, ImprimeHallazgos
+from .models import Cliente, Area, EmisionCarbono, Evidencia, ExcesosVelocidad, IndiceAccidentabilidad, Movimientos, ParametroSistema
+import matplotlib.pyplot as plt
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Table, TableStyle, Paragraph
 from reportlab.lib import colors
+from reportlab.lib.utils import ImageReader
 
 # Register your models here.
 @admin.register(Cliente)
@@ -102,6 +101,7 @@ class MovimientosAdmin(admin.ModelAdmin):
     ordering = ('-fecha', 'cliente', 'estado')
     search_fields = ('id', 'area__detalle', 'periodo', 'hallazgo')
     inlines = [EvidenciaAdmin]
+    readonly_fields = ['id']  # Asegúrate de que el campo 'id' es solo de lectura
     # form = MovimientosForm
 
     def get_queryset(self, request):
@@ -119,57 +119,18 @@ class MovimientosAdmin(admin.ModelAdmin):
     def get_list_filter(self, request):
         if request.user.is_superuser:
             # Si es superusuario, mostramos todos los filtros disponibles
-            return ('cliente', AreaClienteFilter, ('fecha', DateFieldListFilter), 'periodo', 'estado')
+            return ('estado', 'cliente', AreaClienteFilter)
         else:
             # Si es un cliente, limitamos los filtros a solo ciertos campos
-            return (AreaClienteFilter, ('fecha', DateFieldListFilter), 'periodo', 'estado')
+            return ('estado', AreaClienteFilter)
     
     # Acción para exportar a PDF
     actions = ['export_to_pdf']
 
     def export_to_pdf(self, request, queryset):
-        impresion = Impresiones()
-        impresion.inicia()
-        impresion.ubicacion = {
-            'Fecha': 10,
-            'Periodo': 65,
-            'Hallazgo': 120,
-            'Estado': 500
-        }
+        impresion = ImprimeHallazgos()
         # Obtener el cliente y el área para el título
-        if queryset.exists():
-            cliente = queryset.first().cliente
-            area = queryset.first().area
-            titulo = f"Reporte de Movimientos para {cliente} - Área: {area}"
-        else:
-            titulo = "Reporte de Movimientos"
-
-        impresion.titulo = titulo
-        # Crear el PDF
-        impresion.cabecera()
-
-        # Crear la tabla
-        data = [
-            ['Fecha', 'Periodo', 'Hallazgo', 'Estado']
-        ]
-        for movimiento in queryset:
-            impresion.fila -=10
-            impresion.pdf.drawString(x=impresion.ubicacion['Fecha'], y=impresion.fila, text=FormatoFecha(movimiento.fecha, formato='dma'))
-            impresion.pdf.drawString(x=impresion.ubicacion['Periodo'], y=impresion.fila, text=str(movimiento.periodo))
-            impresion.pdf.drawString(x=impresion.ubicacion['Estado'], y=impresion.fila, text=str(movimiento.estado))
-            lineas = dividir_texto(movimiento.hallazgo, 80)
-            for linea in lineas:
-                impresion.pdf.drawString(x=impresion.ubicacion['Hallazgo'], y=impresion.fila, text=linea)
-                impresion.fila -= 10
-            # Paragraph(movimiento.hallazgo, getSampleStyleSheet()['BodyText'])
-            data.append([
-                str(movimiento.fecha),
-                movimiento.periodo,
-                movimiento.hallazgo,
-                movimiento.estado
-            ])
-        impresion.finaliza()
-        return impresion.response
+        return impresion.imprime_hallazgo(queryset)
         
 
     export_to_pdf.short_description = "Exportar a PDF"
@@ -181,12 +142,8 @@ class MovimientosAdmin(admin.ModelAdmin):
         else:
             # Si es cliente, mostramos una vista reducida
             return ('id', 'area', 'periodo', 'hallazgo', 'estado')
-        
-    def get_list_display(self, request):
-        if request.user.is_superuser:
-            return ('id', 'cliente', 'area', 'periodo', 'hallazgo', 'estado', 'fecha')
-        else:
-            return ('id', 'area', 'periodo', 'hallazgo', 'estado')
+
+
 
 @admin.register(ParametroSistema)
 class ParametroSistemaAdmin(admin.ModelAdmin):
@@ -196,3 +153,58 @@ class ParametroSistemaAdmin(admin.ModelAdmin):
     list_per_page = 10
     list_max_show_all = 100
     list_display_links = ('parametro',)
+
+@admin.register(EmisionCarbono)
+class EmisionCarbonoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'tipo', 'fe', 'cantidad', 'cliente', 'fecha')
+    search_fields = ('id', 'tipo', 'fe', 'cantidad', 'cliente__nombre', 'fecha')
+    list_filter = ('cliente',)
+    list_per_page = 10
+    readonly_fields = ['periodo']
+    form = EmisionCarbonoForm
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj and 'fecha' in form.base_fields:
+            form.base_fields['fecha'].initial = obj.fecha.strftime('%Y-%m-%d')
+            form.base_fields['fecha'].widget.attrs['value'] = obj.fecha.strftime('%Y-%m-%d')
+        return form
+    
+@admin.register(IndiceAccidentabilidad)
+class IndiceAccidentabilidadAdmin(admin.ModelAdmin):
+    form = IndiceAccidentabilidadAdminForm
+    list_display = ('id', 'cliente', 'anio', 'mes', 'ACTP', 'ASTP', 'TPA', 'personal', 'hrs_hombres')
+    search_fields = ('id', 'cliente__nombre', 'anio', 'mes', 'ACTP', 'ASTP', 'TPA', 'personal', 'hrs_hombres')
+    list_filter = ('cliente', 'anio', 'mes')
+    list_per_page = 10
+    list_max_show_all = 100
+    list_display_links = ('id',)
+    ordering = ('-anio', '-mes')
+    readonly_fields = ('id',)
+
+# @admin.register(ExcesosVelocidad)
+# class ExcesosVelocidadAdmin(admin.ModelAdmin):
+#     form = ExcesosVelocidadAdminForm
+#     list_display = ('id', 'cliente', 'anio', 'mes', 'semana', 'excesos')
+#     search_fields = ('id', 'cliente__nombre', 'anio', 'mes', 'semana', 'excesos')
+#     list_filter = ('cliente', 'anio', 'mes', 'semana')
+#     list_per_page = 10
+#     list_max_show_all = 100
+#     list_display_links = ('id',)
+#     ordering = ('-anio', '-mes', '-semana')
+#     readonly_fields = ('id',)
+
+#     def change_view(self, request, object_id, form_url='', extra_context=None):
+#         extra_context = extra_context or {}
+#         extra_context['form_template'] = 'admin/syh/excesosvelocidad/change_form.html'
+#         return super(ExcesosVelocidadAdmin, self).change_view(
+#             request, object_id, form_url, extra_context=extra_context)
+
+#     def add_view(self, request, form_url='', extra_context=None):
+#         extra_context = extra_context or {}
+#         extra_context['form_template'] = 'admin/syh/excesosvelocidad/change_form.html'
+#         return super(ExcesosVelocidadAdmin, self).add_view(
+#             request, form_url, extra_context=extra_context)
+    
+#     class Media:
+#         js = ('https://cdn.jsdelivr.net/npm/vue@2', 'admin/js/vue_app.js')
