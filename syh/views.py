@@ -1,12 +1,26 @@
-from django.shortcuts import render
+from email import message
+from multiprocessing import context
+import os
+from venv import logger
+from django.shortcuts import render, redirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from celery.result import AsyncResult
+from django.core.mail import send_mail
+
+from core_an import settings
+from syh.serializers import ClientesSerializer
+from syh.tasks import task_resumen_mensual
 from .models import ExcesosVelocidad
 import json
 
-from usuarios.models import Profile
+from usuarios.models import AreasProfile, Profile
 from utiles.impresiones import ImprimeHallazgos
+from django_celery_results.models import TaskResult
+
+
+from rest_framework import viewsets
 
 # Create your views here.
 from .models import Movimientos, Cliente, Area
@@ -16,13 +30,18 @@ def visualizar_movimientos(request):
     try:
         profile = Profile.objects.get(user=request.user)
         cliente = profile.cliente  # Obtener el cliente asociado al perfil
+        areas_profile = AreasProfile.objects.filter(user=request.user)
     except Profile.DoesNotExist:
         # Si no tiene un perfil, puedes manejar el caso con un mensaje de error o redirección
         cliente = None
+        areas_profile = None
     
     if cliente:
         clientes = Cliente.objects.filter(id = cliente.id)
-        areas = Area.objects.filter(cliente = cliente.id)
+        if not areas_profile:
+            areas = Area.objects.filter(cliente = cliente.id)
+        else:
+            areas = Area.objects.filter(id__in=[area.area.id for area in areas_profile])
         queryset = Movimientos.objects.filter(cliente = cliente.id)
     else:
         clientes = Cliente.objects.all()
@@ -45,7 +64,6 @@ def visualizar_movimientos(request):
     if filtro_estados:
         queryset = queryset.filter(estado__in=filtro_estados)
 
-    print(queryset.query)
     paginator = Paginator(queryset, 10)  # 10 elementos por página
     page = request.GET.get('page', 1)
     
@@ -74,30 +92,44 @@ def visualizar_movimientos(request):
 
 def imprimir_movimientos(request):
     
-    filtro_cliente = request.GET.get('cliente')
-    filtro_area = request.GET.get('area')
-    filtro_estados = request.GET.getlist('estado')
+    filtro_cliente = request.GET.get('cliente', None)
+    filtro_area = request.GET.get('area', None)
+    filtro_estados = request.GET.getlist('estado', None)
 
     queryset = Movimientos.objects.all()
 
     if filtro_cliente:
-        queryset = queryset.filter(cliente_id=filtro_cliente)
+        queryset = queryset.filter(cliente=filtro_cliente)
     
     if filtro_area:
-        queryset = queryset.filter(area_id=filtro_area)
+        queryset = queryset.filter(area=filtro_area)
 
     if filtro_estados:
         queryset = queryset.filter(estado__in=filtro_estados)
-    
+
+    print(queryset.query)    
+    # Si el queryset está vacío, redirigir a la vista 'visualizar_movimientos'
+    if not queryset.exists():
+        return redirect('syh:visualizar_movimientos')
+
+    queryset = queryset.order_by('-estado', '-fecha')
     impresion = ImprimeHallazgos()
-    
-    return impresion.imprime_hallazgo(queryset=queryset)
+    return impresion.imprime_hallazgo(queryset=queryset, filtro_cliente=filtro_cliente, filtro_area=filtro_area)
+        
 
 
 def obtener_areas(request):
     cliente_id = request.GET.get('cliente')
+    if not request.user.is_superuser:
+        areas_profile = AreasProfile.objects.filter(user=request.user)
+    else:
+        areas_profile = None
+    
     if cliente_id:
-        areas = Area.objects.filter(cliente_id=cliente_id)
+        if not areas_profile:
+            areas = Area.objects.filter(cliente_id=cliente_id)
+        else:
+            areas = Area.objects.filter(id__in=[area.area.id for area in areas_profile])
     else:
         areas = Area.objects.all()
     areas_data = {area.id: area.detalle for area in areas}
@@ -115,8 +147,23 @@ def obtener_areas_vue(request):
 
 @csrf_exempt
 def excesos_list(request):
+
     if request.method == 'GET':
-        excesos = list(ExcesosVelocidad.objects.all().values('id', 'cliente', 'area', 'anio', 'mes','excesos', 'cliente__nombre', 'area__detalle')[:100])
+
+        if request.user.is_superuser:
+            cliente = None
+        else:
+            try:
+                profile = Profile.objects.get(user=request.user)
+                cliente = profile.cliente  # Obtener el cliente asociado al perfil
+            except Profile.DoesNotExist:
+                # Si no tiene un perfil, puedes manejar el caso con un mensaje de error o redirección
+                cliente = None
+    
+        excesos = list(ExcesosVelocidad.objects.all().values('id', 'cliente', 'anio', 'mes','excesos', 'cliente__nombre',)[:100])
+        if cliente:
+            excesos = list(ExcesosVelocidad.objects.filter(cliente=cliente.id).values('id', 'cliente', 'anio', 'mes','excesos', 'cliente__nombre',)[:100])
+            
         return JsonResponse(excesos, safe=False)
     elif request.method == 'POST':
         try:
@@ -124,7 +171,6 @@ def excesos_list(request):
             print(data)
             exceso = ExcesosVelocidad.objects.create(
                 cliente_id=data['cliente'],
-                area_id=data['area'],
                 anio=data['anio'],
                 mes=data['mes'],
                 excesos=data['excesos']
@@ -145,7 +191,6 @@ def excesos_detail(request, id):
         try:
             data = json.loads(request.body)
             exceso.cliente_id = data['cliente']
-            exceso.area_id = data['area']
             exceso.anio = data['anio']
             exceso.mes = data['mes']
             exceso.excesos = data['excesos']
@@ -168,3 +213,130 @@ def clientes_list(request):
 
 def excesos_plantilla(request):
     return render(request, 'pages/syh/excesos_velocidad.html')
+
+def plantilla_resumen_mensual(request):
+    try:
+        profile = Profile.objects.get(user=request.user)
+        cliente = profile.cliente  # Obtener el cliente asociado al perfil
+        cliente_id = cliente.id
+    except Profile.DoesNotExist:
+        # Si no tiene un perfil, puedes manejar el caso con un mensaje de error o redirección
+        cliente = None
+    
+    if request.user.is_superuser:
+        cliente = 'Todos'
+        nombre = 'Todos los clientes'
+        cliente_id = request.GET.get('cliente', None)
+    else:
+        nombre = cliente.nombre
+    if cliente == 'Todos':
+        clientes = Cliente.objects.all()
+    else:
+        clientes = Cliente.objects.filter(id = cliente_id)
+
+    context = {
+        'segment'  : 'resumen_mensual',
+        'cliente': nombre,
+        'clientes': clientes,
+        'cliente_id_selected': cliente_id,
+    }
+    return render(request, 
+                  'pages/syh/resumen_mensual.html', context=context)
+
+#genera resumen mensual
+def generar_resumen(request):
+    cliente_id = request.GET.get('cliente', None)
+
+    task = task_resumen_mensual.delay(cliente_id)
+    return JsonResponse({'task_id': task.id})
+
+def progreso_tarea(request, task_id):
+    try:
+        # Primero intentar obtener el resultado de la base de datos
+        try:
+            print(f'Tratando de obtener el resultado de la tarea {task_id} desde la base de datos')
+            task_result = TaskResult.objects.get(task_id=task_id)
+            stored_result = json.loads(task_result.result) if task_result.result else {}
+            
+            # Si se obtuvo el resultado, devolverlo
+            response = {
+                'task_id': task_id,
+                'state': task_result.status,
+                'status': 'success'
+            }
+            print(response)
+
+            if isinstance(stored_result, dict):
+                response.update({
+                    'current': stored_result.get('current', 0),
+                    'total': stored_result.get('total', 100),
+                    'message': stored_result.get('message', 'Procesando...')
+                })
+            else:
+                response.update({
+                    'pdf_file': stored_result,
+                    'message': 'Tarea finalizada exitosamente'
+                })
+                stored_result = response
+            # return result
+            return JsonResponse(stored_result)
+            
+        except TaskResult.DoesNotExist:
+            # Si no está en la base de datos, usar AsyncResult
+            result = AsyncResult(task_id)
+            
+            response = {
+                'task_id': task_id,
+                'state': result.state,
+                'status': 'success'
+            }
+            
+            if result.state == 'PROGRESS' and result.info:
+                response.update(result.info)
+            elif result.state == 'SUCCESS':
+                response.update({
+                    'current': 100,
+                    'total': 100,
+                    'message': 'Tarea completada'
+                })
+            elif result.state == 'FAILURE':
+                response.update({
+                    'state': 'FAILURE',
+                    'status': 'error',
+                    'message': str(result.info)
+                })
+            else:
+                response.update({
+                    'current': 0,
+                    'total': 100,
+                    'message': 'Tarea en proceso'
+                })
+            
+            return JsonResponse(response)
+            
+    except Exception as e:
+        logger.error(f"Error al verificar progreso: {str(e)}")
+        return JsonResponse({
+            'state': 'ERROR',
+            'status': 'error',
+            'message': str(e)
+        })
+    
+def download_file(request, filename):
+    # Construir la ruta completa del archivo en el directorio MEDIA_ROOT
+    # file_path = os.path.join(settings.MEDIA_ROOT, filename)
+    file_path = filename
+    
+    if os.path.exists(file_path):
+        with open(file_path, 'rb') as file:
+            response = HttpResponse(file.read(), content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+    else:
+        return HttpResponse("Archivo no encontrado", status=404)
+    
+    
+
+class ClientesViewSet(viewsets.ModelViewSet):
+    queryset = Cliente.objects.all()
+    serializer_class = ClientesSerializer    

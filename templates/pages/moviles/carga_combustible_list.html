@@ -1,0 +1,290 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+{% block content %}
+
+<meta name="csrf-token" content="{{ csrf_token }}">
+<div id="app-combustible" class="container mt-4">
+    <div class="row mb-2">
+        <div class="col-md-6">
+            <input v-model="searchQuery" @input="onSearch" class="form-control" placeholder="Buscar por chofer, patente o empresa" />
+        </div>
+        <div class="col-md-6 text-right">
+            <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> </button>
+        </div>
+    </div>
+
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Empresa</th>
+                <th>Movil</th>
+                <th>Chofer</th>
+                <th>Litros</th>
+                <th>Km/Hora</th>
+                <th>Tipo combustible</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="carga in filteredCargaCombustible" :key="carga.id">
+                <td>[[ formatDate(carga.fecha) ]]</td>
+                <td>[[ carga.empresa_nombre ]]</td>
+                <td>[[ carga.movil_patente ]]</td>
+                <td>[[ carga.chofer_nombre ]]</td>
+                <td>[[ carga.litros ]]</td>
+                <td>[[ carga.km_hora ]]</td>
+                <td>[[ carga.tipo_combustible ]]</td>
+                <td>
+                    <button class="btn btn-warning btn-sm" @click="openModal('edit', carga)">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" @click="deleteCargaCombustible(carga.id)">
+                        <i class="fas fa-trash"></i> 
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Modal para Agregar/Editar Tipo vencimiento... -->
+    <div class="modal" tabindex="-1" role="dialog" id="modal-form">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">[[ modalTitle ]]</h5>
+                    <button type="button" class="close" @click="closeModal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form @submit.prevent="savePersonal">
+                        <div class="form-group">
+                            <label for="movil">Movil</label>
+                            <select v-model="formData.movil" class="form-control">
+                                <option value="">-- Seleccione un Movil --</option>
+                                <option v-for="movil in moviles" :key="movil.id" :value="movil.id">[[ movil.patente ]]</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="chofer">Chofer</label>
+                            <select v-model="formData.chofer" class="form-control">
+                                <option value="">-- Seleccione un Chofer --</option>
+                                <option v-for="chofer in choferes" :key="chofer.id" :value="chofer.id">[[ chofer.apellido ]] [[ chofer.nombre ]]</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tipo_combustible">Tipo de combustible</label>
+                            <select v-model="formData.tipo_combustible" class="form-control">
+                                <option value="">-- Seleccione un Tipo combustible --</option>
+                                <option value="Super">Super</option>
+                                <option value="Infinia Nafta">Infinia Nafta</option>
+                                <option value="Ultra">Ultra</option>
+                                <option value="Infinia Diesel">Infinia Diesel</option>
+                                <option value="Urea">Urea</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fecha">Fecha Carga</label>
+                            <input v-model="formData.fecha" class="form-control" type="date">
+                        </div>                        
+                      
+                        <div class="form-group">
+                            <label for="km_hora">Km / Hr</label>
+                            <input v-model="formData.km_hora" class="form-control" type="number">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="litros">Litros</label>
+                            <input v-model="formData.litros" class="form-control" type="number">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="importe">Precio x Lt</label>
+                            <input v-model="formData.importe" class="form-control" type="number">
+                        </div>
+
+                        <button type="submit" class="btn btn-success">[[ modalButtonLabel ]]</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+new Vue({
+    el: '#app-combustible',
+    delimiters: ['[[', ']]'],
+    data() {
+        return {
+            cargas_combustible: [],  // Lista de tipos de vencimiento...
+            searchQuery: '',
+            formData: {
+                id: null,
+                fecha: '',
+                movil: '',
+                chofer: '',
+                litros: '',
+                km_hora: '',
+                tipo_combustible: '',
+                importe: ''
+            },
+            modalTitle: '',
+            modalButtonLabel: '',
+            moviles: [],
+            choferes: []
+        };
+    },
+    computed: {
+        filteredCargaCombustible() {
+            if (!this.searchQuery) {
+                return this.cargas_combustible; // Devuelve todo si no hay búsqueda
+            }
+            return this.cargas_combustible.filter(carga =>
+                carga.chofer_nombre.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                carga.movil_patente.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                carga.empresa_nombre.toLowerCase().includes(this.searchQuery.toLowerCase())
+            );
+        }
+    },
+    mounted() {
+        this.fetchCargaCombustible();
+        this.loadMoviles();
+        this.loadChoferes();
+    },
+    methods: {
+        onSearch() {
+            this.fetchCargaCombustible(); // Llama a la función solo al buscar
+        },
+        // Cargar los tipos de vencimiento desde el servidor
+
+        fetchCargaCombustible() {
+            axios.get(`/moviles/api/carga_combustible/`)
+                .then(response => {
+                    this.cargas_combustible = response.data;
+                    console.log(this.cargas_combustible);
+                })
+                .catch(error => {
+                    console.error('Error al cargar los personales:', error);
+                });
+        },        
+        openModal(action, carga = null) {
+            if (action === 'add') {
+                this.modalTitle = 'Agregar carga de combustible';
+                this.modalButtonLabel = 'Agregar';
+                this.formData = {
+                    id: null,
+                    fecha: '',
+                    movil: '',
+                    chofer: '',
+                    litros: '',
+                    km_hora: '',
+                    tipo_combustible: '',
+                    importe: ''
+                };
+            } else if (action === 'edit') {
+                this.modalTitle = 'Editar carga de combustible';
+                this.modalButtonLabel = 'Guardar Cambios';
+        
+                // Asignamos los datos del tipo de vencimiento al formulario
+                this.formData = { ...carga,
+                    movil: carga.movil,
+                    chofer: carga.chofer,
+                };
+                console.log(this.formData);
+
+            }
+            $('#modal-form').modal('show');
+        },
+        closeModal() {
+            $('#modal-form').modal('hide');
+        },
+        savePersonal() {
+            const url = this.formData.id ? `/moviles/api/carga_combustible/${this.formData.id}/` : '/moviles/api/carga_combustible/';
+            const method = this.formData.id ? 'PUT' : 'POST';
+            console.log(JSON.stringify(this.formData));
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+                },
+                body: JSON.stringify(this.formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.fetchCargaCombustible(); // Refrescar la tabla
+                this.closeModal();
+                toastr.success('Registro guardado correctamente.'); // Notificación de éxito
+            })
+            .catch(error => {
+                toastr.error(`Error: ${error.message}`); // Notificación de error
+            });
+        },
+        deleteCargaCombustible(id) {
+            // Mostrar cuadro de confirmación con SweetAlert2
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "No podrás revertir esto",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Si el usuario confirma, entonces eliminar el registro
+                    fetch(`/moviles/api/carga_combustible/${id}/`, { 
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+                        }
+                    }).then(response => {
+                            if (!response.ok) {
+                                throw new Error('Error al eliminar el registro.');
+                            }
+                            this.fetchCargaCombustible(); // Refrescar la tabla
+                            toastr.success('Registro eliminado correctamente.');
+                        })
+                        .catch(error => {
+                            toastr.error(`Error: ${error.message}`);
+                        });
+                }
+            });
+        },
+        loadMoviles() {
+            fetch('/moviles/api/movil/')
+                .then(response => response.json())
+                .then(data => {
+                    this.moviles = data;
+                });
+        },
+        loadChoferes() {
+            fetch('/moviles/api/personal/')
+                .then(response => response.json())
+                .then(data => {
+                    this.choferes = data;
+                });
+        },
+        formatDate(date) {
+          const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+          return new Date(date).toLocaleDateString('es-ES', options);
+        }        
+    }
+});
+</script>
+
+{% endblock %}

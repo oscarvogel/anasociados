@@ -1,0 +1,605 @@
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-28 11:06:11
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f8e015fb2e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-28 11:33:06
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f5d6700f2e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 17:09:51
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7ff8b7613310
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 17:13:00
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f896b1b72b0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 17:14:30
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7fec4fd3b2e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 17:20:44
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f5c3dffb2e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 17:31:26
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f54504632e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 17:39:09
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7fb9250e72e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 17:45:27
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f627344b2b0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 17:51:40
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f3f7d7932b0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 17:58:43
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f884718b2b0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 18:00:22
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7fa6328ff2b0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 18:11:36
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f638d9832e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 18:21:12
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f46f7b072e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 18:22:45
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f32cce472e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 18:32:18
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7fd4b131f2e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 18:35:47
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7fbcd44132e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 18:37:53
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7feea74132e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 18:39:23
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f59c627f2b0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-11-29 18:43:19
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f733b4e72e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-126-generic-x86_64-with-glibc2.35 2024-12-03 17:22:30
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f6befb8f2b0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-127-generic-x86_64-with-glibc2.35 2024-12-17 16:45:23
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f205c4b72e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-127-generic-x86_64-with-glibc2.35 2024-12-19 17:38:02
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7fb10a0ab2e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-127-generic-x86_64-with-glibc2.35 2024-12-19 17:39:29
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7fd3054e32e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-127-generic-x86_64-with-glibc2.35 2024-12-19 17:55:45
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7fe93cfeb2e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-127-generic-x86_64-with-glibc2.35 2024-12-24 10:19:53
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f211376b2e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-130-generic-x86_64-with-glibc2.35 2024-12-24 10:28:41
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7f4c6bc072e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-130-generic-x86_64-with-glibc2.35 2024-12-24 10:39:28
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7fc335fdf2e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+
+
+worker: Warm shutdown (MainProcess)
+ 
+ -------------- celery@vps-3177145-x v5.4.0 (opalescent)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-130-generic-x86_64-with-glibc2.35 2024-12-24 10:54:05
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         core_an:0x7fbc114272e0
+- ** ---------- .> transport:   amqp://mini:**@localhost:5672/an
+- ** ---------- .> results:     
+- *** --- * --- .> concurrency: 4 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . syh.tasks.task_resumen_mensual
+

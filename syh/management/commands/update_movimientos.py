@@ -1,8 +1,9 @@
 from django.core.management.base import BaseCommand
-from django.core.mail import send_mail
 from django.utils import timezone
-from django.db.models import F
+from django.template.loader import render_to_string
+from django.core.mail import EmailMessage
 
+from core_an import settings
 from syh.models import Movimientos
 
 
@@ -26,51 +27,28 @@ class Command(BaseCommand):
                 
         if hallazgos_incumplidos:
             # Crear el cuerpo del correo en formato HTML
-            email_body = '''
-            <html>
-            <head>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-            </head>
-            <body>
-                <h2>Hallazgos Incumplidos</h2>
-                <p>Los siguientes hallazgos han cambiado de estado a Incumplido:</p>
-                <table class="table table-success table-striped">
-                    <thead>
-                        <tr>
-                            <th>Cliente</th>
-                            <th>Área</th>
-                            <th>Hallazgo</th>
-                            <th>Fecha de Cumplimiento</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            '''
-
-            for movimiento in hallazgos_incumplidos:
-                email_body += f'''
-                        <tr>
-                            <td>{movimiento.cliente.nombre}</td>
-                            <td>{movimiento.area.detalle}</td>
-                            <td>{movimiento.hallazgo}</td>
-                            <td>{movimiento.fecha + timezone.timedelta(days=movimiento.plazo)}</td>
-                        </tr>
-                '''
-
-            email_body += '''
-                    </tbody>
-                </table>
-            </body>
-            </html>
-            '''
-
-            send_mail(
+            # Renderizar el template HTML con los datos de los alumnos
+            mensaje_html = render_to_string('pages/syh/hallazgos_incumplidos.html', {
+                'hallazgos_incumplidos': hallazgos_incumplidos,
+            })
+            email = EmailMessage(
                 'Hallazgos Incumplidos',
-                '',
-                'sistemas@servinlgsm.com.ar',
-                ['oscarvogel@gmail.com', 'almada_neri@hotmail.com'],
-                fail_silently=False,
-                html_message=email_body
+                mensaje_html,
+                settings.EMAIL_HOST_USER,
+                ['oscarvogel@gmail.com', 'almada_neri@hotmail.com'],  # Lista de destinatarios
             )
+            email.content_subtype = "html"  # Esto es importante para que se interprete como HTML
+            
+            # Enviar el correo
+            email.send()
+            # send_mail(
+            #     'Hallazgos Incumplidos',
+            #     '',
+            #     'sistemas@servinlgsm.com.ar',
+            #     ['oscarvogel@gmail.com', 'almada_neri@hotmail.com'],
+            #     fail_silently=False,
+            #     html_message=email_body, 
+            # )
         
         self.stdout.write(self.style.SUCCESS('Estados de movimientos actualizados y correos enviados'))
 

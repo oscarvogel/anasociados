@@ -1,6 +1,10 @@
-from django.urls import path
-
+from django.urls import path, include
 from . import views
+from rest_framework.routers import DefaultRouter
+
+
+router = DefaultRouter()
+router.register(r'clientes', views.ClientesViewSet)
 
 app_name = 'syh'
 
@@ -20,4 +24,17 @@ urlpatterns = [
 
     # API para Áreas por Cliente
     path('api/areas/<int:cliente_id>/', views.obtener_areas_vue, name='areas_by_cliente'),  # Listar áreas de un cliente
+
+    path('generar-resumen/', views.generar_resumen, name='generar_resumen'),
+    
+    #verificar avance de tarea
+    path('progreso/<str:task_id>/', views.progreso_tarea, name='progreso_tarea'),
+
+    #genera resumen mensual
+    path('generar-resumen-mensual/', views.plantilla_resumen_mensual, name='generar_resumen_mensual'),
+
+    #descargar archivo
+    path('download/<str:filename>/', views.download_file, name='download_file'),
+
+    path('api/', include(router.urls)),
 ]

@@ -20,7 +20,6 @@
         <thead>
             <tr>
                 <th>Cliente</th>
-                <th>Área</th>
                 <th>Año</th>
                 <th>Mes</th>
                 <th>Excesos</th>
@@ -30,17 +29,18 @@
         <tbody>
             <tr v-for="exceso in filteredExcesos" :key="exceso.id">
                 <td>[[ exceso.cliente__nombre ]]</td>
-                <td>[[ exceso.area__detalle ]]</td>
                 <td>[[ exceso.anio ]]</td>
                 <td>[[ exceso.mes ]]</td>
                 <td>[[ exceso.excesos ]]</td>
                 <td>
-                    <button class="btn btn-warning btn-sm" @click="openModal('edit', exceso)">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-danger btn-sm" @click="deleteExceso(exceso.id)">
-                        <i class="fas fa-trash"></i> 
-                    </button>
+                    {% if request.user.is_superuser %}
+                        <button class="btn btn-warning btn-sm" @click="openModal('edit', exceso)">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" @click="deleteExceso(exceso.id)">
+                            <i class="fas fa-trash"></i> 
+                        </button>
+                    {% endif %}
                 </td>
             </tr>
         </tbody>
@@ -60,17 +60,9 @@
                     <form @submit.prevent="saveExceso">
                         <div class="form-group">
                             <label for="cliente">Cliente</label>
-                            <select v-model="formData.cliente" @change="fetchAreas" class="form-control">
+                            <select v-model="formData.cliente" class="form-control">
                                 <option value="">-- Seleccione un cliente --</option>
                                 <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">[[ cliente.nombre ]]</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="area">Área</label>
-                            <select v-model="formData.area" class="form-control">
-                                <option value="">-- Seleccione un área --</option>
-                                <option v-for="area in areas" :key="area.id" :value="area.id">[[ area.detalle ]]</option>
                             </select>
                         </div>
 
@@ -115,12 +107,10 @@ new Vue({
         return {
             excesos: [],  // Lista de excesos de velocidad
             clientes: [], // Lista de clientes
-            areas: [],    // Lista de áreas relacionadas al cliente seleccionado
             searchQuery: '',
             formData: {
                 id: null,
                 cliente: '',
-                area: '',
                 anio: 0,
                 mes: 0,
                 excesos: 0
@@ -136,8 +126,7 @@ new Vue({
             // Filtra los excesos según la búsqueda
             return this.excesos.filter(exceso => {
                 return (
-                    exceso.cliente__nombre.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-                    exceso.area__detalle.toLowerCase().includes(this.searchQuery.toLowerCase())
+                    exceso.cliente__nombre.toLowerCase().includes(this.searchQuery.toLowerCase()) 
                 );
             });
         }
@@ -163,18 +152,6 @@ new Vue({
                     this.clientes = data;
                 });
         },
-        // Cargar áreas relacionadas cuando se selecciona un cliente
-        fetchAreas() {
-            if (!this.formData.cliente) {
-                this.areas = [];
-                return Promise.resolve();  // Retorna una promesa resuelta si no hay cliente seleccionado
-            }
-            fetch(`/syh/api/obtener-areas-vue/?cliente=${this.formData.cliente}`)
-                .then(response => response.json())
-                .then(data => {
-                    this.areas = data;
-                });
-        },
         openModal(action, exceso = null) {
             if (action === 'add') {
                 this.modalTitle = 'Agregar Exceso de Velocidad';
@@ -182,7 +159,6 @@ new Vue({
                 this.formData = {
                     id: null,
                     cliente: '',
-                    area: '',
                     anio: 0,
                     mes: 0,
                     excesos: 0
@@ -194,7 +170,6 @@ new Vue({
                 // Asignamos los datos del exceso al formulario
                 this.formData = { ...exceso };
 
-                this.formData.area = exceso.area.id;
                 console.log(exceso);
             }
             $('#modal-form').modal('show');

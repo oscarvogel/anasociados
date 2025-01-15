@@ -16,3 +16,15 @@ class Profile(models.Model):
         verbose_name_plural = "Perfiles"
         ordering = ["user"]
         managed = False
+
+class AreasProfile(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="user")
+    area = models.ForeignKey('syh.Area', on_delete=models.CASCADE, db_column="area")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.area.detalle}"
+    
+    class Meta:
+        verbose_name = "Área de Perfil"
+        verbose_name_plural = "Áreas de Perfiles"
+        ordering = ["user"]

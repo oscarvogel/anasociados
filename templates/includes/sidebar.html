@@ -22,19 +22,6 @@
           </a>
         </li>
 
-        {% if not request.user.is_authenticated %}
-        <li
-          data-username="Authentication Sign up Sign in reset password Change password Personal information profile settings map form subscribe"
-          class="nav-item pcoded-hasmenu">
-          <a href="javascript:" class="nav-link "><span class="pcoded-micon"><i
-                class="feather icon-lock"></i></span><span class="pcoded-mtext">Autenticacion</span></a>
-          <ul class="pcoded-submenu">
-            <li class=""><a href="{% url 'login' %}" class="">Iniciar</a></li>
-            <li class=""><a href="{% url 'register' %}" class="">Registrar</a></li>
-          </ul>
-        </li>
-        {% endif %}
-
         {% admin_get_menu as app_list %}
         {% if app_list %}
           {% for app in app_list %}
@@ -66,19 +53,9 @@
         {% endif %}
 
         {% if request.user.is_authenticated and not request.user.is_superuser %}
-        <li
-          data-username="Authentication Sign up Sign in reset password Change password Personal information profile settings map form subscribe"
-          class="nav-item pcoded-hasmenu">
-          <a href="javascript:" class="nav-link "><span class="pcoded-micon"><i
-                class="feather icon-lock"></i></span><span class="pcoded-mtext">Autenticacion</span></a>
-          <ul class="pcoded-submenu">
-            <li class=""><a href="{% url 'register' %}" class="" target="_blank">Registrar</a></li>
-            <li class=""><a href="{% url 'login' %}" class="" target="_blank">Iniciar</a></li>
-          </ul>
-        </li>
-        <li data-username="Profile Page" class="nav-item {% if 'profile' in segment %}active{% endif %}"><a href="{% url 'profile' %}" class="nav-link"><span
-              class="pcoded-micon"><i class="feather icon-user"></i></span><span class="pcoded-mtext">Perfil</span></a>
-        </li>
+          <li data-username="Profile Page" class="nav-item {% if 'profile' in segment %}active{% endif %}"><a href="{% url 'profile' %}" class="nav-link"><span
+                class="pcoded-micon"><i class="feather icon-user"></i></span><span class="pcoded-mtext">Perfil</span></a>
+          </li>
         {% endif %}
         <li class="nav-item pcoded-hasmenu" data-username="informes">
           <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-bar-chart-2"></i></span><span
@@ -86,8 +63,22 @@
               <ul class="pcoded-submenu">
                 <li class=""><a href="{% url 'syh:visualizar_movimientos' %}" class="nav-link" >Hallazgos</a></li>
                 <li class=""><a href="{% url 'syh:excesos_plantilla' %}" class="nav-link" >Excesos de Velocidad</a></li>
+                <li class=""><a href="{% url 'syh:generar_resumen_mensual' %}" class="nav-link" >Resumen Mensual</a></li>
               </ul>
         </li>
+        {%if request.user.is_superuser%}
+          <li class="nav-item pcoded-hasmenu" data-username="Moviles">
+            <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-settings"></i></span><span
+                class="pcoded-mtext">Moviles</span></a>
+                <ul class="pcoded-submenu">
+                  <li class=""><a href="{% url 'moviles:tipo_vencimientos_list' %}" >Tipos de vencimiento</a></li>
+                  <li class=""><a href="{% url 'moviles:moviles_list' %}" >Listado</a></li>
+                  <li class=""><a href="{% url 'moviles:personal_list' %}" >Personal</a></li>
+                  <li class=""><a href="{% url 'moviles:vencimientos_list' %}" >Vencimientos Moviles</a></li>
+                  <li class=""><a href="{% url 'moviles:carga_combustible_list' %}" >Cargas de combustible</a></li>
+                </ul>
+          </li>
+        {%endif%}
       </ul>
     </div>
   </div>

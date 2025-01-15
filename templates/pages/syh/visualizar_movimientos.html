@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>Visualizar Movimientos</h1>
+    <h3>Hallazgos</h3>
     <form method="get">
         <div class="row">
             <div class="col-md-6 mb-3">
@@ -62,7 +62,13 @@
                 <td>{{ mov.area.detalle }}</td>
                 <td>{{ mov.fecha }}</td>
                 <td>{{ mov.periodo }}</td>
-                <td>{{ mov.hallazgo }}</td>
+                <td>
+                    {% if request.user.is_superuser %}
+                        <a href="{% url 'admin:syh_movimientos_change' mov.id %}">{{ mov.hallazgo }}</a>
+                    {% else %}
+                        {{ mov.hallazgo }}
+                    {% endif %}
+                </td>
                 <td>{{ mov.responsable }}</td>
                 <td>{{ mov.plazo }}</td>
                 <td>{{ mov.estado }}</td>

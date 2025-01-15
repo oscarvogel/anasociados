@@ -1,0 +1,102 @@
+<html>
+    <head>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 40px;
+            }
+            
+            h2 {
+                text-align: center;
+                color: #333;
+            }
+            
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }
+            
+            table, th, td {
+                border: 1px solid #ddd;
+            }
+            
+            th, td {
+                padding: 12px;
+                text-align: left;
+            }
+            
+            th {
+                background-color: #f2f2f2;
+            }
+            
+            tr:nth-child(even) {
+                background-color: #f9f9f9;
+            }
+            
+            tr:hover {
+                background-color: #f1f1f1;
+            }
+
+            p {
+                text-align: center;
+                font-weight: bold;
+            }
+            tbody, td, tfoot, th, thead, tr {
+                border-color: inherit;
+                border-style: solid;
+                border-width: 0;
+            }
+            .table-danger {
+                --bs-table-bg: #f8d7da;
+                --bs-table-striped-bg: #eccccf;
+                --bs-table-striped-color: #000;
+                --bs-table-active-bg: #dfc2c4;
+                --bs-table-active-color: #000;
+                --bs-table-hover-bg: #e5c7ca;
+                --bs-table-hover-color: #000;
+                background: #f8d7da;
+                color: #000;
+                border-color: #dfc2c4;
+            }
+            .table-success {
+                --bs-table-bg: #d1e7dd;
+                --bs-table-striped-bg: #c7dbd2;
+                --bs-table-striped-color: #000;
+                --bs-table-active-bg: #bcd0c7;
+                --bs-table-active-color: #000;
+                --bs-table-hover-bg: #c1d6cc;
+                --bs-table-hover-color: #000;
+                background: #d1e7dd;
+                color: #000;
+                border-color: #bcd0c7;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Hallazgos Incumplidos</h2>
+        <p>Los siguientes hallazgos estan pendientes de cumplimiento:</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Área</th>
+                    <th>Estado</th>
+                    <th>Hallazgo</th>
+                    <th>Fecha de Cumplimiento</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for movimiento in hallazgos_incumplidos%}
+                <tr class="{%if movimiento.estado|upper == 'INCUMPLIDO' %}table-danger{%else%}table-success{%endif%}">
+                    <td>{{movimiento.cliente.nombre}}</td>
+                    <td>{{movimiento.area.detalle}}</td>
+                    <td>{{movimiento.estado}}</td>
+                    <td>{{movimiento.hallazgo}}</td>
+                    <td>{{movimiento.fecha_cumplimiento}}</td>
+                </tr>
+            {%endfor%}
+            </tbody>
+        </table>
+    </body>
+</html>

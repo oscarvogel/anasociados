@@ -1,3 +1,5 @@
+import csv
+from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from django.contrib import admin
 from django.contrib.admin import DateFieldListFilter, SimpleListFilter
@@ -11,6 +13,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Table, TableStyle, Paragraph
 from reportlab.lib import colors
 from reportlab.lib.utils import ImageReader
+from django.http import HttpResponse
 
 # Register your models here.
 @admin.register(Cliente)
@@ -46,21 +49,11 @@ class AreaAdmin(admin.ModelAdmin):
     list_display_links = ('id',)
     ordering = ('id',)
     readonly_fields = ('id',)
-    fieldsets = (
-        (None, {
-            'fields': ('id', 'cliente', 'detalle')
-        }),
-    )
-    add_fieldsets = (
-        (None, {
-            'fields': ('id', 'cliente', 'detalle')
-        }),
-    )
     
-    def get_readonly_fields(self, request, obj=None):
-        if obj:  # Si el objeto ya existe (es una instancia existente)
-            return ['parametro'] + self.readonly_fields
-        return self.readonly_fields
+    # def get_readonly_fields(self, request, obj=None):
+    #     if obj:  # Si el objeto ya existe (es una instancia existente)
+    #         return ['parametro'] + self.readonly_fields
+    #     return self.readonly_fields
 
 
 # Creamos un filtro personalizado para filtrar áreas según el cliente del usuario
@@ -106,6 +99,7 @@ class MovimientosAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
+        qs = qs.order_by('-estado', '-fecha')
         # Si el usuario es superuser, puede ver todos los registros
         if request.user.is_superuser:
             return qs
@@ -130,7 +124,7 @@ class MovimientosAdmin(admin.ModelAdmin):
     def export_to_pdf(self, request, queryset):
         impresion = ImprimeHallazgos()
         # Obtener el cliente y el área para el título
-        return impresion.imprime_hallazgo(queryset)
+        return impresion.imprime_hallazgo(queryset, filtro_cliente=True, filtro_area=True)
         
 
     export_to_pdf.short_description = "Exportar a PDF"
@@ -181,6 +175,43 @@ class IndiceAccidentabilidadAdmin(admin.ModelAdmin):
     list_display_links = ('id',)
     ordering = ('-anio', '-mes')
     readonly_fields = ('id',)
+
+    def export_to_csv(self, request, queryset):
+        meta = self.model._meta
+        field_names = [field.name for field in meta.fields]
+        
+        # Crear el nombre del archivo con timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'indices_accidentabilidad_{timestamp}.csv'
+        
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+        
+        # Crear el escritor CSV
+        writer = csv.writer(response)
+        
+        # Escribir los encabezados con verbose_name si está disponible
+        headers = []
+        for field_name in field_names:
+            field = meta.get_field(field_name)
+            headers.append(field.verbose_name if hasattr(field, 'verbose_name') and field.verbose_name else field_name)
+        writer.writerow(headers)
+        
+        # Escribir los datos
+        for obj in queryset:
+            row = []
+            for field_name in field_names:
+                value = getattr(obj, field_name)
+                # Manejar el caso especial de ForeignKey
+                if field_name == 'cliente':
+                    value = str(value)  # Convertir el objeto Cliente a string
+                row.append(value)
+            writer.writerow(row)
+        
+        return response
+    
+    export_to_csv.short_description = "Exportar seleccionados a CSV"
+
 
 # @admin.register(ExcesosVelocidad)
 # class ExcesosVelocidadAdmin(admin.ModelAdmin):

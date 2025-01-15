@@ -1,4 +1,4 @@
-"""core URL Configuration
+"""core_an URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/4.1/topics/http/urls/
@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework.authtoken.views import obtain_auth_token # <-- NEW
 from django.conf.urls.static import static
-from core import settings
+from core_an import settings
 
 urlpatterns = [
     path('', include('home.urls')),
@@ -26,6 +26,7 @@ urlpatterns = [
     path('', include('django_dyn_dt.urls')), # <-- NEW: Dynamic_DT Routing   
     path('usuarios/', include('usuarios.urls', namespace='usuarios')),
     path('syh/', include('syh.urls', namespace='syh')),
+    path('moviles/', include('moviles.urls', namespace='moviles')),
 ]
 
 # Lazy-load on routing is needed

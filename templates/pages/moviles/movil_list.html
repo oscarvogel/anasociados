@@ -1,0 +1,199 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+{% block content %}
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <div id="app-moviles" class="container">
+        <h1>Moviles</h1>
+        <div class="mb-3">
+            <input v-model="searchQuery" class="form-control" placeholder="Buscar por patente o empresa" />
+        </div>
+        <button @click="openModal('create')" class="btn btn-primary"><i class="fas fa-plus"></i></button>
+        <button @click="fetchMoviles" class="btn btn-secondary"><i class="fa-solid fa-rotate-right"></i></button>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Patente</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>Año</th>
+                    <th>Empresa</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="movil in moviles" :key="movil.id">
+                    <td>[[ movil.patente ]]</td>
+                    <td>[[ movil.marca ]]</td>
+                    <td>[[ movil.modelo ]]</td>
+                    <td>[[ movil.anio ]]</td>
+                    <td>[[ movil.empresa.nombre ]]</td>
+                    <td>
+                        <button @click="openModal('edit', movil)" class="btn btn-secondary"><i class="fas fa-edit"></i></button>
+                        <button @click="deleteMovil(movil.id)" class="btn btn-danger"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <pagination :current-page="currentPage" :total-pages="totalPages" @page-changed="fetchMoviles"></pagination>
+        {% comment %} <movil-modal :mode="modalMode" :movil="selectedMovil" @close="closeModal" @submit="submit"></movil-modal> {% endcomment %}
+
+        <div class="modal" role="dialog"  id="modal-form">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">[[ modalMode === 'create' ? 'Nuevo Movil' : 'Editar Movil' ]]</h5>
+                        <button @click="closeModal()" class="btn btn-secondary">Cerrar</button>
+                    </div>
+                    <div class="modal-body">
+                        <label>Patente</label>
+                        <input v-model="form.patente" class="form-control" />
+                        <label>Marca</label>
+                        <input v-model="form.marca" class="form-control" />
+                        <label>Modelo</label>
+                        <input v-model="form.modelo" class="form-control" />
+                        <label>Año</label>
+                        <input v-model="form.anio" class="form-control" type="number" />
+                        <label>Empresa</label>
+                        <select v-model="form.empresa" class="form-control">
+                            <option v-for="empresa in empresas" :value="empresa.id">[[ empresa.nombre ]]</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button @click="saveMovil(form)" class="btn btn-primary">[[ modalMode === 'create' ? 'Crear' : 'Guardar' ]]</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{%endblock%}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        Vue.component('pagination', {
+            props: ['currentPage', 'totalPages'],
+            template: `
+                <nav>
+                    <ul class="pagination" v-if="totalPages > 0">
+                        <li v-bind:class="{'disabled': currentPage === 1}" class="page-item">
+                            <a class="page-link" href="#" @click.prevent="$emit('page-changed', currentPage - 1)">Anterior</a>
+                        </li>
+                        <li v-for="page in Math.max(totalPages, 1)" v-bind:class="{'active': page === currentPage}" class="page-item">
+                            <a class="page-link" href="#" @click.prevent="$emit('page-changed', page)">{{ page }}</a>
+                        </li>
+                        <li v-bind:class="{'disabled': currentPage === totalPages}" class="page-item">
+                            <a class="page-link" href="#" @click.prevent="$emit('page-changed', currentPage + 1)">Siguiente</a>
+                        </li>
+                    </ul>
+                </nav>
+            `
+        });
+
+        new Vue({
+            delimiters: ['[[', ']]'],
+            el: '#app-moviles',
+            data: {
+                moviles: [],
+                searchQuery: '',
+                currentPage: 1,
+                totalPages: 1,
+                modalMode: '',
+                selectedMovil: {},
+                empresas: [],
+                form: {
+                    patente: '',
+                    marca: '',
+                    modelo: '',
+                    anio: '',
+                    empresa: ''
+                }
+            },
+            methods: {
+                fetchMoviles(page = 1) {
+                    axios.get(`/moviles/api/movil/?search=${this.searchQuery}&page=${page}`)
+                        .then(response => {
+                            this.moviles = response.data;
+                            const totalCount = response.data.count || 0;
+                            this.totalPages = Math.max(Math.ceil(totalCount / 10), 1); // Siempre al menos 1 página
+                        })
+                        .catch(error => {
+                            toastr.error('Error al cargar los móviles.'); // Notificación de error
+                            console.error('Error al cargar los móviles:', error);
+                            this.totalPages = 1;
+                        });
+                },
+                openModal(mode, movil = {}) {
+                    console.log(movil);
+                    this.modalMode = mode;
+                    this.selectedMovil = { ...movil,
+                        empresa: movil.empresa ? movil.empresa.id : ''
+                    };
+                    if (mode === 'create') {
+                        this.selectedMovil = { patente: '', marca: '', modelo: '', anio: '', empresa: '' };
+                    }
+                    this.form = this.selectedMovil;
+                    this.fetchEmpresas();
+                    $("#modal-form").modal('show');
+                },
+                closeModal() {
+                    this.modalMode = '';
+                    this.selectedMovil = {};
+                    $('#modal-form').modal('hide');
+                },
+                deleteMovil(id) {
+                    axios.delete(`/moviles/api/movil/${id}`)
+                        .then(() => {
+                            this.fetchMoviles();
+                        });
+                },
+                saveMovil(form) {
+                    axios.defaults.headers.common['X-CSRFToken'] = document.querySelector('[name=csrf-token]').content;
+                    if (this.modalMode === 'create') {
+                        axios.post('/moviles/api/movil/', form)
+                            .then(() => {
+                                this.fetchMoviles();
+                                this.closeModal();
+                                toastr.success('Registro guardado correctamente.'); // Notificación de éxito
+                            }).catch(error => {
+                                toastr.error(`Error: ${error.message}`); // Notificación de error
+                            });
+                            
+                    } else {
+                        axios.put(`/moviles/api/movil/${form.id}/`, form)
+                            .then(() => {
+                                this.fetchMoviles();
+                                this.closeModal();
+                                toastr.success('Registro guardado correctamente.'); // Notificación de éxito
+                            }).catch(error => {
+                                toastr.error(`Error: ${error.message}`); // Notificación de error
+                            });
+                    }
+                },
+                fetchEmpresas() {
+                    axios.get('/syh/api/clientes/')
+                        .then(response => {
+                            this.empresas = response.data;
+                            console.log(this.empresas);
+                        });
+                }
+            },
+            watch: {
+                searchQuery: {
+                    handler: function() {
+                        this.currentPage = 1;
+                        this.fetchMoviles();
+                    },
+                    deep: true
+                }
+            },
+            created() {
+                this.fetchMoviles();
+                this.fetchEmpresas();
+            }
+        });
+    </script>
+{% endblock %}

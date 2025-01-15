@@ -1,4 +1,5 @@
 from dataclasses import fields
+from random import choice
 from django import forms
 from .models import Area, Cliente, EmisionCarbono, ExcesosVelocidad, IndiceAccidentabilidad, Movimientos
 
@@ -29,11 +30,19 @@ class AreaForm(forms.ModelForm):
         fields = ['id', 'cliente', 'detalle', 'responsable']
 
 class EmisionCarbonoForm(forms.ModelForm):
+
     class Meta:
+        TIPO_CHOICES = [
+            ('Diesel', 'Diesel'),
+            ('Nafta', 'Nafta'),
+            ('Aceite para Motores', 'Aceite para Motores'),
+            ('Aceite Hidráulico', 'Aceite Hidráulico'),
+            ('Aceite Lubricantes de Cadena', 'Aceite Lubricantes de Cadena'),
+        ]
         model = EmisionCarbono
         fields = '__all__'
         widgets = {
-            'tipo': forms.TextInput(attrs={'class': 'form-control'}),
+            'tipo': forms.Select(attrs={'class': 'form-control'}, choices=TIPO_CHOICES),
             'fe': forms.NumberInput(attrs={'class': 'form-control'}),
             'cantidad': forms.NumberInput(attrs={'class': 'form-control'}),
             'cliente': forms.Select(attrs={'class': 'form-control'}),
@@ -79,10 +88,10 @@ class ExcesosVelocidadAdminForm(forms.ModelForm):
 
     class Meta:
         model = ExcesosVelocidad
-        fields = ['cliente', 'area', 'anio', 'mes', 'excesos']
+        fields = ['cliente', 'anio', 'mes', 'excesos']
         widgets = {
             'cliente': forms.Select(attrs={'class': 'form-control'}),
-            'area': forms.Select(attrs={'class': 'form-control'}),
+            # 'area': forms.Select(attrs={'class': 'form-control'}),
             'anio': forms.NumberInput(attrs={'class': 'form-control'}),
             'mes': forms.NumberInput(attrs={'class': 'form-control'}),
             # 'semana': forms.NumberInput(attrs={'class': 'form-control'}),

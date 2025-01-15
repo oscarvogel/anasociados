@@ -1,0 +1,203 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+{% block content %}
+
+<meta name="csrf-token" content="{{ csrf_token }}">
+<div id="app-tipo" class="container mt-4">
+    <div class="row mb-2">
+        <div class="col-md-6">
+            <input v-model="searchQuery" class="form-control" placeholder="Buscar por tipo de vencimiento...">
+        </div>
+        <div class="col-md-6 text-right">
+            <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> </button>
+        </div>
+    </div>
+
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="tipo in filteredTipo" :key="tipo.id">
+                <td>[[ tipo.id ]]</td>
+                <td>[[ tipo.nombre ]]</td>
+                <td>[[ tipo.tipo ]]</td>
+                <td>
+                    {% if request.user.is_superuser %}
+                        <button class="btn btn-warning btn-sm" @click="openModal('edit', tipo)">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" @click="deleteTipoVencimiento(tipo.id)">
+                            <i class="fas fa-trash"></i> 
+                        </button>
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Modal para Agregar/Editar Tipo vencimiento... -->
+    <div class="modal" tabindex="-1" role="dialog" id="modal-form">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">[[ modalTitle ]]</h5>
+                    <button type="button" class="close" @click="closeModal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form @submit.prevent="saveTipoVencimiento">
+                        <div class="form-group">
+                            <label for="ID">ID</label>
+                            <input v-model="formData.id" type="number" class="form-control" readonly>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="nombre">Nombre</label>
+                            <input v-model="formData.nombre" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tipo">Tipo</label>
+                            <select v-model="formData.tipo" class="form-control">
+                                <option value="Personal">Personal</option>
+                                <option value="Moviles">Moviles</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-success">[[ modalButtonLabel ]]</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+<script>
+new Vue({
+    el: '#app-tipo',
+    delimiters: ['[[', ']]'],
+    data() {
+        return {
+            tipo: [],  // Lista de tipos de vencimiento...
+            searchQuery: '',
+            formData: {
+                id: null,
+                nombre: '',
+                tipo: ''
+            },
+            modalTitle: '',
+            modalButtonLabel: ''
+        };
+    },
+    computed: {
+        filteredTipo() {
+            // Filtra los tipos según la búsqueda
+            return this.tipo.filter(tipo => {
+                return (
+                    tipo.nombre.toLowerCase().includes(this.searchQuery.toLowerCase()) 
+                );
+            });
+        }
+    },
+    mounted() {
+        this.fetchTipo();
+    },
+    methods: {
+        // Cargar los tipos de vencimiento desde el servidor
+        fetchTipo() {
+            fetch('/moviles/api/tipo_vencimiento/')
+                .then(response => response.json())
+                .then(data => {
+                    this.tipo = data;
+                });
+        },
+        openModal(action, tipo = null) {
+            if (action === 'add') {
+                this.modalTitle = 'Agregar Tipo de vencimiento';
+                this.modalButtonLabel = 'Agregar';
+                this.formData = {
+                    id: null,
+                    nombre: '',
+                    tipo: '',
+                };
+            } else if (action === 'edit') {
+                this.modalTitle = 'Editar Tipo de vencimiento';
+                this.modalButtonLabel = 'Guardar Cambios';
+        
+                // Asignamos los datos del tipo de vencimiento al formulario
+                this.formData = { ...tipo };
+
+                console.log(tipo);
+            }
+            $('#modal-form').modal('show');
+        },
+        closeModal() {
+            $('#modal-form').modal('hide');
+        },
+        saveTipoVencimiento() {
+            const url = this.formData.id ? `/moviles/api/tipo_vencimiento/${this.formData.id}/` : '/moviles/api/tipo_vencimiento/';
+            const method = this.formData.id ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrf-token]').content,
+                },
+                body: JSON.stringify(this.formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.fetchTipo(); // Refrescar la tabla
+                this.closeModal();
+                toastr.success('Registro guardado correctamente.'); // Notificación de éxito
+            })
+            .catch(error => {
+                toastr.error(`Error: ${error.message}`); // Notificación de error
+            });
+        },
+        deleteTipoVencimiento(id) {
+            // Mostrar cuadro de confirmación con SweetAlert2
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "No podrás revertir esto",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Si el usuario confirma, entonces eliminar el registro
+                    fetch(`/moviles/api/tipo_vencimiento/${id}/`, { method: 'DELETE' })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Error al eliminar el registro.');
+                            }
+                            this.fetchTipo(); // Refrescar la tabla
+                            toastr.success('Registro eliminado correctamente.');
+                        })
+                        .catch(error => {
+                            toastr.error(`Error: ${error.message}`);
+                        });
+                }
+            });
+        }
+    }
+});
+</script>
+{% endblock extra_js %}

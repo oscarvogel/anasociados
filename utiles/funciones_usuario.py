@@ -2,18 +2,9 @@ import os
 import tempfile
 import datetime
 import locale
-import uuid
-from syh.models import ParametroSistema
+import unicodedata
+import re
 
-def obtener_parametro(parametro_deseado, valor_por_defecto):
-    try:
-        # Intenta obtener el parámetro existente
-        parametro = ParametroSistema.objects.get(parametro=parametro_deseado).valor
-    except ParametroSistema.DoesNotExist:
-        # Si no existe, crea uno nuevo
-        parametro = ParametroSistema.objects.create(parametro=parametro_deseado, valor=valor_por_defecto).valor
-
-    return parametro
 
 def getTempFileName(filename='pdf', base=False, extension='.pdf'):
     tf = tempfile.NamedTemporaryFile(prefix=filename, mode='w+b')
@@ -50,3 +41,17 @@ def dividir_texto(texto, longitud):
         texto = texto[espacio:].strip()
     lineas.append(texto)
     return lineas
+
+
+def clean_filename(filename):
+    """
+    Limpia el nombre del archivo para que sea seguro y compatible
+    """
+    # Normalizar caracteres unicode
+    filename = unicodedata.normalize('NFKD', filename)
+    # Eliminar caracteres que no sean ASCII
+    filename = filename.encode('ASCII', 'ignore').decode('ASCII')
+    # Reemplazar espacios y caracteres especiales
+    filename = re.sub(r'[^\w\s-]', '', filename)
+    filename = re.sub(r'[-\s]+', '_', filename).strip('-_')
+    return filename

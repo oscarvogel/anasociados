@@ -40,7 +40,7 @@
     <div class="col-xl-6">
       <div class="card">
         <div class="card-header">
-          <h5>Tareas por Estado para {{ cliente }}</h5>
+          <h5>Tareas por Estado</h5>
         </div>
         <div class="card-block d-flex justify-content-center align-items-center text-center" >
           <div id="morris-tareas" style="height:300px">
@@ -52,7 +52,7 @@
     <div class="col-xl-6">
       <div class="card">
         <div class="card-header">
-          <h5>Emisión kg CO2 para {{ cliente }}</h5>
+          <h5>Emisión kg CO2</h5>
         </div>
         <div class="card-block">
           <div id="morris-tareas">
@@ -61,11 +61,34 @@
         </div>
       </div>
     </div>
-
+    <div class="col-xl-6">
+      <div class="card">
+        <div class="card-header">
+          <h5>Porcentaje de cumplidos por área</h5>
+        </div>
+        <div class="card-block">
+          <div id="morris-porcentaje-areas">
+            <canvas id="graficoPorcentajeAreas"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-6">
+      <div class="card">
+        <div class="card-header">
+          <h5>Excesos de velocidad</h5>
+        </div>
+        <div class="card-block">
+          <div id="morris-excesos_velocidad">
+            <canvas id="excesosChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>    
     <div class="col-xl-3">
       <div class="card">
         <div class="card-body">
-          <h5 class="card-title">Promedio de Plazos</h5>
+          <h5 class="card-title">Plazo promedio para la gestion de hallazgos</h5>
           <ul class="list-group list-group-flush">
             <li class="list-group-item d-flex justify-content-between align-items-center">
               General
@@ -75,67 +98,159 @@
         </div>
       </div>
     </div>
-    <div class="col-xl-3">
-      <div class="card">
-        <div class="card-body">
-          <h5 class="card-title">Plazos promedio por cliente</h5>
-          <ul class="list-group list-group-flush">
-            {%for cliente in plazo_promedio_clientes%}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              {{cliente.cliente__nombre}}
-              <span class="">{{cliente.promedio_plazo|floatformat:2}} días</span>
-            </li>
-            {%endfor%}
-          </ul>
+    {%if request.user.is_superuser%}
+      <div class="col-xl-3">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Plazos promedio por cliente</h5>
+            <ul class="list-group list-group-flush">
+              {%for cliente in plazo_promedio_clientes%}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{cliente.cliente__nombre}}
+                <span class="">{{cliente.promedio_plazo|floatformat:2}} días</span>
+              </li>
+              {%endfor%}
+            </ul>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="col-xl-12">
+    {% endif %}
+    <div class="col-xl-3">
       <div class="card">
-        <div class="card-header">
-          <h5>Tareas para {{ cliente }}</h5>
-        </div>
-        <div class="col-md-4">
-          <a href="{% url 'admin:syh_movimientos_changelist' %}" class="col-md-4 btn btn-primary">Ver mas</a>
-        </div>
-        <div class="card-block">
-          <div class="card-block table-border-style">
-            <div class="table-responsive">
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th>{% if request.user.is_superuser%}Cliente{%endif%}</th>
-                    <th>Periodo</th>
-                    <th>Hallazgo</th>
-                    <th>Responsable</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {%for tarea in tareas%}
-                  <tr>
-                    <th scope="row">{% if request.user.is_superuser%}{{tarea.cliente}}{%endif%}</th>
-                    <td>{{tarea.periodo}}</td>
-                    <td>{{tarea.hallazgo|truncatechars:35}}</td>
-                    <td>{{tarea.responsable}}</td>
-                  </tr>
-                  {%endfor%}
-                </tbody>
-              </table>
+          <div class="card-body">
+              <h5 class="card-title">Índices de Accidentabilidad</h5>
+              <ul class="list-group list-group-flush">
+                  <li class="list-group-item">Índice de Frecuencia: {{ indice_frecuencia|floatformat:2 }}</li>
+                  <li class="list-group-item">Índice de Gravedad: {{ indice_gravedad|floatformat:2 }}</li>
+                  <li class="list-group-item">Índice de Accidentabilidad: {{ indice_accidentabilidad|floatformat:2 }}</li>
+                  <li class="list-group-item">Tasa de Riesgo: {{ tasa_riesgo|floatformat:2 }}</li>
+              </ul>
+          </div>
+      </div>
+    </div>
+  </div>
+  <!-- [ Graficos  ]inicio -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title text-center">Indicadores de seguridad</h5>
+          <div class="row">
+            <div class="col-12 col-md-6">
+              <h5 class="card-title text-center">Índice de Gravedad</h5>
+              <canvas id="myGaugeChartIG"></canvas>
+              <!-- Tabla de referencia -->
+              <div >
+                <p style="text-align: center;">Indice: {{indice_gravedad|floatformat:2}}</p>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Rango</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Valor Mínimo</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Valor Máximo</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Clasificación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">0</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">10</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; background-color: #147A73;">WC</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">2</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">10</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">100</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; background-color: #90EE90;">Superior</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">3</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">100</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">500</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; background-color: #FFFF99;">Estándar</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">4</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">500</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1000</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; background-color: #FFB266;">Alerta</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">5</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1000</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">>1000</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; background-color: #FF9999;">No aceptable</td>
+                    </tr>
+                    </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="col-12 col-md-6">
+              <h5 class="card-title text-center">Índice de Frecuencia</h5>
+              <canvas id="myGaugeChartIF"></canvas>
+              <div style="width: 100%; max-width: 600px; margin: 0 auto;">
+                <p style="text-align: center;">Indice: {{indice_frecuencia|floatformat:2}}</p>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Rango</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Valor Mínimo</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Valor Máximo</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Clasificación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                          <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">0</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #147A73;">WC</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">2</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">10</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #90EE90;">Superior</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">3</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">10</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">50</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #FFFF99;">Estándar</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">4</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">50</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">100</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #FFB266;">Alerta</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">5</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">100</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">>100</td>
+                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #FF9999;">No aceptable</td>
+                        </tr>
+                    </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-
   </div>
+  <!-- [ Graficos ] end -->
+
   <!-- [ Main Content ] end -->
 
 {% endblock content %}
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
   var datos = {{ datos_grafico|safe }};
-  var colores = ['#28a745', '#dc3545', '#ffc107']; // Verde, rojo, amarillo
+  {% comment %} var colores = ['#28a745', '#ffc107', '#dc3545']; // Verde, rojo, amarillo {% endcomment %}
   var total = datos.reduce((sum, item) => sum + item.value, 0);
   
   var ctx_area = document.getElementById('graficoAreas').getContext('2d');
@@ -145,7 +260,7 @@
           labels: datos.map(item => item.label),
           datasets: [{
               data: datos.map(item => item.value),
-              backgroundColor: colores
+              {% comment %} backgroundColor: colores {% endcomment %}
           }]
       },
       options: {
@@ -223,6 +338,16 @@
     }
   });
 
+  //implementacion del boton de resumen
+  document.getElementById('resumen-button').addEventListener('click', function() {
+    const clienteId = document.getElementById('cliente-select').value;
+    if (clienteId) {
+        window.location.href = `{% url 'syh:generar_resumen' %}?cliente=${clienteId}`;
+    } else {
+        alert('Por favor selecciona un cliente');
+    }
+    });
+
 
   var ctx = document.getElementById('graficoEmisiones').getContext('2d');
   var periodos = {{ periodos|safe }};
@@ -271,6 +396,261 @@
           }
       }
   });
+
+</script>
+<script src="https://unpkg.com/chart.js@2.8.0/dist/Chart.bundle.js"></script>
+
+<script src="https://unpkg.com/chartjs-gauge@0.3.0/dist/chartjs-gauge.js"></script>
+<script src="https://unpkg.com/chartjs-plugin-datalabels@0.7.0/dist/chartjs-plugin-datalabels.js"></script>
+<script> 
+// Función para convertir el valor real a la escala visual
+function convertValueIG(realValue) {
+  const realRanges = [0, 10, 100, 500, 1000]; // Rangos reales
+  const visualRanges = [0, 200, 400, 600, 800, 1000]; // Rangos visuales
+  
+  // Si el valor es mayor que el máximo, lo limitamos
+  if (realValue > 1000) return 1000;
+  
+  // Encontrar en qué rango real está el valor
+  for (let i = 0; i < realRanges.length; i++) {
+      if (realValue <= realRanges[i + 1]) {
+          // Calcular la proporción dentro del rango real
+          const realProportion = (realValue - realRanges[i]) / (realRanges[i + 1] - realRanges[i]);
+          // Convertir a la escala visual
+          const visualValue = visualRanges[i] + (realProportion * (visualRanges[i + 1] - visualRanges[i]));
+          return visualValue;
+      }
+  }
+  return realValue;
+}
+
+//grafico de IG
+var data_ig = [200, 400, 600, 800, 1000]; // Rangos visuales iguales
+var value_ig = {{indice_gravedad|floatformat:0}};
+
+var config = {
+    type: 'gauge',
+    data: {
+        labels: ['WC', 'Superior', 'Estandar', 'Alerta', 'No aceptable'],
+        datasets: [{
+            data: data_ig,
+            value: convertValueIG(value_ig), // Convertimos el valor a la escala visual
+            backgroundColor: ['#147A73', '#90EE90', '#FFFF99', '#FFB266', '#FF9999'],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        layout: {
+            padding: {
+                bottom: 30
+            }
+        },
+        needle: {
+            radiusPercentage: 2,
+            widthPercentage: 3.2,
+            lengthPercentage: 80,
+            color: 'rgba(0, 0, 0, 1)'
+        },
+        valueLabel: {
+            display: false
+        },
+        plugins: {
+            datalabels: {
+                display: true,
+                formatter: function (value, context) {
+                    return context.chart.data.labels[context.dataIndex];
+                },
+                color: 'rgba(0, 0, 0, 1.0)',
+                backgroundColor: null,
+                font: {
+                    size: 20,
+                    weight: 'bold'
+                }
+            }
+        }
+    }
+};
 </script>
 
+<script> 
+  //grafico de IF
+  // Función para convertir el valor real a la escala visual
+  function convertValueIF(realValue) {
+    const realRanges = [0, 1, 10, 50, 100]; // Rangos reales
+    const visualRanges = [0, 200, 400, 600, 800, 1000]; // Rangos visuales
+    
+    // Si el valor es mayor que el máximo, lo limitamos
+    if (realValue > 100) return 100;
+    
+    // Encontrar en qué rango real está el valor
+    for (let i = 0; i < realRanges.length; i++) {
+        if (realValue <= realRanges[i + 1]) {
+            // Calcular la proporción dentro del rango real
+            const realProportion = (realValue - realRanges[i]) / (realRanges[i + 1] - realRanges[i]);
+            // Convertir a la escala visual
+            const visualValue = visualRanges[i] + (realProportion * (visualRanges[i + 1] - visualRanges[i]));
+            return visualValue;
+        }
+    }
+    return realValue;
+  }
+  
+  //grafico de IF
+  var data_if = [200, 400, 600, 800, 1000]; // Rangos visuales iguales
+  var value_if = {{indice_frecuencia|floatformat:0}};
+  
+  var config_if = {
+      type: 'gauge',
+      data: {
+          labels: ['WC', 'Superior', 'Estandar', 'Alerta', 'No aceptable'],
+          datasets: [{
+              data: data_ig,
+              value: convertValueIF(value_if), // Convertimos el valor a la escala visual
+              backgroundColor: ['#147A73', '#90EE90', '#FFFF99', '#FFB266', '#FF9999'],
+              borderWidth: 2
+          }]
+      },
+      options: {
+          responsive: true,
+          layout: {
+              padding: {
+                  bottom: 30
+              }
+          },
+          needle: {
+              radiusPercentage: 2,
+              widthPercentage: 3.2,
+              lengthPercentage: 80,
+              color: 'rgba(0, 0, 0, 1)'
+          },
+          valueLabel: {
+              display: false
+          },
+          plugins: {
+              datalabels: {
+                  display: true,
+                  formatter: function (value, context) {
+                      return context.chart.data.labels[context.dataIndex];
+                  },
+                  color: 'rgba(0, 0, 0, 1.0)',
+                  backgroundColor: null,
+                  font: {
+                      size: 20,
+                      weight: 'bold'
+                  }
+              }
+          }
+      }
+  };
+
+  window.onload = function() {
+      var ctx_if = document.getElementById('myGaugeChartIF').getContext('2d');
+      window.myGaugeIF = new Chart(ctx_if, config_if);
+      var ctx_ig = document.getElementById('myGaugeChartIG').getContext('2d');
+      window.myGaugeIG = new Chart(ctx_ig, config);
+
+  };
+
+</script>
+<script>
+    const labels = [];
+    const dataPoints = [];
+    {% for item in excesos_velocidad %}
+        labels.push("{{ item.mes }}");
+        dataPoints.push("{{ item.total_excesos }}");
+    {% endfor %}
+
+    const ctx_excesos = document.getElementById('excesosChart').getContext('2d');
+    const excesosChart = new Chart(ctx_excesos, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Excesos por Mes',
+                data: dataPoints,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+                fill: false,
+                trendlineLinear: {
+                    style: "rgba(255,105,180, .8)",
+                    lineStyle: "solid",
+                    width: 2
+                }
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+</script>
+
+<script>
+  const ctx_porcentaje_areas = document.getElementById('graficoPorcentajeAreas').getContext('2d');	
+  const meta_porcentaje = {{ meta_porcentaje | safe }};
+  const porcentaje_por_area = {{ porcentaje_por_area | safe }};
+  const areas = Object.keys(porcentaje_por_area);
+  const porcentajes = Object.values(porcentaje_por_area);
+  
+  // Ordenar los porcentajes de mayor a menor
+  const ordenados = areas.map((area, index) => {
+    return { area, porcentaje: porcentajes[index] };
+  }).sort((a, b) => b.porcentaje - a.porcentaje);
+  
+  const chart = new Chart(ctx_porcentaje_areas, {
+    type: 'bar',
+    data: {
+      labels: ordenados.map(item => item.area),
+      datasets: [{
+        label: 'Porcentaje de cumplidos',
+        data: ordenados.map(item => item.porcentaje),
+        backgroundColor: 'rgba(0, 128, 0, 0.2)', // Color verde
+        borderColor: 'rgba(0, 128, 0, 1)', // Color verde
+        borderWidth: 1,
+        type: 'bar'
+      }, {
+        label: 'Meta',
+        data: ordenados.map(() => meta_porcentaje),
+        borderColor: 'rgba(255, 0, 0, 1)',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHitRadius: 0,
+        type: 'line',
+        fill: false,
+        pointStyle: 'line', // No mostrar puntos
+        showTooltips: false, // No mostrar tooltips
+        datalabels: {
+          display: false // No mostrar datos de la línea
+        }
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      },
+      plugins: {
+        datalabels: {
+          display: true,
+          anchor: 'end',
+          align: 'end',
+          offset: 0,
+          font: {
+            size: 12
+          },
+          formatter: (value) => {
+            return `${value}%`;
+          }
+        }
+      }
+    }
+  });
+</script>
 {% endblock extra_js %}
