@@ -121,7 +121,7 @@ new Vue({
             fetch('/moviles/api/tipo_vencimiento/')
                 .then(response => response.json())
                 .then(data => {
-                    this.tipo = data;
+                    this.tipo = data.results;
                 });
         },
         openModal(action, tipo = null) {

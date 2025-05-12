@@ -22,7 +22,6 @@
                 <th>Detalle</th>
                 <th>Fecha</th>
                 <th>Movil</th>
-                <th>Empresa</th>
                 <th>Tipo Vencimiento</th>
                 <th>Acciones</th>
             </tr>
@@ -31,7 +30,6 @@
             <tr v-for="vencimiento in filteredVencimiento" :key="vencimiento.id">
                 <td>[[ vencimiento.detalle ]]</td>
                 <td>[[ vencimiento.fecha ]]</td>
-                <td>[[ vencimiento.movil.patente ]]</td>
                 <td>[[ vencimiento.movil_patente ]]</td>
                 <td>[[ vencimiento.tipo_vencimiento_nombre ]]</td>
                 <td>
@@ -146,8 +144,8 @@ new Vue({
         fetchVencimiento() {
             axios.get(`/moviles/api/vencimiento/`)
                 .then(response => {
-                    console.log(response.data);
-                    this.vencimientos = response.data;
+                    console.log(response.data.results);
+                    this.vencimientos = response.data.results;
                 })
                 .catch(error => {
                     console.error('Error al cargar los vencimientos:', error);
@@ -236,18 +234,24 @@ new Vue({
             });
         },
         loadMoviles() {
-            fetch('/moviles/api/movil/')
-                .then(response => response.json())
-                .then(data => {
-                    this.moviles = data;
-                });
+            axios.get(`/moviles/api/movil/`)
+                .then(response => {
+                    console.log(response.data.results);
+                    this.moviles = response.data.results;
+                })
+                .catch(error => {
+                    console.error('Error al cargar los vencimientos:', error);
+                });            
         },
         loadTipoVencimiento() {
-            fetch('/moviles/api/tipo_vencimiento/')
-                .then(response => response.json())
-                .then(data => {
-                    this.tipos = data;
-                });
+            axios.get(`/moviles/api/tipo_vencimiento/`)
+                .then(response => {
+                    console.log(response.data.results);
+                    this.tipos = response.data.results;
+                })
+                .catch(error => {
+                    console.error('Error al cargar los vencimientos:', error);
+                });            
         },
     }
 });

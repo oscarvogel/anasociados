@@ -1,6 +1,5 @@
 import uuid
 
-from unidecode import unidecode
 from django.db.models import Avg, Q
 
 from datetime import date, datetime, timedelta

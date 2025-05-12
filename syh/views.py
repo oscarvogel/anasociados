@@ -10,8 +10,9 @@ from celery.result import AsyncResult
 from django.core.mail import send_mail
 
 from core_an import settings
-from syh.serializers import ClientesSerializer
+from syh.serializers import AreaSerializer, ClientesSerializer
 from syh.tasks import task_resumen_mensual
+from utiles.BaseViewSet import BaseAppModelViewSet
 from .models import ExcesosVelocidad
 import json
 
@@ -24,6 +25,7 @@ from rest_framework import viewsets
 
 # Create your views here.
 from .models import Movimientos, Cliente, Area
+from rest_framework.pagination import PageNumberPagination
 
 def visualizar_movimientos(request):
 
@@ -335,8 +337,17 @@ def download_file(request, filename):
     else:
         return HttpResponse("Archivo no encontrado", status=404)
     
-    
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
-class ClientesViewSet(viewsets.ModelViewSet):
+class ClientesViewSet(BaseAppModelViewSet):
     queryset = Cliente.objects.all()
     serializer_class = ClientesSerializer    
+    pagination_class = StandardResultsSetPagination
+    
+class AreasViewSet(BaseAppModelViewSet):
+    queryset = Area.objects.all()
+    serializer_class = AreaSerializer
+    pagination_class = StandardResultsSetPagination

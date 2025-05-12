@@ -153,8 +153,7 @@ new Vue({
         fetchPersonal() {
             axios.get(`/moviles/api/personal/`)
                 .then(response => {
-                    this.personales = response.data;
-                    console.log(this.personales);
+                    this.personales = response.data.results;
                 })
                 .catch(error => {
                     console.error('Error al cargar los personales:', error);

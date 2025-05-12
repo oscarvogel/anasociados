@@ -1,0 +1,91 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+{% block content %}
+  <h5>Consumo de combustible por mes por móvil</h5>
+  <div class="form-group row">
+    <select id="empresa-select" name="empresa" class="form-control col-mb-12 col-6">
+      {% for empresa in empresas %}
+        <option value="{{ empresa.id }}">{{ empresa.nombre }}</option>
+      {% endfor %}
+    </select>
+    <input type="date" id="fecha-inicio" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control col-mb-12 col-3">
+    <input type="date" id="fecha-fin" name="fecha_fin" value="{{ fecha_fin }}" class="form-control col-mb-12 col-3">
+  </div>
+  <div class="row">
+    <button id="generar-datos" onclick="generarDatos()" class="btn btn-primary col-mb-12 col-12">Generar Datos</button>
+  </div>
+  <div class="container">
+    <canvas id="myChartConsumoCombustiblePorMes" ></canvas>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    $(document).ready(function() {
+      $('#empresa-select').on("change", function() {
+        generarDatos();
+      });
+    });
+  </script>
+  <script>
+    function generarDatos() {
+      if (window.chart) {
+        window.chart.destroy();
+      }
+      var empresaId = $('#empresa-select').val();
+      var fecha_inicio = $('#fecha-inicio').val();
+      var fecha_fin = $('#fecha-fin').val();
+      $.ajax({
+        type: 'GET',
+        url: '{% url "moviles:datos_consumo_combustible" %}',
+        data: {empresa: empresaId, fecha_inicio: fecha_inicio, fecha_fin: fecha_fin},
+        success: function(data) {
+          var ctx = document.getElementById('myChartConsumoCombustiblePorMes').getContext('2d');
+          window.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: [...new Set(data.map(dato => dato.mes))],
+              datasets: data.reduce((acc, dato) => {
+                var movil = dato.movil;
+                if (!acc[movil]) {
+                  acc[movil] = {
+                    label: movil,
+                    data: data.filter(d => d.movil === movil).map(d => d.consumo),
+                    backgroundColor: 'rgba(' + Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ', 0.2)',
+                    borderColor: 'rgba(' + Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ', 1)',
+                    borderWidth: 1
+                  };
+                }
+                return acc;
+              }, {}),
+              datasets: Object.values(data.reduce((acc, dato) => {
+                var movil = dato.movil;
+                if (!acc[movil]) {
+                  acc[movil] = {
+                    label: movil,
+                    data: data.filter(d => d.movil === movil).map(d => d.consumo),
+                    backgroundColor: 'rgba(' + Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ', 0.2)',
+                    borderColor: 'rgba(' + Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ', 1)',
+                    borderWidth: 1
+                  };
+                }
+                return acc;
+              }, {}))
+            },
+            options: {
+              scales: {
+                y: {
+                  beginAtZero: true
+                }
+              }
+            }
+          });
+        }
+      });
+    }  
+  </script>
+{% endblock %}

@@ -6,10 +6,10 @@
 {% block content %}
 
 <meta name="csrf-token" content="{{ csrf_token }}">
-<div id="app-combustible" class="container mt-4">
+<div id="app-matafuegos" class="container mt-4">
     <div class="row mb-2">
         <div class="col-md-6">
-            <input v-model="searchQuery" @input="onSearch" class="form-control" placeholder="Buscar por chofer, patente o empresa" />
+            <input v-model="searchQuery" @input="onSearch" class="form-control" placeholder="Buscar por empresa o area" />
         </div>
         <div class="col-md-6 text-right">
             <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> </button>
@@ -19,30 +19,28 @@
     <table class="table table-bordered">
         <thead>
             <tr>
-                <th>Fecha</th>
-                <th>Empresa</th>
-                <th>Movil</th>
-                <th>Chofer</th>
-                <th>Litros</th>
-                <th>Km/Hora</th>
-                <th>Tipo combustible</th>
+                <th>Codigo</th>
+                <th>Fecha Vencimiento</th>
+                <th>Cliente</th>
+                <th>Area</th>
+                <th>Capacidad</th>
+                <th>Ubicacion</th>
                 <th>Acciones</th>
             </tr>
         </thead>
         <tbody>
-            <tr v-for="carga in cargas_combustible" :key="carga.id">
-                <td>[[ formatDate(carga.fecha) ]]</td>
-                <td>[[ carga.empresa_nombre ]]</td>
-                <td>[[ carga.movil_patente ]]</td>
-                <td>[[ carga.chofer_nombre ]]</td>
-                <td>[[ carga.litros ]]</td>
-                <td>[[ carga.km_hora ]]</td>
-                <td>[[ carga.tipo_combustible ]]</td>
+            <tr v-for="matafuego in matafuegos" :key="matafuego.id">
+                <td>[[ matafuego.codigo_interno ]]</td>
+                <td>[[ formatDate(matafuego.fecha_vencimiento) ]]</td>
+                <td>[[ matafuego.cliente_nombre ]]</td>
+                <td>[[ matafuego.area_nombre ]]</td>
+                <td>[[ matafuego.capacidad ]]</td>
+                <td>[[ matafuego.ubicacion ]]</td>
                 <td>
-                    <button class="btn btn-warning btn-sm" @click="openModal('edit', carga)">
+                    <button class="btn btn-warning btn-sm" @click="openModal('edit', matafuego)">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-danger btn-sm" @click="deleteCargaCombustible(carga.id)">
+                    <button class="btn btn-danger btn-sm" @click="deleteMatafuego(matafuego.id)">
                         <i class="fas fa-trash"></i> 
                     </button>
                 </td>
@@ -75,53 +73,51 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form @submit.prevent="saveCargaCombustible">
+                    <form @submit.prevent="saveMatafuego">
                         <div class="form-group">
-                            <label for="movil">Movil</label>
-                            <select v-model="formData.movil" class="form-control">
-                                <option value="">-- Seleccione un Movil --</option>
-                                <option v-for="movil in moviles" :key="movil.id" :value="movil.id">[[ movil.patente ]]</option>
+                            <label for="codigo_interno">Codigo interno</label>
+                            <input v-model="formData.codigo_interno" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cliente">Cliente</label>
+                            <select v-model="formData.cliente" class="form-control">
+                                <option value="">-- Seleccione un Cliente --</option>
+                                <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">[[ cliente.nombre ]]</option>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label for="chofer">Chofer</label>
-                            <select v-model="formData.chofer" class="form-control">
-                                <option value="">-- Seleccione un Chofer --</option>
-                                <option v-for="chofer in choferes" :key="chofer.id" :value="chofer.id">[[ chofer.apellido ]] [[ chofer.nombre ]]</option>
+                            <label for="area">Area</label>
+                            <select v-model="formData.area" class="form-control">
+                                <option value="">-- Seleccione un Area --</option>
+                                <option v-for="area in filteredAreas" :key="area.id" :value="area.id">[[ area.detalle ]]</option>
                             </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="fecha_vencimiento">Fecha Vencimiento</label>
+                            <input v-model="formData.fecha_vencimiento" class="form-control" type="date">
                         </div>
 
                         <div class="form-group">
-                            <label for="tipo_combustible">Tipo de combustible</label>
-                            <select v-model="formData.tipo_combustible" class="form-control">
-                                <option value="">-- Seleccione un Tipo combustible --</option>
-                                <option value="Super">Super</option>
-                                <option value="Infinia Nafta">Infinia Nafta</option>
-                                <option value="Ultra">Ultra</option>
-                                <option value="Infinia Diesel">Infinia Diesel</option>
-                                <option value="Urea">Urea</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="fecha">Fecha Carga</label>
-                            <input v-model="formData.fecha" class="form-control" type="date">
+                            <label for="cantidad">Cantidad</label>
+                            <input v-model="formData.cantidad" class="form-control" type="number">
                         </div>                        
                       
                         <div class="form-group">
-                            <label for="km_hora">Km / Hr</label>
-                            <input v-model="formData.km_hora" class="form-control" type="number">
+                            <label for="capacidad">Capacidad KG</label>
+                            <input v-model="formData.capacidad" class="form-control" type="number">
                         </div>
 
                         <div class="form-group">
-                            <label for="litros">Litros</label>
-                            <input v-model="formData.litros" class="form-control" type="number">
+                            <label for="ubicacion">Ubicacion</label>
+                            <input v-model="formData.ubicacion" class="form-control">
                         </div>
-
+                        
                         <div class="form-group">
-                            <label for="importe">Precio x Lt</label>
-                            <input v-model="formData.importe" class="form-control" type="number">
+                            <label for="mail_responsable">EMail Responsable</label>
+                            <input v-model="formData.mail_responsable" class="form-control">
                         </div>
 
                         <button type="submit" class="btn btn-success">[[ modalButtonLabel ]]</button>
@@ -138,26 +134,27 @@
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script>
  new Vue({
-    el: '#app-combustible',
+    el: '#app-matafuegos',
     delimiters: ['[[', ']]'],
     data() {
         return {
-            cargas_combustible: [], 
+            matafuegos: [], 
             searchQuery: '',
             formData: {
                 id: null,
-                fecha: '',
-                movil: '',
-                chofer: '',
-                litros: '',
-                km_hora: '',
-                tipo_combustible: '',
-                importe: ''
+                codigo_interno: '',
+                cliente: null,
+                area: null,
+                cantidad: 0,
+                capacidad: 0,
+                ubicacion: '',
+                mail_responsable: '',
+                fecha_vencimiento: ''
             },
             modalTitle: '',
             modalButtonLabel: '',
-            moviles: [],
-            choferes: [],
+            clientes: [],
+            areas: [],
             currentPage: 1,
             pageSize: 10,
             totalItems: 0
@@ -166,29 +163,40 @@
     computed: {
         totalPages() {
             return Math.ceil(this.totalItems / this.pageSize);
+        },
+        // Computed property to filter areas based on selected client
+        filteredAreas() {
+            // If no client is selected, return an empty array
+            if (!this.formData.cliente) {
+                return [];
+            }
+            // Filter areas where the 'cliente' property matches the selected formData.cliente
+            // **NOTE:** This assumes your 'areas' data fetched from '/syh/api/areas/' includes a 'cliente' property (or similar, like 'cliente_id')
+            // If your areas API response structure is different, you might need to adjust the filtering logic here.
+            return this.areas.filter(area => area.cliente === this.formData.cliente);
         }
     },
     mounted() {
-        this.fetchCargaCombustible();
-        this.loadMoviles();
-        this.loadChoferes();
+        this.fetchMatafuegos();
+        this.loadClientes();
+        this.loadAreas();
     },
     methods: {
         onSearch() {
             this.currentPage = 1;
-            this.fetchCargaCombustible();
+            this.fetchMatafuegos();
         },
-        fetchCargaCombustible(page = this.currentPage) {
+        fetchMatafuegos(page = this.currentPage) {
             const params = {
                 page: page,
                 page_size: this.pageSize,
                 search: this.searchQuery
             };
-            axios.get(`/moviles/api/carga_combustible/`, { params })
+            axios.get(`/moviles/api/matafuegos/`, { params })
                 .then(response => {
                     // Asegurarse de que response.data es un objeto con la estructura esperada
                     if (response.data && typeof response.data === 'object') {
-                        this.cargas_combustible = Array.isArray(response.data.results) ? response.data.results : [];
+                        this.matafuegos = Array.isArray(response.data.results) ? response.data.results : [];
                         this.totalItems = response.data.count || 0;
                         this.currentPage = response.data.current_page || 1;
                     } else {
@@ -196,38 +204,40 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error al cargar las cargas de combustible:', error);
+                    console.error('Error al cargar los matafuegos:', error);
                 });
         },
-        openModal(action, carga = null) {
+        openModal(action, matafuego = null) {
             if (action === 'add') {
-                this.modalTitle = 'Agregar carga de combustible';
+                this.modalTitle = 'Agregar Matafuego';
                 this.modalButtonLabel = 'Agregar';
                 this.formData = {
                     id: null,
-                    fecha: '',
-                    movil: '',
-                    chofer: '',
-                    litros: '',
-                    km_hora: '',
-                    tipo_combustible: '',
-                    importe: ''
+                    codigo_interno: '',
+                    cliente: null,
+                    area: null,
+                    cantidad: 0,
+                    capacidad: 0,
+                    ubicacion: '',
+                    mail_responsable: '',
+                    fecha_vencimiento: ''
                 };
-            } else if (action === 'edit' && carga) {  // Verificar que carga existe
-                this.modalTitle = 'Editar carga de combustible';
+            } else if (action === 'edit' && matafuego) {  // Verificar que carga existe
+                this.modalTitle = 'Editar Matafuego';
                 this.modalButtonLabel = 'Guardar Cambios';
                 
-                console.log(carga);
+                console.log(matafuego);
                 // Crear una copia profunda del objeto carga
                 this.formData = {
-                    id: carga.id || null,
-                    fecha: carga.fecha || '',
-                    movil: carga.movil || null,
-                    chofer: carga.chofer || null,
-                    litros: carga.litros || '',
-                    km_hora: carga.km_hora || '',
-                    tipo_combustible: carga.tipo_combustible || '',
-                    importe: carga.importe || ''
+                    id: matafuego.id || null,
+                    codigo_interno: matafuego.codigo_interno || '',
+                    cliente: matafuego.cliente || null,
+                    area: matafuego.area || null,
+                    cantidad: matafuego.cantidad || 0,
+                    capacidad: matafuego.capacidad || 0,
+                    ubicacion: matafuego.ubicacion || '',
+                    mail_responsable: matafuego.mail_responsable || '',
+                    fecha_vencimiento: matafuego.fecha_vencimiento || ''
                 };
             }
             $('#modal-form').modal('show');
@@ -235,16 +245,16 @@
         closeModal() {
             $('#modal-form').modal('hide');
         },
-        saveCargaCombustible() {
+        saveMatafuego() {
             // Validar que tenemos todos los datos necesarios
             if (!this.formData) {
                 toastr.error('Datos del formulario no válidos');
                 return;
             }
-
+            console.log(this.formData);
             const url = this.formData.id ? 
-                `/moviles/api/carga_combustible/${this.formData.id}/` : 
-                '/moviles/api/carga_combustible/';
+                `/moviles/api/matafuegos/${this.formData.id}/` : 
+                '/moviles/api/matafuegos/';
             const method = this.formData.id ? 'PUT' : 'POST';
 
             // Obtener el token CSRF de manera segura
@@ -269,7 +279,7 @@
                 return response.json();
             })
             .then(data => {
-                this.fetchCargaCombustible();
+                this.fetchMatafuegos();
                 this.closeModal();
                 toastr.success('Registro guardado correctamente.');
             })
@@ -277,7 +287,7 @@
                 toastr.error(`Error: ${error.message}`);
             });
         },
-        deleteCargaCombustible(id) {
+        deleteMatafuego(id) {
             if (!id) {
                 toastr.error('ID no válido');
                 return;
@@ -300,7 +310,7 @@
                         return;
                     }
 
-                    fetch(`/moviles/api/carga_combustible/${id}/`, { 
+                    fetch(`/moviles/api/matafuegos/${id}/`, { 
                         method: 'DELETE',
                         headers: {
                             'X-CSRFToken': csrfElement.content,
@@ -310,7 +320,7 @@
                         if (!response.ok) {
                             throw new Error('Error al eliminar el registro.');
                         }
-                        this.fetchCargaCombustible();
+                        this.fetchMatafuegos();
                         toastr.success('Registro eliminado correctamente.');
                     })
                     .catch(error => {
@@ -319,47 +329,63 @@
                 }
             });
         },
-        loadMoviles() {
-            axios.get('/moviles/api/movil/')
+        loadClientes() {
+            axios.get('/syh/api/clientes/')
                 .then(response => {
-                    this.moviles = response.data.results || [];
-                    console.log(response);
+                    this.clientes = response.data || [];
+                    console.log(response.data);
                 })
                 .catch(error => {
-                    console.error('Error al cargar móviles:', error);
+                    console.error('Error al cargar clientes:', error);
                 });
         },
-        loadChoferes() {
-            axios.get('/moviles/api/personal/')
+        loadAreas() {
+            // Load ALL areas initially. We will filter them in computed property.
+            // **IMPORTANT:** The API endpoint `/syh/api/areas/` must return areas with a way
+            // to identify which client they belong to (e.g., an `cliente` or `cliente_id` field).
+            axios.get('/syh/api/areas/')
                 .then(response => {
-                    this.choferes = response.data.results || [];
-                    console.log(response);
+                    this.areas = response.data.results || [];
+                    console.log("Areas loaded:", this.areas);
                 })
                 .catch(error => {
-                    console.error('Error al cargar choferes:', error);
+                    console.error('Error al cargar Areas:', error);
+                     if (typeof toastr !== 'undefined') {
+                        toastr.error('Error al cargar áreas.');
+                    }
                 });
+        },
+        // New method triggered when the client selection changes
+        onClienteChange() {
+             console.log("Cliente selected:", this.formData.cliente);
+             // Reset the selected area when the client changes
+             this.formData.area = null;
+             // The computed property `filteredAreas` will automatically update
+             // based on the new `this.formData.cliente` value.
         },
         formatDate(date) {
             if (!date) return '';
             const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
-            return new Date(date).toLocaleDateString('es-ES', options);
+            const adjustedDate = new Date(date);
+            adjustedDate.setMinutes(adjustedDate.getMinutes() + adjustedDate.getTimezoneOffset());
+            return adjustedDate.toLocaleDateString('es-ES', options);
         },
         goToPage(page) {
             if (page >= 1 && page <= this.totalPages) {
                 this.currentPage = page;
-                this.fetchCargaCombustible(page);
+                this.fetchMatafuegos(page);
             }
         },
         nextPage() {
             if (this.currentPage < this.totalPages) {
                 this.currentPage++;
-                this.fetchCargaCombustible(this.currentPage);
+                this.fetchMatafuegos(this.currentPage);
             }
         },
         prevPage() {
             if (this.currentPage > 1) {
                 this.currentPage--;
-                this.fetchCargaCombustible(this.currentPage);
+                this.fetchMatafuegos(this.currentPage);
             }
         }
     }

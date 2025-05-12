@@ -22,7 +22,7 @@ pymysql.install_as_MySQLdb()
 
 import django_dyn_dt
 
-load_dotenv()  # take environment variables from .env.
+load_dotenv(dotenv_path='.env')  # take environment variables from .env.
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -122,6 +122,30 @@ DB_HOST     = os.getenv('DB_HOST'     , None)
 DB_PORT     = os.getenv('DB_PORT'     , None)
 DB_NAME     = os.getenv('DB_NAME'     , None)
 
+
+if DEBUG:
+    # DB_ENGINE   = "mysql"
+    # DB_USERNAME = "root"
+    # DB_PASS     = "fasca"
+    # DB_HOST     = "notebook-oscar"
+    # DB_PORT     = 3306
+    # DB_NAME     = "an"
+
+    DB_ENGINE   = "mysql"
+    DB_USERNAME = "root"
+    DB_PASS     = "fasca"
+    DB_HOST     = "vps-3177145-x.dattaweb.com"
+    DB_PORT     = 3306
+    DB_NAME     = "an"
+
+    print(' DB_ENGINE -> ' + str(DB_ENGINE) )
+    print(' DB_USERNAME -> ' + str(DB_USERNAME) )
+    print(' DB_PASS -> ' + str(DB_PASS) )
+    print(' DB_HOST -> ' + str(DB_HOST) )
+    print(' DB_PORT -> ' + str(DB_PORT) )
+    print(' DB_NAME -> ' + str(DB_NAME) )
+
+
 if DB_ENGINE and DB_NAME and DB_USERNAME:
     DATABASES = { 
       'default': {
@@ -202,6 +226,7 @@ EMAIL_PORT = os.getenv('EMAIL_PORT'   , None)
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS'   , None)
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER'   , None)
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD'   , None)
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL'   , None)
 
 ADMINS = [
     ('Jose Oscar Vogel', 'sistemas@servinlgsm.com.ar'),
@@ -225,6 +250,8 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
 }
 ########################################
 

@@ -1,3 +1,4 @@
+import datetime
 import io
 import os
 from io import BytesIO
@@ -66,7 +67,8 @@ class Impresiones:
         # pdf.setFont(self.nombre_fuente_bold, 8)
         # pdf.drawString(x=350, y=760 - self.diferencia_hoja, text=f"{obtener_parametro('codigo_cuit', 'CUIT: 33-71101311-9')}")
         # pdf.drawString(x=450, y=760 - self.diferencia_hoja, text=f"{obtener_parametro('codigo_ing_brutos', 'Ing. Brutos: 33-71101311-9')}")
-        # pdf.drawString(x=350, y=750 - self.diferencia_hoja, text=f"{obtener_parametro('email_institucion', 'nivelprimario@iaes.edu.ar')}")
+        # pdf.drawString(x=350, y=750 - self.diferencia_hoja, text=f"{obtener_parametro('email_institucion', 'nivelprimario@iaes.edu.ar')}").
+        pdf.drawString(x=10, y=810 - self.diferencia_hoja, text=f"Impreso {FormatoFecha(datetime.datetime.now(), formato='dma_hms')}")
         pdf.setFont(self.nombre_fuente, 12)
         if self.titulo:
             pdf.drawString(x=self.titulos['encabezado'], y=720 - self.diferencia_hoja, text=f"{self.titulo}")
@@ -241,8 +243,8 @@ class ImprimeHallazgos(Impresiones):
         self.inicia()
         self.ubicacion = {
             'Fecha': 10,
-            'Periodo': 65,
-            'Hallazgo': 120,
+            'Hallazgo': 62,
+            'Cumplimiento': 430,
             'Estado': 500
         }
         # Crear el PDF
@@ -252,8 +254,8 @@ class ImprimeHallazgos(Impresiones):
             self.fila -=10
             self.check_break_page()
             self.pdf.drawString(x=self.ubicacion['Fecha'], y=self.fila, text=FormatoFecha(movimiento.fecha, formato='dma'))
-            self.pdf.drawString(x=self.ubicacion['Periodo'], y=self.fila, text=str(movimiento.periodo))
             self.pdf.drawString(x=self.ubicacion['Estado'], y=self.fila, text=str(movimiento.estado))
+            self.pdf.drawString(x=self.ubicacion['Cumplimiento'], y=self.fila, text=FormatoFecha(movimiento.fecha_cumplimiento, formato='dma'))
             lineas = dividir_texto(movimiento.hallazgo, 80)
             for linea in lineas:
                 self.pdf.drawString(x=self.ubicacion['Hallazgo'], y=self.fila, text=linea)

@@ -1,6 +1,9 @@
 from django.db import models
+from django.core.exceptions import ValidationError
+from django.db.models import Max
+from django.utils import timezone
 
-from syh.models import Cliente
+from syh.models import Area, Cliente
 
 # Create your models here.
 
@@ -38,6 +41,19 @@ class Movil(models.Model):
         verbose_name = 'Movil'
         verbose_name_plural = 'Moviles'
         ordering = ['patente']
+    
+    def clean(self):
+        
+        ultimo_km = CargaCombustible.objects.filter(
+            movil=self.movil
+        ).aggregate(
+            Max('km_hora')
+        )['km_hora__max']
+        
+        if ultimo_km and self.km_hora <= ultimo_km:
+            raise ValidationError({
+                'km_hora': f'El kilometraje debe ser mayor al último registro ({ultimo_km})'
+            })
         
 class Vencimientos(models.Model):
     
@@ -108,3 +124,25 @@ class CargaCombustible(models.Model):
         verbose_name = 'Carga de Combustible'
         verbose_name_plural = 'Cargas de Combustible'
         ordering = ['-fecha']
+        
+    
+class Matafuegos(models.Model):
+    id = models.AutoField(primary_key=True)
+    cliente = models.ForeignKey(Cliente, on_delete=models.RESTRICT, default='')
+    area = models.ForeignKey(Area, on_delete=models.RESTRICT, default='')
+    codigo_interno = models.CharField(max_length=20, default='')
+    fecha_vencimiento = models.DateField(default=timezone.now)
+    cantidad = models.IntegerField(default=0)
+    ubicacion = models.CharField(max_length=100, default='')
+    observaciones = models.TextField(blank=True, null=True, default='')
+    capacidad = models.IntegerField(default=0)
+    baja = models.BooleanField(default=False)
+    fecha_baja = models.DateField(null=True, blank=True)
+    mail_responsable = models.EmailField(max_length=254, blank=True, null=True)
+
+    class Meta:
+        verbose_name = "Matafuegos"
+        verbose_name_plural = "Matafuegos"        
+    
+    def __str__(self):
+        return f"{self.codigo_interno} - {self.cliente.nombre} - {self.area.nombre}"        

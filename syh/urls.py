@@ -5,6 +5,7 @@ from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register(r'clientes', views.ClientesViewSet)
+router.register(r'areas', views.AreasViewSet)
 
 app_name = 'syh'
 

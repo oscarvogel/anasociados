@@ -29,7 +29,7 @@
                     <td>[[ movil.marca ]]</td>
                     <td>[[ movil.modelo ]]</td>
                     <td>[[ movil.anio ]]</td>
-                    <td>[[ movil.empresa.nombre ]]</td>
+                    <td>[[ movil.empresa_nombre ]]</td>
                     <td>
                         <button @click="openModal('edit', movil)" class="btn btn-secondary"><i class="fas fa-edit"></i></button>
                         <button @click="deleteMovil(movil.id)" class="btn btn-danger"><i class="fas fa-trash"></i></button>
@@ -116,7 +116,8 @@
                 fetchMoviles(page = 1) {
                     axios.get(`/moviles/api/movil/?search=${this.searchQuery}&page=${page}`)
                         .then(response => {
-                            this.moviles = response.data;
+                            console.log(response.data.results);
+                            this.moviles = response.data.results;
                             const totalCount = response.data.count || 0;
                             this.totalPages = Math.max(Math.ceil(totalCount / 10), 1); // Siempre al menos 1 página
                         })
@@ -130,7 +131,7 @@
                     console.log(movil);
                     this.modalMode = mode;
                     this.selectedMovil = { ...movil,
-                        empresa: movil.empresa ? movil.empresa.id : ''
+                        empresa: movil.empresa ? movil.empresa : ''
                     };
                     if (mode === 'create') {
                         this.selectedMovil = { patente: '', marca: '', modelo: '', anio: '', empresa: '' };
@@ -175,10 +176,10 @@
                 },
                 fetchEmpresas() {
                     axios.get('/syh/api/clientes/')
-                        .then(response => {
-                            this.empresas = response.data;
-                            console.log(this.empresas);
-                        });
+                        .then(response =>{
+                        this.empresas = response.data;
+                        console.log(this.empresas);
+                    });
                 }
             },
             watch: {

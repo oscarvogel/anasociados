@@ -64,6 +64,7 @@
                 <li class=""><a href="{% url 'syh:visualizar_movimientos' %}" class="nav-link" >Hallazgos</a></li>
                 <li class=""><a href="{% url 'syh:excesos_plantilla' %}" class="nav-link" >Excesos de Velocidad</a></li>
                 <li class=""><a href="{% url 'syh:generar_resumen_mensual' %}" class="nav-link" >Resumen Mensual</a></li>
+                <li class=""><a href="{% url 'moviles:consumo_combustible_por_mes' %}" class="nav-link" >Consumo de Combustible</a></li>
               </ul>
         </li>
         {%if request.user.is_superuser%}
@@ -76,6 +77,14 @@
                   <li class=""><a href="{% url 'moviles:personal_list' %}" >Personal</a></li>
                   <li class=""><a href="{% url 'moviles:vencimientos_list' %}" >Vencimientos Moviles</a></li>
                   <li class=""><a href="{% url 'moviles:carga_combustible_list' %}" >Cargas de combustible</a></li>
+                </ul>
+          </li>
+
+          <li class="nav-item pcoded-hasmenu" data-username="Matafuegos">
+            <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-settings"></i></span><span
+                class="pcoded-mtext">Matafuegos</span></a>
+                <ul class="pcoded-submenu">
+                  <li class=""><a href="{% url 'moviles:matafuegos_list' %}" >Listado de Matafuegos</a></li>
                 </ul>
           </li>
         {%endif%}

@@ -1,12 +1,11 @@
 from os import read
 from rest_framework import serializers
-from syh.models import Cliente
-from syh.serializers import ClientesSerializer
-from .models import CargaCombustible, Movil, Personal, TipoVencimientos, Vencimientos
+from syh.models import Area, Cliente
+from .models import CargaCombustible, Matafuegos, Movil, Personal, TipoVencimientos, Vencimientos
 
 class MovilSerializer(serializers.ModelSerializer):
     
-    empresa = ClientesSerializer(read_only=True)
+    empresa_nombre = serializers.CharField(source='empresa.nombre', read_only=True)    
     
     class Meta:
         model = Movil
@@ -64,3 +63,19 @@ class CargaCombustibleSerializer(serializers.ModelSerializer):
     
     def get_chofer_nombre(self, obj):
         return obj.chofer.apellido + ' ' + obj.chofer.nombre
+
+class MatafuegosSerializer(serializers.ModelSerializer):
+    cliente = serializers.PrimaryKeyRelatedField(queryset=Cliente.objects.all())
+    area = serializers.PrimaryKeyRelatedField(queryset=Area.objects.all())
+    cliente_nombre = serializers.SerializerMethodField()
+    area_nombre = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Matafuegos
+        fields = '__all__'
+    
+    def get_cliente_nombre(self, obj):
+        return obj.cliente.nombre
+    
+    def get_area_nombre(self, obj):
+        return obj.area.detalle if obj.area else None

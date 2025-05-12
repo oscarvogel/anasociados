@@ -25,6 +25,8 @@ def FormatoFecha(fecha: object = datetime.datetime.today(), formato: object = 'l
             retorno = datetime.datetime.strftime(fecha, '%d-%b')
         elif formato == 'dma':
             retorno = datetime.datetime.strftime(fecha, '%d/%m/%Y')
+        elif formato == 'dma_hms':
+            retorno = datetime.datetime.strftime(fecha, '%d/%m/%Y %H:%M:%S')
         elif formato == 'dia':
             # Obtener el nombre del día de la semana
             retorno = datetime.datetime.strftime(fecha, "%A")
