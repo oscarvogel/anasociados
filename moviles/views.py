@@ -4,14 +4,15 @@ from rest_framework.response import Response
 from django.db.models import Sum
 from django.http import JsonResponse
 from datetime import datetime, timedelta
+from rest_framework.generics import ListAPIView
 
 # Create your views here.
-from moviles.serializer import CargaCombustibleSerializer, MatafuegosSerializer, MovilSerializer, PersonalSerializer, TipoVencimientosSerializer, VencimientosSerializer
+from moviles.serializer import CargaCombustibleSerializer, CentroCostosSerializer, GastosMovilSerializer, MatafuegosSerializer, MovilSerializer, PersonalSerializer, TipoVencimientosSerializer, VencimientosSerializer
 from rest_framework import filters
 
 from syh.models import Area, Cliente
 from utiles.BaseViewSet import BaseAppModelViewSet
-from .models import CargaCombustible, Matafuegos, Movil, Personal, TipoVencimientos, Vencimientos
+from .models import CargaCombustible, CentroCostos, GastosMovil, Matafuegos, Movil, Personal, TipoVencimientos, Vencimientos
 
 
 class MovilViewSet(BaseAppModelViewSet):
@@ -56,8 +57,21 @@ class MatafuegosViewSet(BaseAppModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['empresa__nombre', 'area_nombre']
     ordering_fields = ['fecha_vencimiento']
-    
 
+class GastosMovilViewSet(BaseAppModelViewSet):
+    queryset = GastosMovil.objects.all()
+    serializer_class = GastosMovilSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['movil__patente', 'cliente__nombre', 'area__detalle', 'centro_costos__descripcion']
+    ordering_fields = ['fecha']
+
+class CentroCostosViewSet(BaseAppModelViewSet):
+    queryset = CentroCostos.objects.all()
+    serializer_class = CentroCostosSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['descripcion']
+    ordering_fields = ['descripcion']
+    
 def moviles_list(request):
     return render(request, 'pages/moviles/movil_list.html')
 
@@ -72,6 +86,9 @@ def personal_list(request):
 
 def carga_combustible_list(request):
     return render(request, 'pages/moviles/carga_combustible_list.html')
+
+def gastos_movil_list(request):
+    return render(request, 'pages/moviles/gastos_moviles_list.html')
 
 def consumo_combustible_por_mes(request):
     empresas = Cliente.objects.all()
@@ -107,3 +124,51 @@ def datos_consumo_combustible(request):
 #vistas para el manejo de matafuegos
 def matafuegos_list(request):
     return render(request, 'pages/moviles/matafuegos_list.html')
+
+class GastosPorMovilView(ListAPIView):
+    serializer_class = GastosMovilSerializer
+    
+    def get_queryset(self):
+        queryset = GastosMovil.objects.all()
+        
+        # Filtros
+        empresa = self.request.query_params.get('empresa')
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        
+        if empresa:
+            queryset = queryset.filter(cliente_id__id=empresa)
+        if start_date:
+            queryset = queryset.filter(fecha__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(fecha__lte=end_date)
+            
+        return queryset
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        
+        # Datos para la tabla
+        serializer = self.get_serializer(queryset, many=True)
+        
+        # Datos para el gráfico de torta
+        chart_data = queryset.values('centro_costos__descripcion') \
+            .annotate(total_importe=Sum('importe')) \
+            .order_by('-total_importe')
+        
+        return Response({
+            'gastos': serializer.data,
+            'chart_data': list(chart_data)
+        })
+
+
+def reporte_gastos_view(request):
+    empresas = Cliente.objects.all()
+    # Establecer fechas por defecto (último mes)
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=30)
+    return render(request, 'pages/moviles/reporte_gastos_movil.html', {
+        'empresas': empresas,
+        'start_date': start_date,
+        'end_date': end_date
+    })        

@@ -1,7 +1,7 @@
 from os import read
 from rest_framework import serializers
 from syh.models import Area, Cliente
-from .models import CargaCombustible, Matafuegos, Movil, Personal, TipoVencimientos, Vencimientos
+from .models import CargaCombustible, CentroCostos, GastosMovil, Matafuegos, Movil, Personal, TipoVencimientos, Vencimientos
 
 class MovilSerializer(serializers.ModelSerializer):
     
@@ -79,3 +79,35 @@ class MatafuegosSerializer(serializers.ModelSerializer):
     
     def get_area_nombre(self, obj):
         return obj.area.detalle if obj.area else None
+
+
+class GastosMovilSerializer(serializers.ModelSerializer):
+    cliente = serializers.PrimaryKeyRelatedField(queryset=Cliente.objects.all())
+    area = serializers.PrimaryKeyRelatedField(queryset=Area.objects.all())
+    cliente_nombre = serializers.SerializerMethodField()
+    area_nombre = serializers.SerializerMethodField()
+    centro_costos = serializers.PrimaryKeyRelatedField(queryset=CentroCostos.objects.all())
+    centro_costos_descripcion = serializers.SerializerMethodField()
+    movil_patente = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = GastosMovil
+        fields = '__all__'
+        
+    def get_cliente_nombre(self, obj):
+        return obj.cliente.nombre
+    
+    def get_area_nombre(self, obj):
+        return obj.area.detalle if obj.area else None
+    
+    def get_centro_costos_descripcion(self, obj):
+        return obj.centro_costos.descripcion if obj.centro_costos else None
+    
+    def get_movil_patente(self, obj):
+        return obj.movil.patente if obj.movil else None
+    
+    
+class CentroCostosSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CentroCostos
+        fields = '__all__'

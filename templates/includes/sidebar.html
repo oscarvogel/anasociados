@@ -65,6 +65,9 @@
                 <li class=""><a href="{% url 'syh:excesos_plantilla' %}" class="nav-link" >Excesos de Velocidad</a></li>
                 <li class=""><a href="{% url 'syh:generar_resumen_mensual' %}" class="nav-link" >Resumen Mensual</a></li>
                 <li class=""><a href="{% url 'moviles:consumo_combustible_por_mes' %}" class="nav-link" >Consumo de Combustible</a></li>
+                {% if request.user.is_superuser %}
+                  <li class=""><a href="{% url 'moviles:reporte_gastos_movil' %}" class="nav-link" >Reporte de gastos</a></li>
+                {% endif %}
               </ul>
         </li>
         {%if request.user.is_superuser%}
@@ -76,7 +79,9 @@
                   <li class=""><a href="{% url 'moviles:moviles_list' %}" >Listado</a></li>
                   <li class=""><a href="{% url 'moviles:personal_list' %}" >Personal</a></li>
                   <li class=""><a href="{% url 'moviles:vencimientos_list' %}" >Vencimientos Moviles</a></li>
-                  <li class=""><a href="{% url 'moviles:carga_combustible_list' %}" >Cargas de combustible</a></li>
+                  {% if request.user.is_superuser %}
+                    <li class=""><a href="{% url 'moviles:gastos_movil_list' %}" >Gastos de Moviles</a></li>
+                  {% endif %}
                 </ul>
           </li>
 

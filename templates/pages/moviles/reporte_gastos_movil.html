@@ -1,0 +1,259 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item active">Reporte de Gastos por Móvil</li>
+{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Filtros</h3>
+                </div>
+                <div class="card-body">
+                    <form id="filterForm">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="empresa">Empresa</label>
+                                    <select class="form-control" id="empresa" name="empresa">
+                                        <option value="">Todas</option>
+                                        {% for empresa in empresas %}
+                                        <option value="{{ empresa.id }}">{{ empresa.nombre }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="start_date">Fecha Desde</label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="end_date">Fecha Hasta</label>
+                                    <input type="date" class="form-control" id="end_date" name="end_date">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <div>
+                                        <button type="submit" class="btn btn-primary">Filtrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Distribución por Centro de Costos</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="pieChart" style="max-width: 100%; max-height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Tabla para porcentajes -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Porcentajes</h3>
+                </div>
+                <div class="card-body">
+                    <table id="porcentajesTable" class="table table-bordered table-sm text-center">
+                        <thead>
+                            <tr>
+                                <th>Centro de Costos</th>
+                                <th>Porcentaje</th>
+                                <th>Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Se rellena con JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>        
+    </div>
+
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Gastos</h3>
+                </div>
+                <div class="card-body">
+                    <table id="gastosTable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Móvil</th>
+                                <th>Cliente</th>
+                                <th>Centro de Costos</th>
+                                <th>Área</th>
+                                <th>Fecha</th>
+                                <th>Descripción</th>
+                                <th>Importe</th>
+                                <th>Litros</th>
+                                <th>KM / Hora</th>
+                                <th>Comprobante</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Los datos se cargarán aquí con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- DataTables -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+
+<!-- Buttons -->
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const filterForm = document.getElementById('filterForm');
+    const gastosTable = document.getElementById('gastosTable').getElementsByTagName('tbody')[0];
+    const pieChartCtx = document.getElementById('pieChart').getContext('2d');
+    const porcentajesTableBody = document.getElementById('porcentajesTable').getElementsByTagName('tbody')[0];
+    let pieChart;
+
+    if (typeof $.fn.DataTable === 'undefined') {
+        console.error('DataTables no está cargado. Revisa el orden de los scripts.');
+        return;
+    }
+
+    function loadData() {
+        const params = new URLSearchParams(new FormData(filterForm));
+        const url = `/moviles/grafico_gastos_movil/?${params.toString()}`;
+        gastosTable.innerHTML = '';
+        porcentajesTableBody.innerHTML = '';
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                // Cargar tabla de gastos
+                data.gastos.forEach(gasto => {
+                    const row = gastosTable.insertRow();
+                    row.innerHTML = `
+                        <td>${gasto.movil_patente || ''}</td>
+                        <td>${gasto.cliente_nombre || ''}</td>
+                        <td>${gasto.centro_costos_descripcion || ''}</td>
+                        <td>${gasto.area_nombre || ''}</td>
+                        <td>${gasto.fecha || ''}</td>
+                        <td>${gasto.descripcion || ''}</td>
+                        <td>${parseFloat(gasto.importe).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}</td>
+                        <td>${gasto.litros || ''}</td>
+                        <td>${gasto.km_hora || ''}</td>
+                        <td>${gasto.comprobante || ''}</td>
+                    `;
+                });
+
+                // Preparar datos para gráfico y tabla porcentajes
+                const labels = data.chart_data.map(item => item.centro_costos__descripcion);
+                const values = data.chart_data.map(item => parseFloat(item.total_importe));
+                const total = values.reduce((a, b) => a + b, 0);
+
+                // Crear tabla porcentajes
+                data.chart_data.forEach(item => {
+                    const porcentaje = ((parseFloat(item.total_importe) / total) * 100).toFixed(1);
+                    const row = porcentajesTableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${item.centro_costos__descripcion}</td>
+                        <td>${porcentaje}%</td>
+                        <td>${parseFloat(item.total_importe).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}</td>
+                    `;
+                });
+
+                // Crear gráfico
+                if (pieChart) pieChart.destroy();
+                pieChart = new Chart(pieChartCtx, {
+                    type: 'pie',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: [
+                                '#4e73df',
+                                '#1cc88a',
+                                '#36b9cc',
+                                '#f6c23e',
+                                '#e74a3b',
+                                '#858796',
+                                '#fd7e14'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+
+                // DataTable de gastos
+                if ($.fn.DataTable.isDataTable('#gastosTable')) {
+                    $('#gastosTable').DataTable().destroy();
+                }
+                if (data.gastos.length > 0) {
+                    $('#gastosTable').DataTable({
+                        "language": {
+                            "url": "//cdn.datatables.net/plug-ins/1.10.21/i18n/Spanish.json"
+                        },
+                        "dom": 'Bfrtip',
+                        "buttons": [
+                            {
+                                extend: 'excelHtml5',
+                                text: '<i class="fas fa-file-excel"></i> Exportar a Excel',
+                                className: 'btn btn-success',
+                                title: 'Reporte de Gastos por Móvil'
+                            }
+                        ]
+                    });
+                }
+            })
+            .catch(err => {
+                console.error('Error al cargar datos:', err);
+                gastosTable.innerHTML = '<tr><td colspan="10" class="text-danger text-center">Error al cargar los datos.</td></tr>';
+            });
+    }
+
+    loadData();
+    filterForm.addEventListener('submit', e => {
+        e.preventDefault();
+        loadData();
+    });
+});
+</script>
+
+{% endblock %}

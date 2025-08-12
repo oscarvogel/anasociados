@@ -146,3 +146,35 @@ class Matafuegos(models.Model):
     
     def __str__(self):
         return f"{self.codigo_interno} - {self.cliente.nombre} - {self.area.nombre}"        
+    
+
+class CentroCostos(models.Model):
+    descripcion = models.CharField(max_length=255)
+    
+    def __str__(self):
+        return f"{self.movil.patente} - {self.descripcion} - {self.fecha}"
+    
+    class Meta:
+        verbose_name = 'Centro de Costos'
+        verbose_name_plural = 'Centros de Costos'
+        ordering = ['descripcion']
+
+class GastosMovil(models.Model):
+    movil = models.ForeignKey(Movil, on_delete=models.CASCADE)
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, default=None, null=True)
+    centro_costos = models.ForeignKey(CentroCostos, on_delete=models.CASCADE)
+    area = models.ForeignKey(Area, on_delete=models.CASCADE, default=None, null=True)
+    fecha = models.DateField()
+    descripcion = models.CharField(max_length=255)
+    importe = models.DecimalField(max_digits=10, decimal_places=2)
+    litros = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    km_hora = models.IntegerField(blank=True, null=True)
+    comprobante = models.CharField(max_length=12, blank=True, null=True)
+    
+    def __str__(self):
+        return f"{self.movil.patente} - {self.descripcion} - {self.fecha}"
+    
+    class Meta:
+        verbose_name = 'Gasto de Movil'
+        verbose_name_plural = 'Gastos de Movil'
+        ordering = ['-fecha']
