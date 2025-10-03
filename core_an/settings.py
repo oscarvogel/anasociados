@@ -123,24 +123,12 @@ DB_PORT     = os.getenv('DB_PORT'     , None)
 DB_NAME     = os.getenv('DB_NAME'     , None)
 
 
+# Database configuration now comes entirely from environment variables
+# No hardcoded credentials - all values are loaded from .env file above
 if DEBUG:
-    # DB_ENGINE   = "mysql"
-    # DB_USERNAME = "root"
-    # DB_PASS     = "fasca"
-    # DB_HOST     = "notebook-oscar"
-    # DB_PORT     = 3306
-    # DB_NAME     = "an"
-
-    DB_ENGINE   = "mysql"
-    DB_USERNAME = "root"
-    DB_PASS     = "fasca"
-    DB_HOST     = "vps-3177145-x.dattaweb.com"
-    DB_PORT     = 3306
-    DB_NAME     = "an"
-
     print(' DB_ENGINE -> ' + str(DB_ENGINE) )
     print(' DB_USERNAME -> ' + str(DB_USERNAME) )
-    print(' DB_PASS -> ' + str(DB_PASS) )
+    print(' DB_PASS -> ' + ('*' * len(DB_PASS) if DB_PASS else 'None') )  # Hide password in logs
     print(' DB_HOST -> ' + str(DB_HOST) )
     print(' DB_PORT -> ' + str(DB_PORT) )
     print(' DB_NAME -> ' + str(DB_NAME) )
@@ -259,8 +247,14 @@ REST_FRAMEWORK = {
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
-# CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL')  # Cambia la URL si RabbitMQ no está en localhost
-CELERY_BROKER_URL = 'pyamqp://mini:Mini2024@localhost:5672/an'
+# Build Celery broker URL from environment variables
+CELERY_BROKER_USER = os.getenv('CELERY_BROKER_USER', 'guest')
+CELERY_BROKER_PASSWORD = os.getenv('CELERY_BROKER_PASSWORD', 'guest')
+CELERY_BROKER_HOST = os.getenv('CELERY_BROKER_HOST', 'localhost')
+CELERY_BROKER_PORT = os.getenv('CELERY_BROKER_PORT', '5672')
+CELERY_BROKER_VHOST = os.getenv('CELERY_BROKER_VHOST', 'an')
+
+CELERY_BROKER_URL = f'pyamqp://{CELERY_BROKER_USER}:{CELERY_BROKER_PASSWORD}@{CELERY_BROKER_HOST}:{CELERY_BROKER_PORT}/{CELERY_BROKER_VHOST}'
 # Backend (opcional, para almacenar resultados de tareas)
 # CELERY_RESULT_BACKEND = 'rpc://'
 
