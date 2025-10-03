@@ -1,0 +1,1212 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block extrastyle %}
+<style>
+  /* Cards modernas para móviles */
+  .viaje-card {
+    border: none;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .viaje-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .viaje-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+  }
+  
+  .viaje-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+  }
+  
+  .viaje-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .viaje-patente {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .viaje-patente::before {
+    content: '🚛';
+    font-size: 1.2rem;
+  }
+  
+  .viaje-fecha {
+    font-size: 0.8rem;
+    color: #6c757d;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  
+  .viaje-fecha::before {
+    content: '📅';
+    font-size: 0.9rem;
+  }
+  
+  .viaje-card-body {
+    padding: 0.85rem 0.75rem;
+  }
+  
+  .viaje-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    font-size: 0.9rem;
+  }
+  
+  .viaje-detail-row:not(:last-child) {
+    border-bottom: 1px dashed rgba(0,0,0,0.08);
+  }
+  
+  .viaje-detail-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.4rem;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+  
+  .icon-origen {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: #1976d2;
+  }
+  
+  .icon-destino {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    color: #7b1fa2;
+  }
+  
+  .icon-producto {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    color: #f57c00;
+  }
+  
+  .viaje-detail-label {
+    font-weight: 600;
+    color: #495057;
+    min-width: 65px;
+  }
+  
+  .viaje-detail-value {
+    color: #212529;
+    flex: 1;
+  }
+  
+  .viaje-actions {
+    display: flex;
+    gap: 0.4rem;
+  }
+  
+  .viaje-actions .btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.6rem;
+    border: 2px solid;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+  }
+  
+  .viaje-actions .btn-outline-primary {
+    border-color: #667eea;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+  }
+  
+  .viaje-actions .btn-outline-primary:active {
+    background: #667eea;
+    color: white;
+    transform: scale(0.95);
+  }
+  
+  .viaje-actions .btn-outline-danger {
+    border-color: #dc3545;
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.05);
+  }
+  
+  .viaje-actions .btn-outline-danger:active {
+    background: #dc3545;
+    color: white;
+    transform: scale(0.95);
+  }
+  
+  /* KPI Cards modernos */
+  .kpi-card {
+    position: relative;
+    border: none;
+    border-radius: 1rem;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    transition: height 0.3s ease;
+  }
+  
+  .kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  
+  .kpi-card:hover::before {
+    height: 100%;
+    opacity: 0.05;
+  }
+  
+  .kpi-card .small {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    transition: color 0.3s ease;
+  }
+  
+  .kpi-card:hover .small {
+    color: #667eea;
+  }
+  
+  .kpi-card .h5 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0;
+    transition: transform 0.3s ease, color 0.3s ease;
+  }
+  
+  .kpi-card:hover .h5 {
+    transform: scale(1.1);
+    color: #667eea;
+  }
+  
+  .kpi-card:nth-child(1)::before { background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); }
+  .kpi-card:nth-child(2)::before { background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%); }
+  .kpi-card:nth-child(3)::before { background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%); }
+  .kpi-card:nth-child(4)::before { background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%); }
+  .kpi-card:nth-child(5)::before { background: linear-gradient(90deg, #fa709a 0%, #fee140 100%); }
+  
+  /* Iconos para KPIs */
+  .kpi-card .small::before {
+    font-size: 1rem;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+  }
+  
+  .kpi-card:hover .small::before {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  
+  /* Animación de entrada para KPIs */
+  @keyframes kpiSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .kpi-card {
+    animation: kpiSlideIn 0.5s ease-out backwards;
+  }
+  
+  .kpi-card:nth-child(1) { animation-delay: 0.1s; }
+  .kpi-card:nth-child(2) { animation-delay: 0.15s; }
+  .kpi-card:nth-child(3) { animation-delay: 0.2s; }
+  .kpi-card:nth-child(4) { animation-delay: 0.25s; }
+  .kpi-card:nth-child(5) { animation-delay: 0.3s; }
+  
+  @media (max-width: 768px) {
+    .kpi-card .h5 { 
+      font-size: 1.35rem; 
+    }
+    .kpi-card .small { 
+      font-size: 0.7rem; 
+    }
+  }
+  
+  /* Filtros modernos */
+  .filters-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  
+  .filter-group {
+    position: relative;
+    margin-bottom: 0.75rem;
+  }
+  
+  .filter-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.35rem;
+    padding-left: 0.25rem;
+  }
+  
+  .filter-input {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border: 2px solid #e9ecef;
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background-color: #fff;
+  }
+  
+  .filter-input:focus {
+    outline: none;
+    border-color: #4dabf7;
+    box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.1);
+    transform: translateY(-1px);
+  }
+  
+  .filter-btn {
+    width: 100%;
+    padding: 0.65rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .filter-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  }
+  
+  .filter-btn:active {
+    transform: translateY(0);
+  }
+  
+  @media (max-width: 768px) {
+    .filters-card {
+      border-radius: 0.85rem;
+    }
+    
+    .filter-input {
+      font-size: 0.9rem;
+      padding: 0.6rem 0.75rem;
+    }
+    
+    .filter-btn {
+      padding: 0.7rem;
+      font-size: 0.9rem;
+    }
+  }
+  
+  /* Modal moderno */
+  .modal-backdrop.d-block {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1040;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  .modal.d-block {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    z-index: 1050;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  .modal-content {
+    border: none;
+    border-radius: 1.25rem;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+  }
+  
+  .modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .modal-header .modal-title {
+    font-weight: 600;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .modal-header .btn-close {
+    filter: brightness(0) invert(1);
+    opacity: 0.8;
+    transition: all 0.3s;
+  }
+  
+  .modal-header .btn-close:hover {
+    opacity: 1;
+    transform: rotate(90deg);
+  }
+  
+  .modal-body {
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+  }
+  
+  .modal-footer {
+    background-color: #fff;
+    border-top: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+    gap: 0.5rem;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(50px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .kpi-card { font-size: 0.9rem; }
+    .viaje-card { margin-bottom: 1rem; }
+    .btn-sm { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+  }
+  
+  /* Estilos para inputs y selects del modal */
+  .modal-body .form-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.4rem;
+  }
+  
+  .modal-body .form-control,
+  .modal-body .form-select,
+  .modal-body .form-control-sm,
+  .modal-body .form-select-sm {
+    border: 2px solid #e9ecef;
+    border-radius: 0.65rem;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background-color: #fff;
+  }
+  
+  .modal-body .form-control-sm,
+  .modal-body .form-select-sm {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  .modal-body .form-control:focus,
+  .modal-body .form-select:focus,
+  .modal-body .form-control-sm:focus,
+  .modal-body .form-select-sm:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    transform: translateY(-1px);
+  }
+  
+  .modal-body .form-select,
+  .modal-body .form-select-sm {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23667eea' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+    cursor: pointer;
+  }
+  
+  .modal-footer .btn {
+    padding: 0.65rem 1.5rem;
+    border-radius: 0.65rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+  }
+  
+  .modal-footer .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .modal-footer .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  }
+  
+  .modal-footer .btn-secondary {
+    background-color: #6c757d;
+    border: none;
+    box-shadow: 0 2px 8px rgba(108, 117, 125, 0.2);
+  }
+  
+  .modal-footer .btn-secondary:hover {
+    background-color: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+  }
+  
+  /* Estilos para select mejorados (fuera del modal) */
+  select.form-select:not(.modal-body select), 
+  select.form-select-sm:not(.modal-body select) {
+    background-color: #fff !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 0.375rem !important;
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    cursor: pointer !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+  }
+  select.form-select-sm:not(.modal-body select) {
+    padding: 0.25rem 2rem 0.25rem 0.5rem !important;
+    font-size: 0.875rem !important;
+    background-position: right 0.5rem center !important;
+  }
+  select.form-select:not(.modal-body select):focus, 
+  select.form-select-sm:not(.modal-body select):focus {
+    border-color: #86b7fe !important;
+    outline: 0 !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+  }
+  
+  /* Badge mejorado */
+  .badge-producto {
+    background-color: #0d6efd !important;
+    color: white !important;
+    font-weight: 500 !important;
+    padding: 0.35em 0.65em !important;
+    border-radius: 0.25rem !important;
+  }
+  
+  /* Badges personalizados para mobile */
+  .badge-kg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 0.375rem;
+    min-width: 70px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .badge-kg-pulpable {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+  }
+  .badge-kg-aserrable {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: white;
+  }
+  .badge-kg-chip {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    color: #212529;
+  }
+  
+  .badges-container {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  @media (max-width: 768px) {
+    .viaje-card {
+      margin-bottom: 0.75rem !important;
+    }
+    
+    .badge-kg {
+      font-size: 0.8rem;
+      padding: 0.35rem 0.55rem;
+      min-width: 65px;
+    }
+  }
+  
+  /* Tabla moderna para desktop */
+  .table-container {
+    background: white;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  
+  .table-modern {
+    margin-bottom: 0;
+  }
+  
+  .table-modern thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .table-modern thead th {
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 1rem 0.75rem;
+    border: none;
+    white-space: nowrap;
+  }
+  
+  .table-modern tbody tr {
+    transition: all 0.3s ease;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .table-modern tbody tr:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+    transform: translateX(2px);
+    box-shadow: -3px 0 0 #667eea;
+  }
+  
+  .table-modern tbody tr:last-child {
+    border-bottom: none;
+  }
+  
+  .table-modern tbody td {
+    padding: 0.85rem 0.75rem;
+    vertical-align: middle;
+    font-size: 0.9rem;
+    color: #2c3e50;
+  }
+  
+  .table-modern .badge-producto-table {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: inline-block;
+    min-width: 90px;
+    text-align: center;
+  }
+  
+  .table-modern .movil-patente {
+    color: #667eea;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  
+  .table-modern .fecha-col {
+    color: #6c757d;
+    font-weight: 500;
+  }
+  
+  .table-modern .kg-value {
+    font-weight: 600;
+    color: #2c3e50;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+  }
+  
+  .table-modern .kg-pulpable { color: #17a2b8; }
+  .table-modern .kg-aserrable { color: #28a745; }
+  .table-modern .kg-chip { color: #ffc107; }
+  
+  .table-actions {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: flex-start;
+  }
+  
+  .table-actions .btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    border: 2px solid;
+  }
+  
+  .table-actions .btn-outline-primary {
+    border-color: #667eea;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+  }
+  
+  .table-actions .btn-outline-primary:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  }
+  
+  .table-actions .btn-outline-danger {
+    border-color: #dc3545;
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.05);
+  }
+  
+  .table-actions .btn-outline-danger:hover {
+    background: #dc3545;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+  }
+  
+  /* Paginación moderna */
+  .pagination {
+    margin-top: 1.5rem;
+  }
+  
+  .pagination .page-link {
+    cursor: pointer;
+    border: 2px solid #e9ecef;
+    border-radius: 0.65rem;
+    padding: 0.6rem 1rem;
+    margin: 0 0.3rem;
+    color: #667eea;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  
+  .pagination .page-link:hover {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+  }
+  
+  .pagination .page-item.disabled .page-link {
+    cursor: not-allowed;
+    background: #f8f9fa;
+    border-color: #e9ecef;
+    color: #6c757d;
+    opacity: 0.6;
+  }
+  
+  .pagination .page-item.disabled .page-link:hover {
+    transform: none;
+    box-shadow: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% verbatim %}
+<div id="viajes-app">
+  <div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="row mb-3">
+      <div class="col">
+        <div class="d-flex justify-content-between align-items-center">
+          <h1 class="h4 mb-0">📊 Viajes</h1>
+          <button class="btn btn-primary btn-sm" @click="openForm()">
+            <i class="fas fa-plus"></i> Nuevo
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card filters-card mb-3">
+      <div class="card-body p-3">
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-calendar-alt me-1"></i>Desde
+              </label>
+              <input class="filter-input" type="date" v-model="filters.start_date">
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-calendar-check me-1"></i>Hasta
+              </label>
+              <input class="filter-input" type="date" v-model="filters.end_date">
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-truck me-1"></i>Móvil
+              </label>
+              <select class="filter-input" v-model="filters.movil">
+                <option value="">Todos los móviles</option>
+                <option v-for="m in moviles" :key="m.id" :value="m.id">{{ m.patente }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-user me-1"></i>Chofer
+              </label>
+              <select class="filter-input" v-model="filters.chofer">
+                <option value="">Todos los choferes</option>
+                <option v-for="p in personals" :key="p.id" :value="p.id">{{ p.apellido }} {{ p.nombre }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-map-pin me-1"></i>Destino
+              </label>
+              <select class="filter-input" v-model="filters.destino">
+                <option value="">Todos los destinos</option>
+                <option value="ASPP">Aserradero Puerto Piray</option>
+                <option value="PPE">Planta Puerto Esperanza</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-box me-1"></i>Producto
+              </label>
+              <select class="filter-input" v-model="filters.producto">
+                <option value="">Todos los productos</option>
+                <option value="Pulpable">Pulpable</option>
+                <option value="Aserrable">Aserrable</option>
+                <option value="Chip">Chip</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-12 col-md-2 d-flex align-items-end">
+            <button class="filter-btn" @click="loadViajes">
+              <i class="fas fa-search me-2"></i>Buscar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-2 mb-3">
+      <div class="col-6 col-md">
+        <div class="card kpi-card text-center p-3">
+          <div class="small">
+            <i class="fas fa-truck"></i> Viajes
+          </div>
+          <div class="h5 mb-0 fw-bold">{{ kpis.total_viajes }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="card kpi-card text-center p-3">
+          <div class="small">
+            <i class="fas fa-tree"></i> KG Pulpable
+          </div>
+          <div class="h5 mb-0 fw-bold">{{ kpis.tn_pulpable }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="card kpi-card text-center p-3">
+          <div class="small">
+            <i class="fas fa-cut"></i> KG Aserrable
+          </div>
+          <div class="h5 mb-0 fw-bold">{{ kpis.tn_aserrable }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md">
+        <div class="card kpi-card text-center p-3">
+          <div class="small">
+            <i class="fas fa-cube"></i> KG Chip
+          </div>
+          <div class="h5 mb-0 fw-bold">{{ kpis.tn_chip }}</div>
+        </div>
+      </div>
+      <div class="col-12 col-md">
+        <div class="card kpi-card text-center p-3">
+          <div class="small">
+            <i class="fas fa-weight"></i> Total KG
+          </div>
+          <div class="h5 mb-0 fw-bold">{{ kpis.tn_total }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de viajes - Desktop: Tabla, Mobile: Cards -->
+    <!-- Vista Mobile (Cards) -->
+    <div class="d-md-none">
+      <div v-if="viajes.length === 0" class="alert alert-info">
+        No hay viajes registrados
+      </div>
+      <div v-for="v in viajes" :key="v.id" class="card viaje-card mb-3">
+        <div class="viaje-card-header">
+          <div class="viaje-card-info">
+            <div class="viaje-patente">{{ v.movil_patente }}</div>
+            <div class="viaje-fecha">{{ formatDate(v.fecha) }}</div>
+          </div>
+          <div class="viaje-actions">
+            <button class="btn btn-outline-primary" @click="openForm(v)">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-outline-danger" @click="deleteViaje(v)">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div class="viaje-card-body">
+          <div class="viaje-detail-row">
+            <div class="viaje-detail-icon icon-origen">
+              <i class="fas fa-map-marker-alt"></i>
+            </div>
+            <span class="viaje-detail-label">Origen:</span>
+            <span class="viaje-detail-value">{{ v.origen_nombre }}</span>
+          </div>
+          <div class="viaje-detail-row">
+            <div class="viaje-detail-icon icon-destino">
+              <i class="fas fa-map-pin"></i>
+            </div>
+            <span class="viaje-detail-label">Destino:</span>
+            <span class="viaje-detail-value">{{ v.destino }}</span>
+          </div>
+          <div class="viaje-detail-row">
+            <div class="viaje-detail-icon icon-producto">
+              <i class="fas fa-box"></i>
+            </div>
+            <span class="viaje-detail-label">Producto:</span>
+            <span class="viaje-detail-value">{{ v.producto }}</span>
+          </div>
+          <div class="viaje-detail-row" v-if="v.personal_nombre">
+            <div class="viaje-detail-icon" style="background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); color: #2e7d32;">
+              <i class="fas fa-user"></i>
+            </div>
+            <span class="viaje-detail-label">Chofer:</span>
+            <span class="viaje-detail-value">{{ v.personal_nombre }}</span>
+          </div>
+          <div class="badges-container mt-3">
+            <span class="badge badge-kg badge-kg-pulpable">
+              <i class="fas fa-tree me-1"></i>{{ v.tn_pulpable }} kg
+            </span>
+            <span class="badge badge-kg badge-kg-aserrable">
+              <i class="fas fa-cut me-1"></i>{{ v.tn_aserrable }} kg
+            </span>
+            <span class="badge badge-kg badge-kg-chip">
+              <i class="fas fa-cube me-1"></i>{{ v.tn_chip }} kg
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paginación Mobile -->
+    <div class="d-md-none" v-if="pagination.count > 0">
+      <nav aria-label="Paginación">
+        <ul class="pagination pagination-sm justify-content-center">
+          <li class="page-item" :class="{disabled: !pagination.previous}">
+            <a class="page-link" href="#" @click.prevent="loadPage(pagination.previous)">Anterior</a>
+          </li>
+          <li class="page-item disabled">
+            <span class="page-link">Página {{ pagination.current }} de {{ pagination.total_pages }}</span>
+          </li>
+          <li class="page-item" :class="{disabled: !pagination.next}">
+            <a class="page-link" href="#" @click.prevent="loadPage(pagination.next)">Siguiente</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- Vista Desktop (Tabla) -->
+    <div class="d-none d-md-block">
+      <div class="table-container">
+        <div class="table-responsive">
+          <table class="table table-modern">
+            <thead>
+              <tr>
+                <th>
+                  <i class="fas fa-calendar-alt me-2"></i>Fecha
+                </th>
+                <th>
+                  <i class="fas fa-truck me-2"></i>Móvil
+                </th>
+                <th>
+                  <i class="fas fa-user me-2"></i>Chofer
+                </th>
+                <th>
+                  <i class="fas fa-map-marker-alt me-2"></i>Origen
+                </th>
+                <th>
+                  <i class="fas fa-map-pin me-2"></i>Destino
+                </th>
+                <th>
+                  <i class="fas fa-box me-2"></i>Producto
+                </th>
+                <th class="text-end">
+                  <i class="fas fa-tree me-2"></i>KG Pulp.
+                </th>
+                <th class="text-end">
+                  <i class="fas fa-cut me-2"></i>KG Aserr.
+                </th>
+                <th class="text-end">
+                  <i class="fas fa-cube me-2"></i>KG Chip
+                </th>
+                <th>
+                  <i class="fas fa-cog me-2"></i>Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="viajes.length === 0">
+                <td colspan="10" class="text-center text-muted py-4">
+                  <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                  No hay viajes registrados
+                </td>
+              </tr>
+              <tr v-for="v in viajes" :key="v.id">
+                <td class="fecha-col">
+                  <i class="far fa-calendar me-2"></i>{{ formatDate(v.fecha) }}
+                </td>
+                <td>
+                  <span class="movil-patente">{{ v.movil_patente }}</span>
+                </td>
+                <td>
+                  <span v-if="v.personal_nombre" style="color: #2e7d32; font-weight: 500;">
+                    <i class="fas fa-user me-1"></i>{{ v.personal_nombre }}
+                  </span>
+                  <span v-else class="text-muted">-</span>
+                </td>
+                <td>{{ v.origen_nombre }}</td>
+                <td>{{ v.destino }}</td>
+                <td>
+                  <span class="badge-producto-table">{{ v.producto }}</span>
+                </td>
+                <td class="text-end kg-value kg-pulpable">{{ v.tn_pulpable }}</td>
+                <td class="text-end kg-value kg-aserrable">{{ v.tn_aserrable }}</td>
+                <td class="text-end kg-value kg-chip">{{ v.tn_chip }}</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="btn btn-outline-primary" @click="openForm(v)" title="Editar">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-danger" @click="deleteViaje(v)" title="Eliminar">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Paginación Desktop -->
+      <nav v-if="pagination.count > 0" aria-label="Paginación">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" :class="{disabled: !pagination.previous}">
+            <a class="page-link" href="#" @click.prevent="loadPage(pagination.previous)">
+              <i class="fas fa-chevron-left"></i> Anterior
+            </a>
+          </li>
+          <li class="page-item disabled">
+            <span class="page-link">
+              Mostrando {{ pagination.start }} - {{ pagination.end }} de {{ pagination.count }} viajes
+            </span>
+          </li>
+          <li class="page-item" :class="{disabled: !pagination.next}">
+            <a class="page-link" href="#" @click.prevent="loadPage(pagination.next)">
+              Siguiente <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+  </div>
+
+  <!-- Modal Form -->
+  <div v-if="formVisible" class="modal-backdrop d-block" @click.self="formVisible=false">
+    <div class="modal d-block" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-truck"></i> {{ form.id ? 'Editar' : 'Nuevo' }} Viaje
+            </h5>
+            <button type="button" class="btn-close" @click="formVisible=false"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">
+                  <i class="fas fa-calendar me-1"></i>Fecha *
+                </label>
+                <input class="form-control form-control-sm" type="date" v-model="form.fecha" required>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">
+                  <i class="fas fa-truck me-1"></i>Móvil *
+                </label>
+                <select class="form-select form-select-sm" v-model="form.movil" required>
+                  <option value="">Seleccione un móvil...</option>
+                  <option v-for="m in moviles" :key="m.id" :value="m.id">{{ m.patente }}</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">
+                  <i class="fas fa-map-marker-alt me-1"></i>Origen *
+                </label>
+                <select class="form-select form-select-sm" v-model="form.origen" required>
+                  <option value="">Seleccione origen...</option>
+                  <option v-for="p in predios" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">
+                  <i class="fas fa-map-pin me-1"></i>Destino *
+                </label>
+                <select class="form-select form-select-sm" v-model="form.destino" required>
+                  <option value="">Seleccione destino...</option>
+                  <option value="ASPP">Aserradero Puerto Piray</option>
+                  <option value="PPE">Planta Puerto Esperanza</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">
+                  <i class="fas fa-box me-1"></i>Producto
+                </label>
+                <select class="form-select form-select-sm" v-model="form.producto">
+                  <option value="">Seleccione producto...</option>
+                  <option value="Pulpable">🌲 Pulpable</option>
+                  <option value="Aserrable">✂️ Aserrable</option>
+                  <option value="Chip">📦 Chip</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <div style="height: 1px; background: linear-gradient(90deg, transparent, #dee2e6, transparent); margin: 0.5rem 0;"></div>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">
+                  <i class="fas fa-tree me-1"></i>KG Pulpable
+                </label>
+                <input class="form-control form-control-sm" type="number" step="0.01" v-model.number="form.tn_pulpable" placeholder="0.00">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">
+                  <i class="fas fa-cut me-1"></i>KG Aserrable
+                </label>
+                <input class="form-control form-control-sm" type="number" step="0.01" v-model.number="form.tn_aserrable" placeholder="0.00">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">
+                  <i class="fas fa-cube me-1"></i>KG Chip
+                </label>
+                <input class="form-control form-control-sm" type="number" step="0.01" v-model.number="form.tn_chip" placeholder="0.00">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="formVisible=false">
+              <i class="fas fa-times me-2"></i>Cancelar
+            </button>
+            <button class="btn btn-primary" @click="saveViaje">
+              <i class="fas fa-save me-2"></i>Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endverbatim %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="{% static 'src/moviles/viajes.js' %}?v=3"></script>
+{% endblock %}

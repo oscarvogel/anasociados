@@ -2,6 +2,7 @@ from os import read
 from rest_framework import serializers
 from syh.models import Area, Cliente
 from .models import CargaCombustible, CentroCostos, GastosMovil, Matafuegos, Movil, Personal, TipoVencimientos, Vencimientos
+from .models import Viajes, Predios
 
 class MovilSerializer(serializers.ModelSerializer):
     
@@ -111,3 +112,30 @@ class CentroCostosSerializer(serializers.ModelSerializer):
     class Meta:
         model = CentroCostos
         fields = '__all__'
+
+
+class PrediosSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Predios
+        fields = '__all__'
+
+
+class ViajesSerializer(serializers.ModelSerializer):
+    movil = serializers.PrimaryKeyRelatedField(queryset=Movil.objects.all())
+    cliente = serializers.PrimaryKeyRelatedField(queryset=Cliente.objects.all(), allow_null=True, required=False)
+    area = serializers.PrimaryKeyRelatedField(queryset=Area.objects.all(), allow_null=True, required=False)
+    origen = serializers.PrimaryKeyRelatedField(queryset=Predios.objects.all())
+    personal = serializers.PrimaryKeyRelatedField(queryset=Personal.objects.all(), allow_null=True, required=False)
+
+    movil_patente = serializers.CharField(source='movil.patente', read_only=True)
+    origen_nombre = serializers.CharField(source='origen.nombre', read_only=True)
+    destino_display = serializers.CharField(source='get_destino_display', read_only=True)
+    producto_display = serializers.CharField(source='get_producto_display', read_only=True)
+    personal_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Viajes
+        fields = '__all__'
+
+    def get_personal_nombre(self, obj):
+        return f"{obj.personal.apellido} {obj.personal.nombre}" if obj.personal else None

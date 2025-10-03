@@ -18,7 +18,9 @@ class StandarPagination(PageNumberPagination):
             'results': data,
             'count': self.page.paginator.count,
             'current_page': self.page.number,
-            'total_pages': self.page.paginator.num_pages
+            'total_pages': self.page.paginator.num_pages,
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link()
         })
     
 class DebugSerializerErrorsMixin(CreateModelMixin, UpdateModelMixin):

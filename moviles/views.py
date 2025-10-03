@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.template.loader import render_to_string
 from rest_framework.response import Response
 from django.db.models import Sum
+import django.db.models as models
 from django.http import JsonResponse
 from datetime import datetime, timedelta
 from rest_framework.generics import ListAPIView
@@ -13,6 +14,9 @@ from rest_framework import filters
 from syh.models import Area, Cliente
 from utiles.BaseViewSet import BaseAppModelViewSet
 from .models import CargaCombustible, CentroCostos, GastosMovil, Matafuegos, Movil, Personal, TipoVencimientos, Vencimientos
+from .models import Viajes, Predios
+from .serializer import ViajesSerializer, PrediosSerializer
+from rest_framework.decorators import api_view
 
 
 class MovilViewSet(BaseAppModelViewSet):
@@ -71,6 +75,63 @@ class CentroCostosViewSet(BaseAppModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['descripcion']
     ordering_fields = ['descripcion']
+
+
+class PrediosViewSet(BaseAppModelViewSet):
+    queryset = Predios.objects.all()
+    serializer_class = PrediosSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['nombre']
+    ordering_fields = ['nombre']
+
+
+class ViajesViewSet(BaseAppModelViewSet):
+    queryset = Viajes.objects.all()
+    serializer_class = ViajesSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['movil__patente', 'cliente__nombre', 'origen__nombre', 'destino', 'producto']
+    ordering_fields = ['-fecha']
+    ordering = ['-fecha', '-id']  # Ordenar por fecha descendente y luego por ID
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # filtros opcionales por rango de fecha y movil
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        movil = self.request.query_params.get('movil')
+        chofer = self.request.query_params.get('chofer')
+        producto = self.request.query_params.get('producto')
+        destino = self.request.query_params.get('destino')
+        if start_date:
+            qs = qs.filter(fecha__gte=start_date)
+        if end_date:
+            qs = qs.filter(fecha__lte=end_date)
+        if movil:
+            qs = qs.filter(movil_id=movil)
+        if chofer:
+            # filtrar por personal/chofer (campo personal en Viajes)
+            qs = qs.filter(personal_id=chofer)
+        if producto:
+            qs = qs.filter(producto=producto)
+        if destino:
+            qs = qs.filter(destino=destino)
+        return qs.order_by('-fecha', '-id')  # Asegurar orden consistente
+
+    # endpoint extra para KPIs
+    def kpis(self, request):
+        qs = self.filter_queryset(self.get_queryset())
+        total_viajes = qs.count()
+        tn_pulpable = qs.aggregate(sum=Sum('tn_pulpable'))['sum'] or 0
+        tn_aserrable = qs.aggregate(sum=Sum('tn_aserrable'))['sum'] or 0
+        tn_chip = qs.aggregate(sum=Sum('tn_chip'))['sum'] or 0
+        totals = {
+            'total_viajes': total_viajes,
+            'tn_pulpable': float(tn_pulpable),
+            'tn_aserrable': float(tn_aserrable),
+            'tn_chip': float(tn_chip),
+            'tn_total': float(tn_pulpable + tn_aserrable + tn_chip)
+        }
+        return Response(totals)
     
 def moviles_list(request):
     return render(request, 'pages/moviles/movil_list.html')
@@ -172,3 +233,45 @@ def reporte_gastos_view(request):
         'start_date': start_date,
         'end_date': end_date
     })        
+
+
+def viajes_list(request):
+    # página que carga la app Vue para manejar viajes
+    return render(request, 'pages/moviles/viajes_list.html')
+
+
+@api_view(['GET'])
+def viajes_kpis(request):
+    """Endpoint simple que devuelve KPIs de viajes filtrando por start_date, end_date, movil"""
+    qs = Viajes.objects.all()
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    movil = request.query_params.get('movil')
+    chofer = request.query_params.get('chofer')
+    producto = request.query_params.get('producto')
+    destino = request.query_params.get('destino')
+    if start_date:
+        qs = qs.filter(fecha__gte=start_date)
+    if end_date:
+        qs = qs.filter(fecha__lte=end_date)
+    if movil:
+        qs = qs.filter(movil_id=movil)
+    if chofer:
+        qs = qs.filter(personal_id=chofer)
+    if producto:
+        qs = qs.filter(producto=producto)
+    if destino:
+        qs = qs.filter(destino=destino)
+
+    total_viajes = qs.count()
+    tn_pulpable = qs.aggregate(sum=Sum('tn_pulpable'))['sum'] or 0
+    tn_aserrable = qs.aggregate(sum=Sum('tn_aserrable'))['sum'] or 0
+    tn_chip = qs.aggregate(sum=Sum('tn_chip'))['sum'] or 0
+    totals = {
+        'total_viajes': total_viajes,
+        'tn_pulpable': float(tn_pulpable),
+        'tn_aserrable': float(tn_aserrable),
+        'tn_chip': float(tn_chip),
+        'tn_total': float(tn_pulpable + tn_aserrable + tn_chip)
+    }
+    return Response(totals)

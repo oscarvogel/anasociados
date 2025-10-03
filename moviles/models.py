@@ -178,3 +178,51 @@ class GastosMovil(models.Model):
         verbose_name = 'Gasto de Movil'
         verbose_name_plural = 'Gastos de Movil'
         ordering = ['-fecha']
+
+class Predios(models.Model):
+    nombre = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.nombre
+
+    class Meta:
+        verbose_name = "Predio"
+        verbose_name_plural = "Predios"
+        ordering = ['nombre']
+
+class Viajes(models.Model):
+    DESTINOS_CHOICES = (
+        ('ASPP', 'ASERRADERO PUERTO PIRAY'),
+        ('PPE', 'PLANTA PUERTO ESPERANZA'),
+    )
+
+    PRODUCTO_CHOICES = (
+        ('Pulpable', 'Pulpable'),
+        ('Aserrable', 'Aserrable'),
+        ('Chip', 'Chip'),
+    )
+    movil = models.ForeignKey(Movil, on_delete=models.CASCADE)
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, default=None, null=True)
+    area = models.ForeignKey(Area, on_delete=models.CASCADE, default=None, null=True)
+    fecha = models.DateField()
+    origen = models.ForeignKey(Predios, on_delete=models.CASCADE, related_name='origen_predio')
+    destino = models.CharField(max_length=100, choices=DESTINOS_CHOICES)
+    producto = models.CharField(max_length=100, choices=PRODUCTO_CHOICES, default='Pulpable')
+    tn_pulpable = models.DecimalField(max_digits=10, decimal_places=2)
+    tn_aserrable = models.DecimalField(max_digits=10, decimal_places=2)
+    tn_chip = models.DecimalField(max_digits=10, decimal_places=2)
+    sin_actividad = models.BooleanField(default=False)
+    motivo_sin_actividad = models.CharField(max_length=255, blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    personal = models.ForeignKey(Personal, on_delete=models.CASCADE, blank=True, null=True)
+    record_id = models.CharField(max_length=50, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.movil.patente} - {self.fecha} - {self.origen.nombre} a {self.destino}"
+    
+    class Meta:
+        verbose_name = 'Viaje'
+        verbose_name_plural = 'Viajes'
+        ordering = ['-fecha', 'movil']
