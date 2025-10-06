@@ -330,26 +330,22 @@ def export_viajes_xlsx(request):
         except Exception:
             return field_name.replace('_', ' ').title()
 
+
+    # Sólo las columnas requeridas por el usuario, en el orden solicitado
     headers = [
-        ('id', label_for('id')),
-        ('fecha', label_for('fecha')),
-        ('movil', label_for('movil')),
-        ('movil_patente', f"{label_for('movil')} Patente"),
-        ('personal', label_for('personal')),
-        ('personal_nombre', f"{label_for('personal')} Nombre"),
-        ('origen', label_for('origen')),
-        ('origen_nombre', f"{label_for('origen')} Nombre"),
-        ('destino', label_for('destino')),
-        ('producto', label_for('producto')),
-        ('tn_pulpable', label_for('tn_pulpable')),
-        ('tn_aserrable', label_for('tn_aserrable')),
-        ('tn_chip', label_for('tn_chip')),
-        ('tn_total', 'Total KG'),
-        ('sin_actividad', label_for('sin_actividad')),
-        ('motivo_sin_actividad', label_for('motivo_sin_actividad')),
-        ('observaciones', label_for('observaciones')),
-        ('created_at', label_for('created_at')),
-        ('updated_at', label_for('updated_at')),
+        ('fecha', 'Fecha'),
+        ('movil_patente', 'Patente'),
+        ('personal_nombre', 'Nombre Chofer'),
+        ('origen', 'Origen'),
+        ('origen_nombre', 'Origen Nombre'),
+        ('destino', 'Destino'),
+        ('producto', 'Producto'),
+        ('tn_pulpable', 'KG Pulpable'),
+        ('tn_aserrable', 'KG Aserrable'),
+        ('tn_chip', 'KG Chips'),
+        ('sin_actividad', 'Sin Actividad'),
+        ('motivo_sin_actividad', 'Motivo Sin Actividad'),
+        ('observaciones', 'Observaciones'),
     ]
 
     ws.append([h[1] for h in headers])
@@ -358,49 +354,38 @@ def export_viajes_xlsx(request):
     rows_exported = 0
     for obj in qs:
         fecha = obj.fecha.strftime('%d-%m-%Y') if getattr(obj, 'fecha', None) else ''
-        movil_id = obj.movil.id if obj.movil else ''
         movil_patente = obj.movil.patente if obj.movil else ''
-        personal_id = obj.personal.id if obj.personal else ''
         personal_nombre = f"{obj.personal.apellido} {obj.personal.nombre}" if obj.personal else ''
         # Manejar origen NULL (puede ocurrir en viajes sin actividad)
         try:
-            origen_id = obj.origen.id if obj.origen else ''
+            origen_val = obj.origen.id if obj.origen else ''
             origen_nombre = obj.origen.nombre if obj.origen else ''
         except Exception:
-            origen_id = ''
+            origen_val = ''
             origen_nombre = ''
         destino = obj.get_destino_display() if hasattr(obj, 'get_destino_display') else (obj.destino or '')
         producto = obj.get_producto_display() if hasattr(obj, 'get_producto_display') else (obj.producto or '')
         tn_pulpable = float(obj.tn_pulpable) if obj.tn_pulpable is not None else 0
         tn_aserrable = float(obj.tn_aserrable) if obj.tn_aserrable is not None else 0
         tn_chip = float(obj.tn_chip) if obj.tn_chip is not None else 0
-        tn_total = tn_pulpable + tn_aserrable + tn_chip
         sin_actividad = bool(obj.sin_actividad)
         motivo = obj.motivo_sin_actividad or ''
         observaciones = obj.observaciones or ''
-        created_at = obj.created_at.strftime('%d-%m-%Y %H:%M:%S') if getattr(obj, 'created_at', None) else ''
-        updated_at = obj.updated_at.strftime('%d-%m-%Y %H:%M:%S') if getattr(obj, 'updated_at', None) else ''
 
         row = [
-            obj.id,
             fecha,
-            movil_id,
             movil_patente,
-            personal_id,
             personal_nombre,
-            origen_id,
+            origen_val,
             origen_nombre,
             destino,
             producto,
             tn_pulpable,
             tn_aserrable,
             tn_chip,
-            tn_total,
             sin_actividad,
             motivo,
             observaciones,
-            created_at,
-            updated_at,
         ]
         ws.append(row)
         rows_exported += 1
