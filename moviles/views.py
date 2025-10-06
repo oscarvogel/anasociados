@@ -17,6 +17,10 @@ from .models import CargaCombustible, CentroCostos, GastosMovil, Matafuegos, Mov
 from .models import Viajes, Predios
 from .serializer import ViajesSerializer, PrediosSerializer
 from rest_framework.decorators import api_view
+from django.http import HttpResponse
+from io import BytesIO
+import openpyxl
+from openpyxl.utils import get_column_letter
 
 
 class MovilViewSet(BaseAppModelViewSet):
@@ -275,3 +279,151 @@ def viajes_kpis(request):
         'tn_total': float(tn_pulpable + tn_aserrable + tn_chip)
     }
     return Response(totals)
+
+
+@api_view(['GET'])
+def export_viajes_xlsx(request):
+    """Exporta los viajes filtrados a un archivo XLSX.
+
+    Aplica los mismos filtros que el endpoint de KPIs/get_queryset: start_date, end_date, movil, chofer, producto, destino
+    Incluye viajes con sin_actividad=True incluso si origen es NULL.
+    """
+    # Usar select_related solo en movil (obligatorio) y personal (nullable)
+    # No usar select_related en origen para evitar problemas con NULL en viajes sin actividad
+    qs = Viajes.objects.all()
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    movil = request.query_params.get('movil')
+    chofer = request.query_params.get('chofer')
+    producto = request.query_params.get('producto')
+    destino = request.query_params.get('destino')
+    if start_date:
+        qs = qs.filter(fecha__gte=start_date)
+    if end_date:
+        qs = qs.filter(fecha__lte=end_date)
+    if movil:
+        qs = qs.filter(movil_id=movil)
+    if chofer:
+        qs = qs.filter(personal_id=chofer)
+    if producto:
+        qs = qs.filter(producto=producto)
+    if destino:
+        qs = qs.filter(destino=destino)
+
+    # Ordenar y contar para debug
+    qs = qs.order_by('-fecha', '-id')
+    total_viajes = qs.count()
+    viajes_sin_actividad = qs.filter(sin_actividad=True).count()
+    print(f"[EXPORT] Total viajes a exportar: {total_viajes}, con sin_actividad: {viajes_sin_actividad}")
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Viajes'
+
+    # Construir encabezados tomando verbose_name cuando esté disponible
+    model = Viajes
+
+    def label_for(field_name):
+        try:
+            f = model._meta.get_field(field_name)
+            return str(f.verbose_name).title()
+        except Exception:
+            return field_name.replace('_', ' ').title()
+
+    headers = [
+        ('id', label_for('id')),
+        ('fecha', label_for('fecha')),
+        ('movil', label_for('movil')),
+        ('movil_patente', f"{label_for('movil')} Patente"),
+        ('personal', label_for('personal')),
+        ('personal_nombre', f"{label_for('personal')} Nombre"),
+        ('origen', label_for('origen')),
+        ('origen_nombre', f"{label_for('origen')} Nombre"),
+        ('destino', label_for('destino')),
+        ('producto', label_for('producto')),
+        ('tn_pulpable', label_for('tn_pulpable')),
+        ('tn_aserrable', label_for('tn_aserrable')),
+        ('tn_chip', label_for('tn_chip')),
+        ('tn_total', 'Total KG'),
+        ('sin_actividad', label_for('sin_actividad')),
+        ('motivo_sin_actividad', label_for('motivo_sin_actividad')),
+        ('observaciones', label_for('observaciones')),
+        ('created_at', label_for('created_at')),
+        ('updated_at', label_for('updated_at')),
+    ]
+
+    ws.append([h[1] for h in headers])
+
+    # Iterar y exportar, manejando casos donde origen puede ser NULL
+    rows_exported = 0
+    for obj in qs:
+        fecha = obj.fecha.strftime('%d-%m-%Y') if getattr(obj, 'fecha', None) else ''
+        movil_id = obj.movil.id if obj.movil else ''
+        movil_patente = obj.movil.patente if obj.movil else ''
+        personal_id = obj.personal.id if obj.personal else ''
+        personal_nombre = f"{obj.personal.apellido} {obj.personal.nombre}" if obj.personal else ''
+        # Manejar origen NULL (puede ocurrir en viajes sin actividad)
+        try:
+            origen_id = obj.origen.id if obj.origen else ''
+            origen_nombre = obj.origen.nombre if obj.origen else ''
+        except Exception:
+            origen_id = ''
+            origen_nombre = ''
+        destino = obj.get_destino_display() if hasattr(obj, 'get_destino_display') else (obj.destino or '')
+        producto = obj.get_producto_display() if hasattr(obj, 'get_producto_display') else (obj.producto or '')
+        tn_pulpable = float(obj.tn_pulpable) if obj.tn_pulpable is not None else 0
+        tn_aserrable = float(obj.tn_aserrable) if obj.tn_aserrable is not None else 0
+        tn_chip = float(obj.tn_chip) if obj.tn_chip is not None else 0
+        tn_total = tn_pulpable + tn_aserrable + tn_chip
+        sin_actividad = bool(obj.sin_actividad)
+        motivo = obj.motivo_sin_actividad or ''
+        observaciones = obj.observaciones or ''
+        created_at = obj.created_at.strftime('%d-%m-%Y %H:%M:%S') if getattr(obj, 'created_at', None) else ''
+        updated_at = obj.updated_at.strftime('%d-%m-%Y %H:%M:%S') if getattr(obj, 'updated_at', None) else ''
+
+        row = [
+            obj.id,
+            fecha,
+            movil_id,
+            movil_patente,
+            personal_id,
+            personal_nombre,
+            origen_id,
+            origen_nombre,
+            destino,
+            producto,
+            tn_pulpable,
+            tn_aserrable,
+            tn_chip,
+            tn_total,
+            sin_actividad,
+            motivo,
+            observaciones,
+            created_at,
+            updated_at,
+        ]
+        ws.append(row)
+        rows_exported += 1
+
+    print(f"[EXPORT] Filas exportadas: {rows_exported}")
+
+    # Ajustar anchos de columna
+    for i, column_cells in enumerate(ws.columns, 1):
+        max_length = 0
+        for cell in column_cells:
+            try:
+                v = str(cell.value) if cell.value is not None else ''
+            except Exception:
+                v = ''
+            if len(v) > max_length:
+                max_length = len(v)
+        ws.column_dimensions[get_column_letter(i)].width = min(max_length + 2, 50)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"viajes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response

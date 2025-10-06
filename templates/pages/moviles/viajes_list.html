@@ -793,9 +793,14 @@
       <div class="col">
         <div class="d-flex justify-content-between align-items-center">
           <h1 class="h4 mb-0">📊 Viajes</h1>
-          <button class="btn btn-primary btn-sm" @click="openForm()">
-            <i class="fas fa-plus"></i> Nuevo
-          </button>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" @click="exportExcel()">
+              <i class="fas fa-file-excel"></i> Exportar
+            </button>
+            <button class="btn btn-primary btn-sm" @click="openForm()">
+              <i class="fas fa-plus"></i> Nuevo
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -24,6 +24,7 @@ router.register(r'viajes', views.ViajesViewSet)
 urlpatterns = [
     # Rutas específicas de API deben ir ANTES del include del router
     path('api/viajes/kpis/', views.viajes_kpis, name='api_viajes_kpis'),
+    path('api/viajes/export/', views.export_viajes_xlsx, name='api_viajes_export'),
     path('api/', include(router.urls)),
     
     # Rutas de vistas HTML
