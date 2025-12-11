@@ -1,102 +1,103 @@
-<html>
-    <head>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                margin: 40px;
-            }
-            
-            h2 {
-                text-align: center;
-                color: #333;
-            }
-            
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
-            }
-            
-            table, th, td {
-                border: 1px solid #ddd;
-            }
-            
-            th, td {
-                padding: 12px;
-                text-align: left;
-            }
-            
-            th {
-                background-color: #f2f2f2;
-            }
-            
-            tr:nth-child(even) {
-                background-color: #f9f9f9;
-            }
-            
-            tr:hover {
-                background-color: #f1f1f1;
-            }
-
-            p {
-                text-align: center;
-                font-weight: bold;
-            }
-            tbody, td, tfoot, th, thead, tr {
-                border-color: inherit;
-                border-style: solid;
-                border-width: 0;
-            }
-            .table-danger {
-                --bs-table-bg: #f8d7da;
-                --bs-table-striped-bg: #eccccf;
-                --bs-table-striped-color: #000;
-                --bs-table-active-bg: #dfc2c4;
-                --bs-table-active-color: #000;
-                --bs-table-hover-bg: #e5c7ca;
-                --bs-table-hover-color: #000;
-                background: #f8d7da;
-                color: #000;
-                border-color: #dfc2c4;
-            }
-            .table-success {
-                --bs-table-bg: #d1e7dd;
-                --bs-table-striped-bg: #c7dbd2;
-                --bs-table-striped-color: #000;
-                --bs-table-active-bg: #bcd0c7;
-                --bs-table-active-color: #000;
-                --bs-table-hover-bg: #c1d6cc;
-                --bs-table-hover-color: #000;
-                background: #d1e7dd;
-                color: #000;
-                border-color: #bcd0c7;
-            }
-        </style>
-    </head>
-    <body>
-        <h2>Hallazgos Incumplidos</h2>
-        <p>Los siguientes hallazgos estan pendientes de cumplimiento:</p>
-        <table>
-            <thead>
-                <tr>
-                    <th>Cliente</th>
-                    <th>Área</th>
-                    <th>Estado</th>
-                    <th>Hallazgo</th>
-                    <th>Fecha de Cumplimiento</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for movimiento in hallazgos_incumplidos%}
-                <tr class="{%if movimiento.estado|upper == 'INCUMPLIDO' %}table-danger{%else%}table-success{%endif%}">
-                    <td>{{movimiento.cliente.nombre}}</td>
-                    <td>{{movimiento.area.detalle}}</td>
-                    <td>{{movimiento.estado}}</td>
-                    <td>{{movimiento.hallazgo}}</td>
-                    <td>{{movimiento.fecha_cumplimiento}}</td>
-                </tr>
-            {%endfor%}
-            </tbody>
-        </table>
-    </body>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hallazgos Incumplidos - AN Asociados</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #F5F5F0;">
+    <!-- Wrapper Table -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F5F5F0;">
+        <tr>
+            <td align="center" style="padding: 20px 10px;">
+                <!-- Main Container -->
+                <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%;">
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #2F5233 0%, #4A7C59 100%); background-color: #2F5233; padding: 40px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+                            <h1 style="margin: 0 0 15px 0; color: #F5F5F0; font-size: 28px; font-weight: 600; letter-spacing: 0.5px;">Hallazgos Incumplidos</h1>
+                            <p style="margin: 0 0 20px 0; color: #F5F5F0; font-size: 16px; opacity: 0.95;">Reporte de Seguimiento de Seguridad e Higiene</p>
+                            <p style="margin: 10px auto 0 auto; color: #F5F5F0; font-size: 14px; font-style: italic; opacity: 0.85; border-top: 1px solid rgba(245, 245, 240, 0.3); padding-top: 15px; max-width: 400px;">Liderando el camino hacia un futuro más seguro, sostenible y resiliente</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Alert Section -->
+                    <tr>
+                        <td style="background-color: #ffffff; padding: 20px; border-left: 4px solid #D4A574;">
+                            <p style="margin: 0; color: #2C2C2C; font-size: 15px; font-weight: 500;">Los siguientes hallazgos están pendientes de cumplimiento y requieren atención inmediata:</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Spacer -->
+                    <tr>
+                        <td style="height: 20px; background-color: #F5F5F0;"></td>
+                    </tr>
+                    
+                    <!-- Cards -->
+                    {% for movimiento in hallazgos_incumplidos %}
+                    <tr>
+                        <td style="padding: 0 0 20px 0;">
+                            <!-- Card Table -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); border-left: 5px solid {% if movimiento.estado|upper == 'INCUMPLIDO' %}#E74C3C{% else %}#4A7C59{% endif %};">
+                                <!-- Card Header -->
+                                <tr>
+                                    <td style="background: linear-gradient(135deg, #4A7C59 0%, #2F5233 100%); background-color: #4A7C59; padding: 20px;">
+                                        <h3 style="margin: 0 0 8px 0; color: #F5F5F0; font-size: 18px; font-weight: 600;">{{movimiento.cliente.nombre}}</h3>
+                                        <p style="margin: 0; color: #F5F5F0; font-size: 14px; opacity: 0.9;">📍 {{movimiento.area.detalle}}</p>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Card Body -->
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <p style="margin: 0 0 5px 0; color: #2F5233; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">HALLAZGO DETECTADO</p>
+                                        <p style="margin: 0; color: #2C2C2C; font-size: 14px; line-height: 1.5;">{{movimiento.hallazgo}}</p>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Card Footer -->
+                                <tr>
+                                    <td style="padding: 15px 20px; background-color: #F5F5F0; border-top: 1px solid #C5D9C0;">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td style="text-align: left;">
+                                                    <span style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background-color: {% if movimiento.estado|upper == 'INCUMPLIDO' %}#FFEBEE{% else %}#E8F4EA{% endif %}; color: {% if movimiento.estado|upper == 'INCUMPLIDO' %}#C0392B{% else %}#4A7C59{% endif %};">{{movimiento.estado}}</span>
+                                                </td>
+                                                <td style="text-align: right;">
+                                                    <span style="color: #2C2C2C; font-size: 14px;">📅 {{movimiento.fecha_cumplimiento}}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    <!-- Spacer -->
+                    <tr>
+                        <td style="height: 30px; background-color: #F5F5F0;"></td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #2F5233; padding: 30px 20px; text-align: center; border-radius: 0 0 12px 12px;">
+                            <p style="margin: 0 0 10px 0; color: #F5F5F0; font-size: 16px; font-weight: 600;">AN Asociados</p>
+                            <p style="margin: 0 0 10px 0; color: #F5F5F0; font-size: 14px;">Consultora en Seguridad, Higiene y Medio Ambiente</p>
+                            <p style="margin: 0 0 15px 0;">
+                                <a href="https://anasociados.com.ar" target="_blank" style="color: #D4A574; text-decoration: none; font-weight: 600; font-size: 14px;">www.anasociados.com.ar</a>
+                            </p>
+                            <p style="margin: 0; color: #F5F5F0; font-size: 12px; opacity: 0.8;">
+                                Este documento fue generado automáticamente el {{ current_date|default:"11/12/2025" }}
+                            </p>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
 </html>

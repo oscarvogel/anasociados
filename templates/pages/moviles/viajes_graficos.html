@@ -1,0 +1,586 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block extrastyle %}
+<style>
+  /* Animaciones sutiles */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.02);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  /* Botón de volver animado */
+  .btn-back-animated {
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  
+  .btn-back-animated:hover {
+    transform: translateX(-4px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .btn-back-animated:hover i {
+    animation: slideLeft 0.6s ease-in-out;
+  }
+  
+  @keyframes slideLeft {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-4px); }
+  }
+
+  /* KPI Cards modernos */
+  .kpi-card {
+    background: white;
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    animation: fadeInUp 0.5s ease-out;
+    will-change: transform;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    transition: height 0.3s ease;
+  }
+
+  .kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  }
+
+  .kpi-card:hover::before {
+    height: 6px;
+  }
+
+  .kpi-card:nth-child(1) { animation-delay: 0.1s; }
+  .kpi-card:nth-child(2) { animation-delay: 0.2s; }
+  .kpi-card:nth-child(3) { animation-delay: 0.3s; }
+  .kpi-card:nth-child(4) { animation-delay: 0.4s; }
+  .kpi-card:nth-child(5) { animation-delay: 0.5s; }
+
+  .kpi-card.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  .kpi-card.color-blue::before { background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); }
+  .kpi-card.color-green::before { background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%); }
+  .kpi-card.color-cyan::before { background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%); }
+  .kpi-card.color-yellow::before { background: linear-gradient(90deg, #f2994a 0%, #f2c94c 100%); }
+  .kpi-card.color-red::before { background: linear-gradient(90deg, #eb3349 0%, #f45c43 100%); }
+
+  .kpi-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+  }
+
+  .kpi-card:hover .kpi-icon-wrapper {
+    transform: scale(1.1) rotate(5deg);
+  }
+
+  .kpi-card.color-blue .kpi-icon-wrapper { background: rgba(102, 126, 234, 0.1); color: #667eea; }
+  .kpi-card.color-green .kpi-icon-wrapper { background: rgba(17, 153, 142, 0.1); color: #11998e; }
+  .kpi-card.color-cyan .kpi-icon-wrapper { background: rgba(0, 198, 255, 0.1); color: #00c6ff; }
+  .kpi-card.color-yellow .kpi-icon-wrapper { background: rgba(242, 153, 74, 0.1); color: #f2994a; }
+  .kpi-card.color-red .kpi-icon-wrapper { background: rgba(235, 51, 73, 0.1); color: #eb3349; }
+
+  .kpi-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+  }
+
+  .kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.2;
+    transition: all 0.3s ease;
+  }
+
+  .kpi-value.updating {
+    animation: pulse 0.6s ease-in-out;
+  }
+
+  @media (max-width: 767.98px) {
+    .kpi-value {
+      font-size: 1.5rem;
+    }
+    
+    .kpi-card {
+      margin-bottom: 0;
+    }
+    
+    .kpi-icon-wrapper {
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 991.98px) {
+    /* Tablets: 2 columnas */
+    .kpi-value {
+      font-size: 1.6rem;
+    }
+  }
+
+  @media (min-width: 992px) {
+    /* Desktop: 5 columnas en una fila */
+    .kpi-card:hover {
+      transform: translateY(-6px) scale(1.02);
+    }
+  }
+
+  .filters-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  
+  .filter-group {
+    position: relative;
+    margin-bottom: 0.75rem;
+  }
+  
+  .filter-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.35rem;
+    padding-left: 0.25rem;
+  }
+  
+  .filter-input {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border: 2px solid #e9ecef;
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background-color: #fff;
+  }
+  
+  .filter-input:focus {
+    outline: none;
+    border-color: #4dabf7;
+    box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.1);
+    transform: translateY(-1px);
+  }
+  
+  .filter-btn {
+    width: 100%;
+    padding: 0.65rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .filter-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  }
+  
+  .filter-btn:active {
+    transform: translateY(0);
+  }
+  
+  .chart-card {
+    background: white;
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+  }
+  
+  .chart-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+  }
+  
+  .chart-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .chart-title::before {
+    content: '';
+    width: 4px;
+    height: 24px;
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    border-radius: 2px;
+  }
+  
+  .chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+  }
+  
+  @media (max-width: 768px) {
+    .filter-input {
+      font-size: 0.9rem;
+      padding: 0.6rem 0.75rem;
+    }
+    
+    .filter-btn {
+      padding: 0.7rem;
+      font-size: 0.9rem;
+    }
+    
+    .chart-container {
+      height: 300px;
+    }
+  }
+  
+  .loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+  }
+  
+  .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% verbatim %}
+<div id="graficos-app">
+  <div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="row mb-3">
+      <div class="col">
+        <div class="d-flex justify-content-between align-items-center">
+          <h1 class="h4 mb-0">📊 Gráficos de Viajes</h1>
+          {% endverbatim %}
+          <a href="{% url 'moviles:viajes_list' %}" class="btn btn-outline-primary btn-sm btn-back-animated">
+            <i class="fas fa-arrow-left"></i> Volver a Viajes
+          </a>
+          {% verbatim %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card filters-card">
+      <div class="card-body p-3">
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-calendar-alt me-1"></i>Desde
+              </label>
+              <input class="filter-input" type="date" v-model="filters.start_date">
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-calendar-check me-1"></i>Hasta
+              </label>
+              <input class="filter-input" type="date" v-model="filters.end_date">
+            </div>
+          </div>
+          <div class="col-12 col-md-2">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-truck me-1"></i>Móvil
+              </label>
+              <select class="filter-input" v-model="filters.movil">
+                <option value="">Todos</option>
+                <option v-for="m in moviles" :key="m.id" :value="m.id">{{ m.patente }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-12 col-md-2">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-user me-1"></i>Chofer
+              </label>
+              <select class="filter-input" v-model="filters.chofer">
+                <option value="">Todos</option>
+                <option v-for="p in personals" :key="p.id" :value="p.id">{{ p.apellido }} {{ p.nombre }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-12 col-md-2">
+            <div class="filter-group">
+              <label class="filter-label">
+                <i class="fas fa-box me-1"></i>Producto
+              </label>
+              <select class="filter-input" v-model="filters.producto">
+                <option value="">Todos</option>
+                <option value="Pulpable">Pulpable</option>
+                <option value="Aserrable">Aserrable</option>
+                <option value="Chip">Chip</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col-12 col-md-3">
+            <button class="filter-btn" @click="loadGraficos">
+              <i class="fas fa-chart-line me-2"></i>Actualizar Gráficos
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs rápidos - Diseño minimalista y moderno -->
+    <div class="row mb-4 g-3">
+      <!-- Total viajes -->
+      <div class="col-12 col-md-6 col-lg">
+        <div class="kpi-card color-blue">
+          <div class="card-body p-3 p-md-4">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="flex-grow-1">
+                <div class="kpi-label">Total viajes</div>
+                <div class="kpi-value">{{ lastData?.kpis?.total_viajes ?? '-' }}</div>
+              </div>
+              <div class="kpi-icon-wrapper">
+                <i class="fas fa-route fa-lg"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total KG -->
+      <div class="col-12 col-md-6 col-lg">
+        <div class="kpi-card color-green">
+          <div class="card-body p-3 p-md-4">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="flex-grow-1">
+                <div class="kpi-label">Total KG</div>
+                <div class="kpi-value">{{ formatKg(lastData?.kpis?.total_kg) }}</div>
+              </div>
+              <div class="kpi-icon-wrapper">
+                <i class="fas fa-weight-hanging fa-lg"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Promedio KG/día -->
+      <div class="col-12 col-md-6 col-lg">
+        <div class="kpi-card color-cyan">
+          <div class="card-body p-3 p-md-4">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="flex-grow-1">
+                <div class="kpi-label">Promedio / día</div>
+                <div class="kpi-value">{{ formatKg(lastData?.kpis?.avg_kg_por_dia) }}</div>
+              </div>
+              <div class="kpi-icon-wrapper">
+                <i class="fas fa-chart-line fa-lg"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Viajes sin actividad -->
+      <div class="col-12 col-md-6 col-lg">
+        <div class="kpi-card color-yellow">
+          <div class="card-body p-3 p-md-4">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="flex-grow-1">
+                <div class="kpi-label">Sin actividad</div>
+                <div class="kpi-value">{{ lastData?.kpis?.total_sin_actividad_viajes ?? '-' }}</div>
+              </div>
+              <div class="kpi-icon-wrapper">
+                <i class="fas fa-ban fa-lg"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Móviles únicos sin actividad -->
+      <div class="col-12 col-md-6 col-lg">
+        <div class="kpi-card color-red">
+          <div class="card-body p-3 p-md-4">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="flex-grow-1">
+                <div class="kpi-label">Móviles parados</div>
+                <div class="kpi-value">{{ lastData?.kpis?.moviles_unicos_sin_actividad ?? '-' }}</div>
+              </div>
+              <div class="kpi-icon-wrapper">
+                <i class="fas fa-truck fa-lg"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>      <!-- Gráficos -->
+    <!-- Primera fila: Evolución diaria ocupa todo el ancho -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="chart-card">
+          <h2 class="chart-title">
+            <i class="fas fa-chart-line text-primary"></i>
+            Evolución de KG Transportados por Día
+          </h2>
+          <div v-show="loading" class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+          </div>
+          <div v-show="!loading" class="chart-container">
+            <canvas id="evolucionChart"></canvas>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <!-- Segunda fila: dos tortas una al lado de la otra -->
+    <div class="row">
+      <div class="col-12 col-lg-6">
+        <div class="chart-card mb-3">
+          <h2 class="chart-title">
+            <i class="fas fa-chart-pie text-success"></i>
+            Proporción por Tipo de Producto
+          </h2>
+          <div v-show="loading" class="loading-spinner">
+            <div class="spinner-border text-success" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+          </div>
+          <div v-show="!loading" class="chart-container">
+            <canvas id="tortaChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="chart-card mb-3">
+          <h2 class="chart-title d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-ban text-danger"></i> Proporción - Días Sin Actividad</span>
+            <button class="btn btn-sm btn-outline-secondary" @click.prevent="showVerification = !showVerification">
+              <i class="fas fa-table me-1"></i>
+              Ver tabla
+            </button>
+          </h2>
+          <div v-show="loading" class="loading-spinner">
+            <div class="spinner-border text-danger" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+          </div>
+          <div v-show="!loading" class="chart-container">
+            <canvas id="tortaSinActividadChart" v-show="lastData && lastData.dias_sin_actividad && lastData.dias_sin_actividad.length > 0"></canvas>
+
+            <div v-show="!(lastData && lastData.dias_sin_actividad && lastData.dias_sin_actividad.length > 0)" class="text-center text-muted p-4">
+              <i class="fas fa-check-circle fa-2x mb-2"></i>
+              <div>No hay días marcados como sin actividad en el rango seleccionado.</div>
+            </div>
+          </div>
+
+          <!-- Tabla de verificación (toggle) -->
+          <div v-show="showVerification" class="mt-3">
+            <div class="table-responsive">
+              <table class="table table-sm table-striped">
+                <thead>
+                  <tr>
+                    <th>Motivo</th>
+                    <th>Fecha</th>
+                    <th>Móvil (ID)</th>
+                    <th>Patente</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(r, idx) in verificationRows" :key="idx">
+                    <td>{{ r.motivo }}</td>
+                    <td>{{ formatDate(r.fecha) }}</td>
+                    <td>{{ r.movil_id }}</td>
+                    <td>{{ r.patente }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endverbatim %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{% static 'src/moviles/viajes_graficos.js' %}?v=3"></script>
+{% endblock %}

@@ -25,6 +25,8 @@ urlpatterns = [
     # Rutas específicas de API deben ir ANTES del include del router
     path('api/viajes/kpis/', views.viajes_kpis, name='api_viajes_kpis'),
     path('api/viajes/export/', views.export_viajes_xlsx, name='api_viajes_export'),
+    path('api/viajes/graficos-data/', views.viajes_graficos_data, name='api_viajes_graficos_data'),
+    path('api/viajes/sync-airtable/', views.sync_airtable_to_mysql, name='api_sync_airtable'),
     path('api/', include(router.urls)),
     
     # Rutas de vistas HTML
@@ -39,6 +41,7 @@ urlpatterns = [
     path('grafico_gastos_movil/', GastosPorMovilView.as_view(), name='grafico-gastos-movil'),
     path('reporte_gastos_movil/', views.reporte_gastos_view, name='reporte_gastos_movil'),
     path('viajes/', views.viajes_list, name='viajes_list'),
+    path('viajes/graficos/', views.viajes_graficos_view, name='viajes_graficos'),
 
     # URL's para matafuegos
     path('matafuegos/', views.matafuegos_list, name='matafuegos_list'),  # Listar matafuegos

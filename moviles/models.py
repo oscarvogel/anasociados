@@ -33,6 +33,7 @@ class Movil(models.Model):
     modelo = models.CharField(max_length=30)
     anio = models.IntegerField()
     baja = models.BooleanField(default=False)
+    viajes_mes = models.IntegerField(default=0)
 
     def __str__(self):
         return self.patente

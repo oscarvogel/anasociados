@@ -6,6 +6,10 @@ import django.db.models as models
 from django.http import JsonResponse
 from datetime import datetime, timedelta
 from rest_framework.generics import ListAPIView
+from django.core.management import call_command
+from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_POST
+import io
 
 # Create your views here.
 from moviles.serializer import CargaCombustibleSerializer, CentroCostosSerializer, GastosMovilSerializer, MatafuegosSerializer, MovilSerializer, PersonalSerializer, TipoVencimientosSerializer, VencimientosSerializer
@@ -29,6 +33,7 @@ class MovilViewSet(BaseAppModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['patente', 'empresa__nombre']  # Asegúrate de que 'nombre' es el campo correcto en el modelo 'Clientes'
     ordering_fields = ['patente']
+    ordering = ['patente']
     
 
 class TipoVencimientosViewSet(BaseAppModelViewSet):
@@ -124,12 +129,15 @@ class ViajesViewSet(BaseAppModelViewSet):
     # endpoint extra para KPIs
     def kpis(self, request):
         qs = self.filter_queryset(self.get_queryset())
-        total_viajes = qs.count()
+        total_viajes_sin_actividad = qs.filter(sin_actividad=False).count()  # Solo contar viajes realizados
+        total_viajes_total = qs.count()  # Total incluyendo días sin actividad
+        print(f"[KPIS] Total registros: {total_viajes_total}, Viajes realizados: {total_viajes_sin_actividad}")
+        
         tn_pulpable = qs.aggregate(sum=Sum('tn_pulpable'))['sum'] or 0
         tn_aserrable = qs.aggregate(sum=Sum('tn_aserrable'))['sum'] or 0
         tn_chip = qs.aggregate(sum=Sum('tn_chip'))['sum'] or 0
         totals = {
-            'total_viajes': total_viajes,
+            'total_viajes': total_viajes_sin_actividad,  # Cambiado para excluir días sin actividad
             'tn_pulpable': float(tn_pulpable),
             'tn_aserrable': float(tn_aserrable),
             'tn_chip': float(tn_chip),
@@ -267,12 +275,15 @@ def viajes_kpis(request):
     if destino:
         qs = qs.filter(destino=destino)
 
-    total_viajes = qs.count()
+    total_viajes_sin_actividad = qs.filter(sin_actividad=False).count()  # Solo contar viajes realizados
+    total_viajes_total = qs.count()  # Total incluyendo días sin actividad
+    print(f"[KPIS] Total registros: {total_viajes_total}, Viajes realizados: {total_viajes_sin_actividad}")
+    
     tn_pulpable = qs.aggregate(sum=Sum('tn_pulpable'))['sum'] or 0
     tn_aserrable = qs.aggregate(sum=Sum('tn_aserrable'))['sum'] or 0
     tn_chip = qs.aggregate(sum=Sum('tn_chip'))['sum'] or 0
     totals = {
-        'total_viajes': total_viajes,
+        'total_viajes': total_viajes_sin_actividad,  # Cambiado para excluir días sin actividad
         'tn_pulpable': float(tn_pulpable),
         'tn_aserrable': float(tn_aserrable),
         'tn_chip': float(tn_chip),
@@ -412,3 +423,247 @@ def export_viajes_xlsx(request):
     response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+def viajes_graficos_view(request):
+    """Vista que renderiza la página de gráficos interactivos de viajes"""
+    return render(request, 'pages/moviles/viajes_graficos.html')
+
+
+@staff_member_required
+@require_POST
+def sync_airtable_to_mysql(request):
+    """Endpoint para sincronizar registros de Airtable a MySQL"""
+    import traceback
+    
+    try:
+        # Capturar la salida del comando
+        out = io.StringIO()
+        err = io.StringIO()
+        
+        call_command('sync_airtable', '--mysql', '--confirm', stdout=out, stderr=err)
+        
+        output = out.getvalue()
+        errors = err.getvalue()
+        
+        response_data = {
+            'success': True,
+            'message': 'Sincronización completada exitosamente',
+            'output': output
+        }
+        
+        if errors:
+            response_data['warnings'] = errors
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        error_details = {
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'traceback': traceback.format_exc()
+        }
+        
+        # Intentar obtener más detalles si es un CalledProcessError
+        if hasattr(e, '__cause__') and e.__cause__:
+            error_details['cause'] = str(e.__cause__)
+        
+        return JsonResponse(error_details, status=500)
+
+
+@api_view(['GET'])
+def viajes_graficos_data(request):
+    """Endpoint que devuelve datos para gráficos de viajes.
+    
+    Retorna:
+    - evolucion_diaria: lista de {fecha, total_kg} para gráfico de línea
+    - proporcion_productos: lista de {producto, kg} para gráfico de torta
+    
+    Filtros: start_date, end_date, producto, movil, chofer
+    """
+    from django.db.models import Sum, Count
+    from django.db.models.functions import TruncDate
+    
+    qs = Viajes.objects.all()
+    
+    # Aplicar filtros
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    movil = request.query_params.get('movil')
+    chofer = request.query_params.get('chofer')
+    producto = request.query_params.get('producto')
+    
+    if start_date:
+        qs = qs.filter(fecha__gte=start_date)
+    if end_date:
+        qs = qs.filter(fecha__lte=end_date)
+    if movil:
+        qs = qs.filter(movil_id=movil)
+    if chofer:
+        qs = qs.filter(personal_id=chofer)
+    if producto:
+        qs = qs.filter(producto=producto)
+    
+    # Filtrar registros con fecha válida
+    qs = qs.filter(fecha__isnull=False)
+    
+    # Debug: contar registros
+    total_registros = qs.count()
+    print(f"[GRAFICOS] Total registros con fecha válida: {total_registros}")
+    
+    # 1. Evolución diaria de kg transportados
+    # Usar fecha directamente en lugar de TruncDate si hay problemas
+    from collections import defaultdict
+    
+    # Agrupar manualmente por fecha
+    evolucion_data = defaultdict(lambda: {'pulpable': 0, 'aserrable': 0, 'chip': 0})
+    
+    for viaje in qs:
+        fecha_str = viaje.fecha.strftime('%Y-%m-%d')
+        evolucion_data[fecha_str]['pulpable'] += float(viaje.tn_pulpable or 0)
+        evolucion_data[fecha_str]['aserrable'] += float(viaje.tn_aserrable or 0)
+        evolucion_data[fecha_str]['chip'] += float(viaje.tn_chip or 0)
+    
+    # Convertir a lista ordenada
+    evolucion_diaria = []
+    for fecha_str in sorted(evolucion_data.keys()):
+        datos = evolucion_data[fecha_str]
+        total_kg = datos['pulpable'] + datos['aserrable'] + datos['chip']
+        evolucion_diaria.append({
+            'fecha': fecha_str,
+            'total_kg': round(total_kg, 2),
+            'pulpable': round(datos['pulpable'], 2),
+            'aserrable': round(datos['aserrable'], 2),
+            'chip': round(datos['chip'], 2)
+        })
+    
+    print(f"[GRAFICOS] evolucion_diaria length: {len(evolucion_diaria)}")
+    if len(evolucion_diaria) > 0:
+        print(f"[GRAFICOS] Primera fecha: {evolucion_diaria[0]['fecha']}, Última fecha: {evolucion_diaria[-1]['fecha']}")
+    
+    # 2. Proporción de kg por tipo de producto (todos los viajes)
+    total_pulpable = qs.aggregate(sum=Sum('tn_pulpable'))['sum'] or 0
+    total_aserrable = qs.aggregate(sum=Sum('tn_aserrable'))['sum'] or 0
+    total_chip = qs.aggregate(sum=Sum('tn_chip'))['sum'] or 0
+
+    proporcion_productos = []
+    if total_pulpable > 0:
+        proporcion_productos.append({
+            'producto': 'Pulpable',
+            'kg': round(float(total_pulpable), 2)
+        })
+    if total_aserrable > 0:
+        proporcion_productos.append({
+            'producto': 'Aserrable',
+            'kg': round(float(total_aserrable), 2)
+        })
+    if total_chip > 0:
+        proporcion_productos.append({
+            'producto': 'Chip',
+            'kg': round(float(total_chip), 2)
+        })
+
+    # KPIs básicos - usar los totales ya calculados
+    total_viajes_sin_filtro = qs.count()  # Total incluyendo días sin actividad
+    total_viajes = qs.filter(sin_actividad=False).count()  # Solo contar viajes realizados, no días sin actividad
+    total_sin_actividad = qs.filter(sin_actividad=True).count()  # Días sin actividad
+    
+    total_kg = float(total_pulpable) + float(total_aserrable) + float(total_chip)
+    
+    # Debug: mostrar el total_viajes calculado
+    print(f"[GRAFICOS] Total registros: {total_viajes_sin_filtro}, Viajes realizados: {total_viajes}, Días sin actividad: {total_sin_actividad}")
+    print(f"[GRAFICOS] Total viajes realizados: {total_viajes} (excluyendo días sin actividad)")
+    
+    # Debug: mostrar el total_kg calculado
+    print(f"[GRAFICOS] Total KG calculado: {total_kg} (Pulpable: {total_pulpable}, Aserrable: {total_aserrable}, Chip: {total_chip})")
+    
+    # Calcular días totales en el rango con al menos un viaje
+    dias_totales = len(set([v.fecha.strftime('%Y-%m-%d') for v in qs if getattr(v, 'fecha', None)]))
+    avg_kg_por_dia = round((total_kg / dias_totales), 2) if dias_totales > 0 else 0
+
+    # Viajes marcados sin actividad y móviles únicos sin actividad
+    total_sin_actividad_viajes = qs.filter(sin_actividad=True).count()
+    moviles_unicos_sin_actividad = qs.filter(sin_actividad=True).values('movil').distinct().count()
+
+    # 3. Proporción de kg por tipo SOLO en viajes con sin_actividad=True
+    qs_sin = qs.filter(sin_actividad=True)
+    total_pulpable_sin = qs_sin.aggregate(sum=Sum('tn_pulpable'))['sum'] or 0
+    total_aserrable_sin = qs_sin.aggregate(sum=Sum('tn_aserrable'))['sum'] or 0
+    total_chip_sin = qs_sin.aggregate(sum=Sum('tn_chip'))['sum'] or 0
+
+    proporcion_sin_actividad = []
+    if total_pulpable_sin > 0:
+        proporcion_sin_actividad.append({'producto': 'Pulpable', 'kg': round(float(total_pulpable_sin), 2)})
+    if total_aserrable_sin > 0:
+        proporcion_sin_actividad.append({'producto': 'Aserrable', 'kg': round(float(total_aserrable_sin), 2)})
+    if total_chip_sin > 0:
+        proporcion_sin_actividad.append({'producto': 'Chip', 'kg': round(float(total_chip_sin), 2)})
+
+    # 4. Días con sin_actividad por motivo_sin_actividad (conteo de fechas distintas)
+    # Algunas bases pueden devolver resultados inesperados con Count(distinct=fecha).
+    # Para asegurar exactitud construimos sets de fechas en Python por motivo.
+    from collections import defaultdict
+
+    # Ahora vamos a contar pares (fecha, movil) por motivo. Así si dos moviles
+    # están sin actividad el mismo día se cuentan como 2.
+    motivo_pairs = defaultdict(set)
+    for viaje in qs_sin:
+        if not viaje.fecha:
+            continue
+        motivo = (viaje.motivo_sin_actividad or 'Sin motivo').strip()
+        fecha_str = viaje.fecha.strftime('%Y-%m-%d')
+        movil_id = viaje.movil.id if getattr(viaje, 'movil', None) else f"movil_none_{getattr(viaje, 'id', '')}"
+        # usar la tupla (fecha, movil_id) para diferenciar moviles en mismo dia
+        motivo_pairs[motivo].add((fecha_str, movil_id))
+
+    # Construir lista ordenada por cantidad de pares (desc)
+    dias_sin_actividad = []
+    total_dias_sin = 0
+    for motivo, pairs in sorted(motivo_pairs.items(), key=lambda x: -len(x[1])):
+        count = len(pairs)
+        if count > 0:
+            dias_sin_actividad.append({'motivo': motivo, 'dias': count})
+            total_dias_sin += count
+
+    # Añadir porcentaje relativo por motivo
+    if total_dias_sin > 0:
+        for d in dias_sin_actividad:
+            d['porcentaje'] = round((d['dias'] / total_dias_sin) * 100, 1)
+
+    # Debug: mostrar listado de pares por motivo en server logs para inspección
+    try:
+        debug_map = {m: sorted([f"{f}-{mid}" for f, mid in fs]) for m, fs in motivo_pairs.items()}
+        print(f"[GRAFICOS] pares (fecha-movil) por motivo (debug): {debug_map}")
+    except Exception:
+        pass
+
+    # Construir lista de verificación: filas individuales con motivo, fecha y móvil
+    verification_rows = []
+    for motivo, pairs in motivo_pairs.items():
+        for fecha_str, movil_id in sorted(pairs):
+            # intentar obtener patente si es posible
+            patente = ''
+            try:
+                mv = Movil.objects.filter(id=movil_id).first() if isinstance(movil_id, int) else None
+                if mv:
+                    patente = mv.patente
+            except Exception:
+                patente = ''
+            verification_rows.append({'motivo': motivo, 'fecha': fecha_str, 'movil_id': movil_id, 'patente': patente})
+
+    print(f"dias sin actividad {dias_sin_actividad} total de viajes {total_viajes}")
+    return Response({
+        'evolucion_diaria': evolucion_diaria,
+        'proporcion_productos': proporcion_productos,
+        'proporcion_sin_actividad': proporcion_sin_actividad,
+        'dias_sin_actividad': dias_sin_actividad,
+        'verification_rows': verification_rows,
+        'kpis': {
+            'total_viajes': total_viajes,
+            'total_kg': round(total_kg, 2),
+            'avg_kg_por_dia': avg_kg_por_dia,
+            'total_sin_actividad_viajes': total_sin_actividad_viajes,
+            'moviles_unicos_sin_actividad': moviles_unicos_sin_actividad
+        }
+    })
