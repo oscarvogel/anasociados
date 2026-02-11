@@ -27,6 +27,49 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 
 
+def _filter_queryset_by_profile(request, queryset, client_field_name='cliente'):
+    """Filtra `queryset` por la empresa/cliente asociada al `Profile` del `request.user`.
+
+    - Si el usuario no tiene `Profile` y es superuser, devuelve el queryset sin filtrar.
+    - Si no tiene `Profile` y no es superuser, devuelve queryset.none().
+    - Si tiene `AreasProfile`, y el modelo tiene campo `area`, filtra por esas áreas.
+    """
+    try:
+        from usuarios.models import Profile, AreasProfile
+    except Exception:
+        return queryset
+
+    user = request.user
+    try:
+        profile = Profile.objects.get(user=user)
+        cliente = profile.cliente
+        areas_profile = AreasProfile.objects.filter(user=user)
+    except Profile.DoesNotExist:
+        if user.is_superuser:
+            return queryset
+        return queryset.none()
+
+    # Aplicar filtro por cliente/empresa solo si el campo existe en el modelo
+    try:
+        queryset.model._meta.get_field(client_field_name)
+        filter_kwargs = {client_field_name: cliente}
+        queryset = queryset.filter(**filter_kwargs)
+    except Exception:
+        # Si el campo no existe, no restringimos por cliente
+        pass
+
+    # Si hay AreasProfile, intentar filtrar por campo 'area' si existe
+    if areas_profile.exists():
+        area_ids = [a.area.id for a in areas_profile]
+        try:
+            queryset.model._meta.get_field('area')
+            queryset = queryset.filter(area__id__in=area_ids)
+        except Exception:
+            pass
+
+    return queryset
+
+
 class MovilViewSet(BaseAppModelViewSet):
     queryset = Movil.objects.all()
     serializer_class = MovilSerializer
@@ -63,6 +106,35 @@ class CargaCombustibleViewSet(BaseAppModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['movil__patente', 'chofer__nombre', 'chofer__apellido', 'empresa__nombre']
     ordering_fields = ['fecha']
+    
+    def get_queryset(self):
+        from usuarios.models import Profile, AreasProfile
+        from syh.models import Area
+        
+        queryset = super().get_queryset()
+        user = self.request.user
+        
+        # Verificar si el usuario tiene un perfil con cliente asignado
+        try:
+            profile = Profile.objects.get(user=user)
+            cliente = profile.cliente
+            areas_profile = AreasProfile.objects.filter(user=user)
+        except Profile.DoesNotExist:
+            # Si no tiene perfil, es superusuario o puede ver todo
+            if user.is_superuser:
+                return queryset
+            # Si no es superusuario y no tiene perfil, no ver nada
+            return queryset.none()
+        
+        # Filtrar por cliente del perfil
+        queryset = queryset.filter(empresa=cliente)
+        
+        # Si tiene áreas específicas asignadas, filtrar por esas áreas
+        if areas_profile.exists():
+            areas_ids = [area.area.id for area in areas_profile]
+            queryset = queryset.filter(area__id__in=areas_ids)
+        
+        return queryset
 
 class MatafuegosViewSet(BaseAppModelViewSet):
     queryset = Matafuegos.objects.all()
@@ -77,6 +149,12 @@ class GastosMovilViewSet(BaseAppModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['movil__patente', 'cliente__nombre', 'area__detalle', 'centro_costos__descripcion']
     ordering_fields = ['fecha']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Aplicar filtro por Profile/Areas del usuario
+        qs = _filter_queryset_by_profile(self.request, qs, client_field_name='cliente')
+        return qs
 
 class CentroCostosViewSet(BaseAppModelViewSet):
     queryset = CentroCostos.objects.all()
@@ -104,6 +182,8 @@ class ViajesViewSet(BaseAppModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        # Restringir queryset según el Profile del usuario (cliente / áreas)
+        qs = _filter_queryset_by_profile(self.request, qs, client_field_name='cliente')
         # filtros opcionales por rango de fecha y movil
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
@@ -164,29 +244,91 @@ def gastos_movil_list(request):
     return render(request, 'pages/moviles/gastos_moviles_list.html')
 
 def consumo_combustible_por_mes(request):
-    empresas = Cliente.objects.all()
+    from usuarios.models import Profile, AreasProfile
+    from syh.models import Area
+    
+    # Verificar si el usuario tiene un perfil con cliente asignado
+    try:
+        profile = Profile.objects.get(user=request.user)
+        cliente = profile.cliente
+        areas_profile = AreasProfile.objects.filter(user=request.user)
+    except Profile.DoesNotExist:
+        # Si no tiene perfil, puede ver todas las empresas
+        cliente = None
+        areas_profile = None
+    
+    # Filtrar empresas según el perfil
+    if cliente:
+        empresas = Cliente.objects.filter(id=cliente.id)
+        # Filtrar áreas si el usuario tiene áreas específicas asignadas
+        if areas_profile.exists():
+            areas = Area.objects.filter(id__in=[area.area.id for area in areas_profile])
+        else:
+            areas = Area.objects.filter(cliente=cliente)
+    else:
+        empresas = Cliente.objects.all()
+        areas = Area.objects.all()
+    
     fecha_inicio = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
     fecha_fin = datetime.now().strftime('%Y-%m-%d')
     return render(request, 
                   'pages/moviles/consumo_combustible_por_mes.html', 
-                  {'empresas': empresas, 'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin})
+                  {'empresas': empresas, 'areas': areas, 'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin})
 
 def datos_consumo_combustible(request):
+    from usuarios.models import Profile, AreasProfile
+    from syh.models import Area
+    
     empresa_id = request.GET.get('empresa')
+    area_id = request.GET.get('area')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
+    
     if not fecha_inicio:
         fecha_inicio = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
     if not fecha_fin:
         fecha_fin = datetime.now().strftime('%Y-%m-%d')
+    
     if empresa_id:
+        # Verificar permisos del usuario
+        try:
+            profile = Profile.objects.get(user=request.user)
+            cliente_permitido = profile.cliente
+            areas_profile = AreasProfile.objects.filter(user=request.user)
+            
+            # Verificar que el usuario tenga permiso para ver esta empresa
+            if str(cliente_permitido.id) != empresa_id:
+                return JsonResponse({'error': 'No tiene permisos para ver esta empresa'}, status=403)
+        except Profile.DoesNotExist:
+            # Si no tiene perfil, es superusuario o puede ver todo
+            if not request.user.is_superuser:
+                return JsonResponse({'error': 'Usuario sin perfil asignado'}, status=403)
+            areas_profile = None
+        
         empresa = Cliente.objects.get(id=empresa_id)
-        datos = CargaCombustible.objects.filter(empresa=empresa, fecha__range=[fecha_inicio, fecha_fin]).values('movil__patente', 'fecha__month').annotate(consumo=Sum('litros'))
+        
+        # Construir el queryset base
+        queryset = CargaCombustible.objects.filter(
+            empresa=empresa, 
+            fecha__range=[fecha_inicio, fecha_fin]
+        )
+        
+        # Filtrar por área si se especifica
+        if area_id:
+            queryset = queryset.filter(area__id=area_id)
+        # Si el usuario tiene áreas específicas, filtrar por esas
+        elif areas_profile and areas_profile.exists():
+            areas_ids = [area.area.id for area in areas_profile]
+            queryset = queryset.filter(area__id__in=areas_ids)
+        
+        # Agrupar datos
+        datos = queryset.values('movil__patente', 'fecha__month').annotate(consumo=Sum('litros'))
+        
         datos_json = []
         for dato in datos:
             datos_json.append({
-              'movil': dato['movil__patente'],
-              'mes': dato['fecha__month'],
+                'movil': dato['movil__patente'],
+                'mes': dato['fecha__month'],
                 'consumo': dato['consumo']
             })
         return JsonResponse(datos_json, safe=False)
@@ -203,19 +345,32 @@ class GastosPorMovilView(ListAPIView):
     
     def get_queryset(self):
         queryset = GastosMovil.objects.all()
-        
+
+        # Aplicar filtro por Profile/Areas del usuario
+        queryset = _filter_queryset_by_profile(self.request, queryset, client_field_name='cliente')
+
         # Filtros
         empresa = self.request.query_params.get('empresa')
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
-        
+
+        # Si se especifica empresa asegurarse que el usuario tiene permiso (si no es superuser)
         if empresa:
+            try:
+                from usuarios.models import Profile
+                profile = Profile.objects.get(user=self.request.user)
+                if not self.request.user.is_superuser and str(profile.cliente.id) != str(empresa):
+                    return queryset.none()
+            except Exception:
+                # Si no tiene profile y no es superuser, no devolvemos nada
+                if not self.request.user.is_superuser:
+                    return queryset.none()
             queryset = queryset.filter(cliente_id__id=empresa)
         if start_date:
             queryset = queryset.filter(fecha__gte=start_date)
         if end_date:
             queryset = queryset.filter(fecha__lte=end_date)
-            
+
         return queryset
     
     def list(self, request, *args, **kwargs):
@@ -236,7 +391,17 @@ class GastosPorMovilView(ListAPIView):
 
 
 def reporte_gastos_view(request):
-    empresas = Cliente.objects.all()
+    # Restringir la lista de empresas según el Profile del usuario
+    try:
+        from usuarios.models import Profile
+        profile = Profile.objects.get(user=request.user)
+        empresas = Cliente.objects.filter(id=profile.cliente.id)
+    except Exception:
+        if request.user.is_superuser:
+            empresas = Cliente.objects.all()
+        else:
+            empresas = Cliente.objects.none()
+
     # Establecer fechas por defecto (último mes)
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=30)
@@ -255,7 +420,7 @@ def viajes_list(request):
 @api_view(['GET'])
 def viajes_kpis(request):
     """Endpoint simple que devuelve KPIs de viajes filtrando por start_date, end_date, movil"""
-    qs = Viajes.objects.all()
+    qs = _filter_queryset_by_profile(request, Viajes.objects.all(), client_field_name='cliente')
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
     movil = request.query_params.get('movil')
@@ -301,7 +466,7 @@ def export_viajes_xlsx(request):
     """
     # Usar select_related solo en movil (obligatorio) y personal (nullable)
     # No usar select_related en origen para evitar problemas con NULL en viajes sin actividad
-    qs = Viajes.objects.all()
+    qs = _filter_queryset_by_profile(request, Viajes.objects.all(), client_field_name='cliente')
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
     movil = request.query_params.get('movil')
@@ -435,6 +600,7 @@ def viajes_graficos_view(request):
 def sync_airtable_to_mysql(request):
     """Endpoint para sincronizar registros de Airtable a MySQL"""
     import traceback
+    import subprocess
     
     try:
         # Capturar la salida del comando
@@ -457,12 +623,36 @@ def sync_airtable_to_mysql(request):
         
         return JsonResponse(response_data)
         
+    except subprocess.CalledProcessError as e:
+        # Error específico del subprocess
+        error_details = {
+            'success': False,
+            'error': f'El script de sincronización falló con código {e.returncode}',
+            'error_type': 'CalledProcessError',
+            'return_code': e.returncode,
+            'stdout': e.stdout if hasattr(e, 'stdout') and e.stdout else 'No disponible',
+            'stderr': e.stderr if hasattr(e, 'stderr') and e.stderr else 'No disponible',
+            'traceback': traceback.format_exc(),
+            'hints': [
+                'Verifica que el archivo .env existe en el servidor y contiene las variables de Airtable',
+                'Ejecuta check_airtable_env.py en el servidor para diagnóstico',
+                'Revisa los logs del servidor para más detalles',
+                'Consulta SOLUCION_AIRTABLE_VPS.md para guía completa'
+            ]
+        }
+        return JsonResponse(error_details, status=500)
+        
     except Exception as e:
         error_details = {
             'success': False,
             'error': str(e),
             'error_type': type(e).__name__,
-            'traceback': traceback.format_exc()
+            'traceback': traceback.format_exc(),
+            'hints': [
+                'Error inesperado durante la sincronización',
+                'Verifica la configuración del servidor',
+                'Consulta los logs del servidor para más información'
+            ]
         }
         
         # Intentar obtener más detalles si es un CalledProcessError
@@ -485,7 +675,7 @@ def viajes_graficos_data(request):
     from django.db.models import Sum, Count
     from django.db.models.functions import TruncDate
     
-    qs = Viajes.objects.all()
+    qs = _filter_queryset_by_profile(request, Viajes.objects.all(), client_field_name='cliente')
     
     # Aplicar filtros
     start_date = request.query_params.get('start_date')

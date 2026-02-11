@@ -79,7 +79,22 @@ def index(request):
 
   porcentaje_por_area = Movimientos.get_porcentaje_cumplidos_por_area(cliente_id, fecha_desde=date(2020, 1, 1), fecha_hasta=date.today())
 
+  # Obtener la meta de porcentaje desde la instancia de cliente si está disponible.
   meta_porcentaje = 85
+  if cliente == 'Todos':
+    # Superuser sin cliente seleccionado -> mantener valor por defecto
+    if cliente_id:
+      try:
+        cliente_obj = Cliente.objects.get(id=cliente_id)
+        meta_porcentaje = getattr(cliente_obj, 'meta_porcentaje', 85)
+      except Cliente.DoesNotExist:
+        meta_porcentaje = 85
+  else:
+    # cliente normalmente es una instancia de Cliente obtenida desde el perfil
+    try:
+      meta_porcentaje = getattr(cliente, 'meta_porcentaje', 85)
+    except Exception:
+      meta_porcentaje = 85
 
   context = {
     'segment'  : 'index',

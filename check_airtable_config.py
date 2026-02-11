@@ -31,35 +31,35 @@ def main():
     airtable_token = os.getenv('AIRTABLE_TOKEN')
     airtable_key = os.getenv('AIRTABLE_API_KEY')
     has_auth = airtable_token or airtable_key
-    print_status("Token/API Key", has_auth, 
+    print_status("Token/API Key", bool(has_auth), 
                  f"Usando: {'AIRTABLE_TOKEN' if airtable_token else 'AIRTABLE_API_KEY' if airtable_key else 'NINGUNO'}")
-    all_passed &= has_auth
+    all_passed = all_passed and bool(has_auth)
 
     base_id = os.getenv('AIRTABLE_BASE_ID')
     print_status("Base ID", bool(base_id), base_id[:20] + "..." if base_id and len(base_id) > 20 else base_id)
-    all_passed &= bool(base_id)
+    all_passed = all_passed and bool(base_id)
 
     table_name = os.getenv('AIRTABLE_TABLE_NAME')
     print_status("Table Name", bool(table_name), table_name)
-    all_passed &= bool(table_name)
+    all_passed = all_passed and bool(table_name)
 
     # 2. Verificar variables MySQL
     print("\n2. Variables MySQL:")
     mysql_host = os.getenv('MYSQL_HOST') or os.getenv('DB_HOST')
     print_status("Host", bool(mysql_host), mysql_host)
-    all_passed &= bool(mysql_host)
+    all_passed = all_passed and bool(mysql_host)
 
     mysql_user = os.getenv('MYSQL_USER') or os.getenv('DB_USERNAME')
     print_status("User", bool(mysql_user), mysql_user)
-    all_passed &= bool(mysql_user)
+    all_passed = all_passed and bool(mysql_user)
 
     mysql_pass = os.getenv('MYSQL_PASSWORD') or os.getenv('DB_PASS')
     print_status("Password", bool(mysql_pass), "***" if mysql_pass else None)
-    all_passed &= bool(mysql_pass)
+    all_passed = all_passed and bool(mysql_pass)
 
     mysql_db = os.getenv('MYSQL_DATABASE') or os.getenv('DB_NAME')
     print_status("Database", bool(mysql_db), mysql_db)
-    all_passed &= bool(mysql_db)
+    all_passed = all_passed and bool(mysql_db)
 
     # 3. Verificar dependencias Python
     print("\n3. Dependencias Python:")
@@ -148,7 +148,7 @@ def main():
     script_path = os.path.join(os.path.dirname(__file__), 'utiles', 'sync_airtable_to_mysql.py')
     script_exists = os.path.exists(script_path)
     print_status("Script de sincronización", script_exists, script_path if script_exists else "No encontrado")
-    all_passed &= script_exists
+    all_passed = all_passed and bool(script_exists)
 
     # Resultado final
     print("\n" + "="*60)

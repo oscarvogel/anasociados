@@ -159,6 +159,7 @@ Asegúrate de que el usuario que ejecuta Gunicorn/uWSGI tenga:
 - Acceso de lectura al script `utiles/sync_airtable_to_mysql.py`
 - Acceso al intérprete de Python correcto
 - Acceso a las variables de entorno
+- Permisos de lectura en el archivo `.env` (chmod 640)
 
 ### 4. Ejecutar sincronización programada (opcional)
 
@@ -171,6 +172,122 @@ crontab -e
 # Agregar línea (ejemplo: cada hora)
 0 * * * * cd /ruta/a/tu/proyecto && /ruta/al/venv/bin/python manage.py sync_airtable --mysql --confirm >> /var/log/airtable_sync.log 2>&1
 ```
+
+## 🔧 Troubleshooting
+
+### Error: "CalledProcessError returned non-zero exit status 1"
+
+Este error indica que el script `sync_airtable_to_mysql.py` falló. Causas comunes:
+
+#### 1. Archivo .env no encontrado o mal ubicado
+**Síntomas:** Script funciona en local pero falla en producción
+
+**Solución:**
+```bash
+# Verificar ubicación del .env
+cd /var/www/an  # Ajustar a tu ruta
+ls -la .env
+
+# Debe estar en la raíz del proyecto Django
+# Si no existe, crearlo con las variables necesarias
+```
+
+#### 2. Variables de entorno no cargadas en el servicio web
+**Síntomas:** Script funciona manualmente pero falla desde la web
+
+**Solución para systemd:**
+```bash
+# Editar archivo de servicio
+sudo nano /etc/systemd/system/tu-servicio.service
+
+# Agregar en la sección [Service]:
+[Service]
+EnvironmentFile=/var/www/an/.env
+
+# Recargar
+sudo systemctl daemon-reload
+sudo systemctl restart tu-servicio
+```
+
+**Solución para supervisor:**
+```bash
+# Editar configuración
+sudo nano /etc/supervisor/conf.d/django.conf
+
+# Agregar línea environment
+[program:django]
+environment=AIRTABLE_TOKEN="tu_token",AIRTABLE_BASE_ID="tu_base_id"
+
+# Recargar
+sudo supervisorctl reread && sudo supervisorctl update
+```
+
+#### 3. Falta python-dotenv
+**Solución:**
+```bash
+source /ruta/al/venv/bin/activate
+pip install python-dotenv
+```
+
+#### 4. Permisos incorrectos en .env
+**Solución:**
+```bash
+cd /var/www/an
+chmod 640 .env
+chown www-data:www-data .env  # Ajustar usuario según tu configuración
+```
+
+### Herramientas de Diagnóstico
+
+#### Script de Diagnóstico Automático
+Ejecuta este script en el servidor para verificar la configuración:
+
+```bash
+cd /var/www/an
+source /var/www/venv/bin/activate
+python check_airtable_env.py
+```
+
+Este script verifica:
+- ✅ Existencia y permisos del archivo `.env`
+- ✅ Presencia de todas las variables requeridas
+- ✅ Instalación de `python-dotenv`
+- ❌ Problemas de configuración
+
+#### Prueba Manual del Script
+Para probar sin modificar la base de datos:
+
+```bash
+cd /var/www/an
+source /var/www/venv/bin/activate
+
+# Dry-run (solo lectura, no modifica nada)
+python utiles/sync_airtable_to_mysql.py --dry-run
+
+# Probar escritura a MySQL sin borrar Airtable
+python utiles/sync_airtable_to_mysql.py --mysql
+
+# Sincronización completa (CUIDADO: borra de Airtable)
+python utiles/sync_airtable_to_mysql.py --mysql --confirm
+```
+
+#### Ver Logs Detallados
+```bash
+# Logs del servicio (systemd)
+journalctl -u tu-servicio -n 100 -f
+
+# Logs de Nginx/Apache
+tail -f /var/log/nginx/error.log
+
+# Logs de la aplicación Django
+tail -f /ruta/a/logs/django.log
+```
+
+### Consultar Documentación Extendida
+
+Para una guía completa de solución de problemas en VPS, consulta:
+- 📄 **SOLUCION_AIRTABLE_VPS.md** - Guía detallada paso a paso
+- 📝 **comandos_vps_diagnostico.sh** - Comandos útiles para copiar/pegar
 
 ## Logs y Debugging
 
@@ -186,12 +303,4 @@ Para debugging, revisa:
 1. Console del navegador (errores JS)
 2. Logs de Django/Gunicorn
 3. Output del comando `sync_airtable`
-
-## Seguridad
-
-⚠️ **Importante:**
-- **Nunca** commitees el archivo `.env` al repositorio
-- Mantén los tokens de Airtable seguros
-- El comando `--confirm` **elimina** datos de Airtable
-- Haz backups antes de ejecutar sincronizaciones masivas
-- Solo usuarios staff pueden ejecutar la sincronización desde la web
+4. Ejecuta `check_airtable_env.py` para diagnóstico

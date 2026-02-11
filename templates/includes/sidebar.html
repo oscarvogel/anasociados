@@ -70,18 +70,19 @@
                 {% endif %}
               </ul>
         </li>
-        {%if request.user.is_superuser%}
+        {%if request.user.is_authenticated%}
           <li class="nav-item pcoded-hasmenu" data-username="Moviles">
             <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-settings"></i></span><span
                 class="pcoded-mtext">Moviles</span></a>
                 <ul class="pcoded-submenu">
                   <li class=""><a href="{% url 'moviles:tipo_vencimientos_list' %}" >Tipos de vencimiento</a></li>
                   <li class=""><a href="{% url 'moviles:moviles_list' %}" >Listado</a></li>
-                  <li class=""><a href="{% url 'moviles:personal_list' %}" >Personal</a></li>
+                  {%if request.user.is_superuser%}
+                    <li class=""><a href="{% url 'moviles:personal_list' %}" >Personal</a></li>
+                  {%endif%}
                   <li class=""><a href="{% url 'moviles:vencimientos_list' %}" >Vencimientos Moviles</a></li>
-                  {% if request.user.is_superuser %}
-                    <li class=""><a href="{% url 'moviles:gastos_movil_list' %}" >Gastos de Moviles</a></li>
-                  {% endif %}
+                  <li class=""><a href="{% url 'moviles:gastos_movil_list' %}" >Gastos de Moviles</a></li>
+                  <li class=""><a href="{% url 'moviles:viajes_list' %}" >Lista de Viajes</a></li>
                 </ul>
           </li>
 

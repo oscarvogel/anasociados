@@ -51,6 +51,7 @@ class Cliente(models.Model):
     nombre = models.CharField(max_length=100)
     celular = models.CharField(max_length=80, blank=True, null=True)
     email = models.EmailField(max_length=200)
+    meta_porcentaje = models.IntegerField(default=85, verbose_name='Meta porcentaje (%)')
 
     def __str__(self):
         return self.nombre

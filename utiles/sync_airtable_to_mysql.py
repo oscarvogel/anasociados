@@ -6,13 +6,40 @@ import time
 import math
 from datetime import datetime
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# Intentar cargar .env desde múltiples ubicaciones
+def load_env_file():
+    """Intenta cargar el archivo .env desde varias ubicaciones posibles."""
+    script_dir = Path(__file__).parent.absolute()
+    
+    # Posibles ubicaciones del archivo .env
+    env_locations = [
+        script_dir / '.env',  # En el directorio utiles/
+        script_dir.parent / '.env',  # En el directorio raíz del proyecto Django
+        Path.cwd() / '.env',  # En el directorio de trabajo actual
+    ]
+    
+    for env_path in env_locations:
+        if env_path.exists() and env_path.is_file():
+            print(f"[INFO] Cargando variables de entorno desde: {env_path}", file=sys.stderr)
+            load_dotenv(env_path, override=True)
+            return str(env_path)
+    
+    # Si no se encuentra, intentar cargar sin ruta específica (busca automáticamente)
+    print("[WARNING] No se encontró archivo .env explícito, intentando carga automática...", file=sys.stderr)
+    load_dotenv(override=True)
+    return None
+
+env_file_loaded = load_env_file()
+
 DESTINOS = {
     "ASPP": "ASERRADERO PUERTO PIRAY",
     "PPE": "PLANTA PUERTO ESPERANZA",
 }
+
 # Configuración Airtable
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 # New preferred name used by Airtable: AIRTABLE_TOKEN (personal access token / PAT)
@@ -33,9 +60,19 @@ if not AIRTABLE_BASE_ID:
     missing.append('AIRTABLE_BASE_ID')
 if not AIRTABLE_TABLE_NAME:
     missing.append('AIRTABLE_TABLE_NAME')
+
 if missing:
-    print({"error": "missing_env_vars", "message": f"Missing environment variables: {', '.join(missing)}"})
-    raise SystemExit(2)
+    error_msg = {
+        "error": "missing_env_vars",
+        "message": f"Faltan variables de entorno requeridas: {', '.join(missing)}",
+        "env_file_loaded": env_file_loaded or "No se encontró archivo .env",
+        "cwd": str(Path.cwd()),
+        "script_dir": str(Path(__file__).parent.absolute()),
+        "hint": "Verifica que el archivo .env existe y contiene las variables necesarias. "
+                "Ejecuta check_airtable_env.py para diagnóstico completo."
+    }
+    print(error_msg, file=sys.stderr)
+    sys.exit(2)
 
 # URL-encode the table name in case it contains spaces or special chars.
 encoded_table = urllib.parse.quote(AIRTABLE_TABLE_NAME, safe='')
@@ -568,6 +605,45 @@ def main():
                 print({"error": "missing_movil_id", "record_id": record.get('id'), "patente": patente})
                 # skip this record to avoid DB constraint violation
                 continue
+
+        # Attempt to derive empresa_id from the movil record we just retrieved/created
+        try:
+            if movil_id and not empresa_id:
+                cursor.execute("SELECT empresa_id FROM moviles_movil WHERE id = %s", (movil_id,))
+                row = cursor.fetchone()
+                if row and row[0] is not None:
+                    empresa_id = row[0]
+        except Exception:
+            # If lookup fails, keep existing empresa_id (may be None)
+            pass
+
+        # Enforce that empresa_id exists before inserting. If missing, abort for real runs.
+        if not empresa_id:
+            err = {
+                "error": "missing_empresa_id",
+                "record_id": record.get('id'),
+                "patente": patente,
+                "message": "No se pudo resolver empresa_id desde variables de entorno ni desde tabla moviles_movil"
+            }
+            print(err, file=sys.stderr)
+            # If we're doing actual DB writes, abort to avoid inserting con cliente NULL
+            if args.confirm or args.mysql:
+                try:
+                    mysql_conn.rollback()
+                except Exception:
+                    pass
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    mysql_conn.close()
+                except Exception:
+                    pass
+                print({"error": "aborting_due_to_missing_empresa_id", "record_id": record.get('id')}, file=sys.stderr)
+                raise SystemExit(3)
+            # In simulation/dry-run just skip this record
+            continue
 
         # Insert viaje
         try:
