@@ -57,6 +57,14 @@
                 class="pcoded-micon"><i class="feather icon-user"></i></span><span class="pcoded-mtext">Perfil</span></a>
           </li>
         {% endif %}
+        {% if request.user.is_superuser %}
+          <li class="nav-item">
+            <a href="{% url 'utiles:whatsapp_hallazgos' %}" class="nav-link">
+              <span class="pcoded-micon"><i class="feather icon-message-circle"></i></span>
+              <span class="pcoded-mtext">Alertas WhatsApp</span>
+            </a>
+          </li>
+        {% endif %}
         <li class="nav-item pcoded-hasmenu" data-username="informes">
           <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-bar-chart-2"></i></span><span
               class="pcoded-mtext">Informes</span></a>

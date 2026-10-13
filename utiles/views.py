@@ -153,4 +153,3 @@ def whatsapp_hallazgos_send(request):
         "message_id": resultado.get("messageId"),
         "mensaje": "WhatsApp aceptó el mensaje. Esto no confirma que el destinatario lo haya leído.",
     })
-

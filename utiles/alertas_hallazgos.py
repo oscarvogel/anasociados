@@ -123,4 +123,3 @@ def _descripcion_breve(hallazgo: str, limite: int = MAX_CARACTERES_HALLAZGO) -> 
     if len(descripcion) <= limite:
         return descripcion
     return f"{descripcion[:limite - 3].rstrip()}..."
-
