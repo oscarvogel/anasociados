@@ -2,6 +2,7 @@
 # Django 5.2 LTS: soportado hasta abril 2028. La 4.1 que usaba el proyecto
 # esta en EOL desde diciembre 2023 (sin parches de seguridad).
 # Validado con 'manage.py check', 'migrate' y la suite funcional contra MySQL.
+# Este archivo instala en Python 3.10 (VPS) y en 3.12 (local).
 django==5.2.18
 python-dotenv==1.1.1
 str2bool==1.1
@@ -37,7 +38,9 @@ tzdata==2026.5
 
 # Graficos, PDF e imagenes
 matplotlib==3.10.8
-numpy==2.3.4
+# 2.2.6 es la ultima de la rama 2.x que instala en Python 3.10 (el del VPS).
+# numpy>=2.3 exige Python>=3.11 y hace fallar el pip install en produccion.
+numpy==2.2.6
 reportlab==4.4.4
 pillow==11.3.0
 
