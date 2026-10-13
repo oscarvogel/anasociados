@@ -79,10 +79,7 @@ def whatsapp_hallazgos_preview(request):
     try:
         contacto = AreaWhatsAppContacto.objects.get(area_id=area_id)
     except AreaWhatsAppContacto.DoesNotExist:
-        return JsonResponse({
-            "error": "Esta área no tiene un WhatsApp configurado en Django Admin.",
-            "hay_novedades": True,
-        }, status=404)
+        contacto = None
 
     data = {
         "cliente_id": str(cliente_id),
@@ -90,7 +87,8 @@ def whatsapp_hallazgos_preview(request):
         "mensaje": resumen.mensaje,
         "nonce": secrets.token_urlsafe(18),
     }
-    response["telefono"] = contacto.telefono
+    response["telefono"] = contacto.telefono if contacto else ""
+    response["contacto_configurado"] = contacto is not None
     response["preview_token"] = signing.dumps(data, salt=PREVIEW_SALT)
     return JsonResponse(response)
 
@@ -114,9 +112,8 @@ def whatsapp_hallazgos_send(request):
         resumen = construir_resumen_hallazgos_whatsapp(
             preview.get("cliente_id", ""), preview.get("area_id", "")
         )
-        contacto = AreaWhatsAppContacto.objects.get(area_id=preview.get("area_id", ""))
-    except (SeleccionEmpresaAreaInvalida, AreaWhatsAppContacto.DoesNotExist):
-        return JsonResponse({"error": "La empresa, el área o su contacto ya no están disponibles."}, status=400)
+    except SeleccionEmpresaAreaInvalida:
+        return JsonResponse({"error": "La empresa o el área ya no están disponibles."}, status=400)
 
     if not resumen.hay_novedades:
         return JsonResponse({"error": "Ya no hay hallazgos vencidos o próximos a vencer para enviar."}, status=409)

@@ -46,10 +46,13 @@
             </div>
             <div class="modal-body">
                 <p id="contexto-modal" class="text-muted mb-3"></p>
+                <div id="aviso-contacto" class="alert alert-info d-none" role="status">
+                    Esta área no tiene un número guardado. Ingresá el destino para este envío; no se guardará.
+                </div>
                 <div class="form-group">
                     <label for="telefono-whatsapp">Número de destino</label>
-                    <input type="tel" id="telefono-whatsapp" class="form-control" autocomplete="tel" required>
-                    <small class="form-text text-muted">Podés cambiarlo para este envío. El contacto guardado del área no se modifica.</small>
+                    <input type="tel" id="telefono-whatsapp" class="form-control" autocomplete="tel" placeholder="5493764000000" required>
+                    <small class="form-text text-muted">Se usará solo para este envío y no se guardará en el contacto del área.</small>
                 </div>
                 <div class="form-group">
                     <label for="mensaje-whatsapp">Mensaje que se enviará</label>
@@ -76,6 +79,7 @@
     const estado = document.getElementById('estado-resumen');
     const modal = $('#modal-whatsapp-hallazgos');
     const telefono = document.getElementById('telefono-whatsapp');
+    const avisoContacto = document.getElementById('aviso-contacto');
     const mensaje = document.getElementById('mensaje-whatsapp');
     const botonEnviar = document.getElementById('confirmar-envio');
     const resultadoEnvio = document.getElementById('resultado-envio');
@@ -147,7 +151,8 @@
                 return;
             }
             previewToken = data.preview_token;
-            telefono.value = data.telefono;
+            telefono.value = data.telefono || '';
+            avisoContacto.classList.toggle('d-none', data.contacto_configurado);
             mensaje.value = data.mensaje;
             document.getElementById('contexto-modal').textContent = data.empresa + ' · ' + data.area + ' — ' + data.total_vencidos + ' vencidos y ' + data.total_por_vencer + ' por vencer.';
             mostrarEstado('Resumen listo: ' + data.total_vencidos + ' vencidos y ' + data.total_por_vencer + ' por vencer. Revisá el mensaje antes de enviarlo.', 'alert-success');

@@ -25,7 +25,7 @@
 
 - Non-superuser direct access to the page or JSON endpoints: reject server-side (Task 3).
 - An area ID that does not belong to the submitted company ID: reject before preview or send (Tasks 2–3).
-- Missing, malformed, or edited destination phone: reject without sending or persisting an override (Task 3).
+- Missing or malformed destination phone: reject without sending. A valid one-send override is not persisted and does not require a saved area contact (Task 3).
 - No matching records, null due dates, or records outside the five-day window: display no updates and do not send (Task 2).
 - Gateway timeout, non-success status, or malformed response: return a safe error without exposing the API key (Task 3).
 
@@ -80,12 +80,12 @@
 **Interfaces:**
 - `whatsapp_hallazgos_page(request)`: superuser-only HTML page.
 - `whatsapp_hallazgos_areas(request)`: superuser-only `GET`, returns areas for a company.
-- `whatsapp_hallazgos_preview(request)`: superuser-only `GET`, returns the saved area phone and message preview plus a signed preview token.
+- `whatsapp_hallazgos_preview(request)`: superuser-only `GET`, returns the saved area phone or an empty destination when none is configured, plus the message preview and a signed preview token.
 - `whatsapp_hallazgos_send(request)`: superuser-only CSRF-protected `POST`, accepts the signed preview token and edited phone, then sends the signed message via `WhatsAppClient.enviar_texto`.
 
 - [ ] Add a shared superuser guard for every page and JSON endpoint; direct requests from non-superusers receive HTTP 403.
 - [ ] In the area endpoint, verify the company exists and query only its areas.
-- [ ] In preview and send, revalidate that the area belongs to the company and that the per-area contact exists; block when no contact or no matching findings exist.
+- [ ] In preview and send, revalidate that the area belongs to the company; block when there are no matching findings. The per-area contact is optional and only supplies a default phone.
 - [ ] Sign the selected company ID, area ID, exact generated message, and a unique preview nonce with Django signing and a five-minute maximum age. The send endpoint uses the signed message, not message text supplied by the browser, so the displayed message is the one sent.
 - [ ] Validate and normalize the editable phone using `WhatsAppClient.normalizar_telefono`; never save the override or include it in logs.
 - [ ] Call the existing `WhatsAppClient.enviar_texto` with an `external_ref` derived from the preview nonce (stable for retries of that preview, unique for a new preview); return only the gateway acceptance/message ID or a safe error.
@@ -104,7 +104,7 @@
 - Page navigation is visible only to superusers; server authorization remains authoritative.
 
 - [ ] Add company and area selectors; changing the company clears the area and loads only that company's areas.
-- [ ] On area selection, request the preview. If there are no findings or no saved phone, show the reason and do not open a sendable modal.
+- [ ] On area selection, request the preview. If there are no findings, show the reason and do not open a sendable modal. If no saved phone exists, open the modal with a blank destination field.
 - [ ] Show a Bootstrap modal with an editable phone input and read-only message preview. Keep the phone override in client memory only.
 - [ ] On confirmation, submit the signed preview token and phone with CSRF via `POST`; disable the button during submission to prevent duplicate clicks.
 - [ ] Display gateway acceptance or a safe, actionable error in the modal; do not claim that acceptance means the recipient read the message.
