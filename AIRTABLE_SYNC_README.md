@@ -244,7 +244,7 @@ Ejecuta este script en el servidor para verificar la configuración:
 
 ```bash
 cd /var/www/an
-source /var/www/venv/bin/activate
+source /var/www/venv_an/bin/activate
 python check_airtable_env.py
 ```
 
@@ -259,7 +259,7 @@ Para probar sin modificar la base de datos:
 
 ```bash
 cd /var/www/an
-source /var/www/venv/bin/activate
+source /var/www/venv_an/bin/activate
 
 # Dry-run (solo lectura, no modifica nada)
 python utiles/sync_airtable_to_mysql.py --dry-run

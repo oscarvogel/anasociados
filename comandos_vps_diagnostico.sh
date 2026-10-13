@@ -14,7 +14,7 @@ echo ""
 
 # PASO 2: Activar entorno virtual
 echo "2. Activar entorno virtual:"
-echo "   source /var/www/venv/bin/activate"
+echo "   source /var/www/venv_an/bin/activate"
 echo ""
 
 # PASO 3: Verificar archivo .env

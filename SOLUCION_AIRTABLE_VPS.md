@@ -4,7 +4,7 @@
 
 El script de sincronización de Airtable funciona en local pero falla en el VPS con el error:
 ```
-subprocess.CalledProcessError: Command '['/var/www/venv/bin/python3', '/var/www/an/utiles/sync_airtable_to_mysql.py', '--mysql', '--confirm']' returned non-zero exit status 1.
+subprocess.CalledProcessError: Command '['/var/www/venv_an/bin/python3', '/var/www/an/utiles/sync_airtable_to_mysql.py', '--mysql', '--confirm']' returned non-zero exit status 1.
 ```
 
 ## 🔍 Diagnóstico
@@ -15,7 +15,7 @@ Conéctate a tu VPS y ejecuta el script de diagnóstico:
 
 ```bash
 cd /var/www/an
-source /var/www/venv/bin/activate
+source /var/www/venv_an/bin/activate
 python check_airtable_env.py
 ```
 
@@ -170,7 +170,7 @@ chmod 640 .env
 Verifica que `python-dotenv` esté instalado en el entorno virtual del VPS:
 
 ```bash
-source /var/www/venv/bin/activate
+source /var/www/venv_an/bin/activate
 pip install python-dotenv
 ```
 
@@ -182,7 +182,7 @@ Conéctate al VPS y ejecuta el script directamente:
 
 ```bash
 cd /var/www/an
-source /var/www/venv/bin/activate
+source /var/www/venv_an/bin/activate
 
 # Prueba en modo dry-run primero
 python utiles/sync_airtable_to_mysql.py --dry-run
@@ -200,7 +200,7 @@ Si el script funciona manualmente pero falla desde Django, el problema es la car
 
 ```bash
 cd /var/www/an
-source /var/www/venv/bin/activate
+source /var/www/venv_an/bin/activate
 python manage.py sync_airtable --mysql --confirm
 ```
 
@@ -221,7 +221,7 @@ Si el error persiste, obtén más detalles ejecutando:
 
 ```bash
 cd /var/www/an
-source /var/www/venv/bin/activate
+source /var/www/venv_an/bin/activate
 
 # Ver error completo del script
 python utiles/sync_airtable_to_mysql.py --mysql --confirm 2>&1 | tee sync_error.log
@@ -252,7 +252,7 @@ Para la mayoría de los casos, esto debería resolver el problema:
 cd /var/www/an
 
 # 2. Activar entorno virtual
-source /var/www/venv/bin/activate
+source /var/www/venv_an/bin/activate
 
 # 3. Instalar/actualizar python-dotenv
 pip install --upgrade python-dotenv

@@ -139,6 +139,20 @@ real: primero con 4.1.13 y 5.0.1, para confirmar que el codigo no dependia de
 una version en particular, y despues con un venv instalado desde cero usando
 el `requirements.txt` nuevo (5.2.18). Los tres dieron lo mismo.
 
-Al desplegar en el VPS hay que actualizar el venv de `/var/www/venv` y correr
-`migrate`. `migrate --plan` contra la base de produccion responde *"No planned
-migration operations"*, asi que el unico cambio real es el de las librerias.
+El upgrade se hizo el 13/10/2026 y quedo en 5.2.18.
+
+En el servidor `an` usa **su propio venv**, `/var/www/venv_an`, que se separo
+del compartido `/var/www/venv` porque ese lo usaban tambien `mini-iaes` y
+`fg/produccion_api`. Instalar el requirements ahi abajo les habria cambiado las
+librerias a las otras dos aplicaciones. Para desplegar hay que actualizar
+`/var/www/venv_an` y correr `migrate`.
+
+`migrate --plan` contra la base de produccion responde *"No planned migration
+operations"*, asi que el unico cambio real es el de las librerias.
+
+Al separar los venv, `/var/www/venv` quedo con Django 5.0.1 y lo siguen usando
+`mini-iaes` y `produccion_api`. Si alguna vez hay que tocar esas dos, primero
+verificar si ellas tambien necesitan un venv propio.
+
+El codigo del servidor se despliega con `git pull` desde `/var/www/an`, que ya
+es un repositorio con upstream a `origin/main`.

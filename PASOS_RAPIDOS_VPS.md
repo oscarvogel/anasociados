@@ -7,7 +7,7 @@ Ejecuta estos comandos en tu VPS en orden:
 ### 1️⃣ Conéctate al VPS y ve al directorio del proyecto
 ```bash
 cd /var/www/an
-source /var/www/venv/bin/activate
+source /var/www/venv_an/bin/activate
 ```
 
 ### 2️⃣ Instala/actualiza python-dotenv
@@ -109,7 +109,7 @@ Abre tu aplicación web y prueba el botón "Sincronizar". Debería funcionar aho
 ### Obtén más información del error:
 ```bash
 cd /var/www/an
-source /var/www/venv/bin/activate
+source /var/www/venv_an/bin/activate
 python utiles/sync_airtable_to_mysql.py --mysql --confirm 2>&1 | tee error_completo.log
 cat error_completo.log
 ```

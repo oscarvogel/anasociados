@@ -130,13 +130,11 @@ DB_NAME     = os.getenv('DB_NAME'     , None)
 
 # Database configuration now comes entirely from environment variables
 # No hardcoded credentials - all values are loaded from .env file above
-if DEBUG:
-    print(' DB_ENGINE -> ' + str(DB_ENGINE) )
-    print(' DB_USERNAME -> ' + str(DB_USERNAME) )
-    print(' DB_PASS -> ' + ('*' * len(DB_PASS) if DB_PASS else 'None') )  # Hide password in logs
-    print(' DB_HOST -> ' + str(DB_HOST) )
-    print(' DB_PORT -> ' + str(DB_PORT) )
-    print(' DB_NAME -> ' + str(DB_NAME) )
+#
+# No se imprime la configuracion de la base ni con DEBUG=True: el log del
+# servicio es legible por cualquiera que tenga acceso al servidor, y con
+# DEBUG on esa informacion terminaria expuesta. Para ver que base se esta
+# usando: grep '^DB_' /var/www/an/.env
 
 
 if DB_ENGINE and DB_NAME and DB_USERNAME:

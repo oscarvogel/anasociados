@@ -23,7 +23,8 @@
     Directorio del proyecto en el servidor. Default: /var/www/an
 
 .PARAMETER VenvPath
-    Venv actual. Default: /var/www/venv
+    Venv actual de 'an'. Default: /var/www/venv_an
+    (no usar /var/www/venv: ese lo comparten mini-iaes y produccion_api)
 
 .PARAMETER WebService
     Servicio web en systemd. Si se omite, se autodetecta.
@@ -52,7 +53,7 @@ param(
     [int]   $Port         = 5438,
     [string]$User         = 'root',
     [string]$ProjectPath  = '/var/www/an',
-    [string]$VenvPath     = '/var/www/venv',
+    [string]$VenvPath     = '/var/www/venv_an',
     [string]$WebService,
     [string]$CeleryService,
     [switch]$AutoConfirm,
@@ -128,17 +129,32 @@ Ok (($probe.Out | Select-Object -Last 1))
 # ---------------------------------------------------------------------------
 # Autodetectar servicios
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Autodetectar servicios.
+#
+# NO se busca por nombre: en este servidor el servicio de 'an' se llama
+# simplemente 'an', asi que un grep por 'gunicorn|uwsgi|django' lo salteaba y
+# terminaba eligiendo 'mini-iaes', que esta en la misma caja. Lo que los
+# distingue de verdad es el WorkingDirectory de cada unidad.
+# ---------------------------------------------------------------------------
 if (-not $WebService -or -not $CeleryService) {
     Step "Fase 0b - Autodetectar servicios"
-    $det = Invoke-Ssh -Cmd @'
-systemctl list-units --type=service --state=running --no-legend 2>/dev/null | awk '{print $1}' | grep -Ei 'gunicorn|uwsgi|django' | head -1
-systemctl list-units --type=service --state=running --no-legend 2>/dev/null | awk '{print $1}' | grep -Ei 'celery' | head -1
-supervisorctl status 2>/dev/null | awk '{print $1}' | grep -Ei 'gunicorn|uwsgi|django' | head -1
-supervisorctl status 2>/dev/null | awk '{print $1}' | grep -Ei 'celery' | head -1
-'@
-    $l = @($det.Out | Where-Object { $_ -and $_ -match '^[a-z0-9@\.\-_]+$' })
-    if (-not $WebService)    { $WebService    = ($l | Select-Object -First 1) }
-    if (-not $CeleryService) { $CeleryService = ($l | Select-Object -Skip 1 -First 1) }
+    $det = Invoke-Ssh -Cmd @"
+systemctl list-units --type=service --state=running --no-legend 2>/dev/null | awk '{print \$1}'
+supervisorctl status 2>/dev/null | awk '{print \$1}'
+"@
+    $candidatos = @($det.Out | Where-Object { $_ -and $_ -match '^[a-z0-9@\.\-_]+$' -and $_ -notmatch '^(RUNNING|STOPPED|STARTING|FATAL|BACKOFF|EXITED|UNKNOWN)$' })
+
+    foreach ($svc in $candidatos) {
+        $wd = (Invoke-Ssh -Cmd "systemctl show -p WorkingDirectory --value $svc 2>/dev/null").Out | Select-Object -Last 1
+        if ("$wd".Trim() -eq $ProjectPath.TrimEnd('/')) {
+            if (-not $WebService) { $WebService = $svc }
+        }
+        $dir = (Invoke-Ssh -Cmd "grep -h '^directory=' /etc/supervisor/conf.d/$svc.conf 2>/dev/null | cut -d= -f2").Out | Select-Object -Last 1
+        if ("$dir".Trim() -eq $ProjectPath.TrimEnd('/')) {
+            if (-not $CeleryService) { $CeleryService = $svc }
+        }
+    }
 }
 
 if (-not $RollbackOnly) {
