@@ -119,13 +119,15 @@ class Command(BaseCommand):
                 raise CommandError(f"mysqldump fallo (exit {proc.returncode}):\n{error}")
 
             # Un dump vacio o sin tablas no sirve de nada: se descarta.
+            # Ojo: hay que contar TODAS las lineas CREATE TABLE. mysqldump
+            # intercala la definicion de cada tabla con sus indices y sus
+            # datos, asi que cortar en la primera linea que no sea CREATE
+            # TABLE contaba 1 sola.
             tablas = 0
             with open(crudo, "r", encoding="utf-8", errors="replace") as fh:
                 for linea in fh:
                     if linea.startswith("CREATE TABLE"):
                         tablas += 1
-                    elif tablas:
-                        break
 
             if not os.path.getsize(crudo) or tablas == 0:
                 os.remove(crudo)
