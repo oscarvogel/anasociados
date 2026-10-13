@@ -17,14 +17,14 @@ La pantalla prepara una comunicación real basada en los datos actuales. No es u
 
 Crear un modelo administrado por Django para guardar un teléfono de WhatsApp por área. La configuración tendrá una clave de área única y el número internacional del encargado. La empresa asociada se obtiene desde `Area`; no se agregan columnas ni se modifican las tablas existentes de empresas y áreas.
 
-La configuración se mantiene en Django y queda disponible solo para superusuarios. Si un área no tiene un teléfono configurado, el envío se bloquea y la interfaz indica que primero hay que configurarlo.
+La configuración se mantiene en Django y queda disponible solo para superusuarios. Es opcional: si el área no tiene un teléfono configurado, el modal abre con el destino vacío y el superusuario puede ingresarlo para ese envío, sin persistirlo.
 
 ## Flujo de envío
 
 1. Un superusuario abre la herramienta de resúmenes de WhatsApp.
 2. Selecciona una empresa y luego una de sus áreas. El servidor valida que el área pertenezca a la empresa seleccionada.
 3. La aplicación consulta los hallazgos de esa empresa y área y prepara el mensaje.
-4. Se abre un modal con el teléfono asociado al área precargado y editable, y el texto exacto que se enviará. Editar el teléfono en el modal solo afecta ese envío; no cambia la configuración guardada.
+4. Se abre un modal con el teléfono asociado al área precargado si existe; si no existe, el campo aparece vacío. En ambos casos el destino se puede editar para ese envío. El texto exacto que se enviará es de solo lectura y el teléfono ingresado no se persiste.
 5. El superusuario confirma el envío. La interfaz realiza una solicitud `POST` protegida contra CSRF. Una solicitud `GET` nunca envía mensajes.
 6. El servidor vuelve a validar permisos, empresa, área, teléfono y contenido, y envía mediante `WhatsAppClient`.
 7. La interfaz informa si el gateway aceptó el mensaje o devuelve un error legible. La acción evita doble envío por clics repetidos mientras la solicitud está en curso.
@@ -46,9 +46,17 @@ El texto será breve e incluirá el nombre de la empresa, el área, los totales 
 
 El modal muestra el mensaje final en un campo de solo lectura; el número de destino sí es editable. La edición del texto del mensaje queda fuera de alcance.
 
+## Enlace público con el detalle completo
+
+El mensaje de WhatsApp incluye un enlace a una página de consulta de solo lectura que muestra todos los movimientos incluidos en el resumen: vencidos y con vencimiento entre hoy y los próximos cinco días. Cada fila muestra descripción completa, estado y fecha de cumplimiento; no se exponen responsables, emails ni otros datos de contacto. La página consulta el estado actual al abrirse.
+
+El enlace usa un token aleatorio de alta entropía, queda limitado a la empresa y área seleccionadas, vence a los 14 días y puede revocarse desde Django Admin. En la base de datos se guarda solo el hash del token. El token viaja en el fragmento del enlace (`#token`) y el navegador lo envía al endpoint de lectura mediante `Authorization: Bearer`; así no aparece en la ruta, la query, el referer ni los registros habituales de acceso. La página y su respuesta no se indexan ni se cachean. Cualquier persona que reciba el enlace puede consultar los datos hasta que venza o se revoque.
+
+La página pública usa el dominio HTTPS canónico y el logo de AN & Asociados, con diseño adaptable a celulares y escritorio. El enlace solo se activa cuando se confirma el envío del WhatsApp.
+
 ## Errores y datos sensibles
 
-- Un teléfono vacío, inválido o sin configuración impide enviar.
+- Un teléfono vacío o inválido impide enviar. La falta de un teléfono guardado no impide abrir el modal: el superusuario puede ingresar un número para ese envío.
 - Los errores de conexión o rechazo del gateway se muestran en la interfaz sin mostrar la API key.
 - La clave sigue en el `.env` del servidor y nunca llega al navegador.
 - El número editado en el modal no se persiste ni se escribe en logs.
@@ -67,9 +75,11 @@ El modal muestra el mensaje final en un campo de solo lectura; el número de des
 1. Solo un superusuario puede administrar los teléfonos por área y acceder a la herramienta.
 2. Las áreas ofrecidas corresponden únicamente a la empresa seleccionada.
 3. El resumen incluye los movimientos, estados y fechas definidos en este documento.
-4. El modal muestra el destino guardado y el mensaje calculado antes de cualquier envío.
+4. El modal muestra el destino guardado, o un campo vacío si no hay configuración, y el mensaje calculado antes de cualquier envío.
 5. Cambiar el teléfono en el modal no altera el contacto persistido.
 6. El mensaje solo se envía tras una acción `POST` confirmada por un superusuario.
 7. El mensaje se envía al número editado para esa solicitud y se informa el resultado del gateway.
-8. Si no hay teléfono válido o no hay hallazgos aplicables, no se envía.
+8. Si no hay teléfono válido o no hay hallazgos aplicables, no se envía; el teléfono no necesita estar guardado previamente.
 9. La API key no se expone en respuestas, la interfaz ni registros.
+10. El WhatsApp incluye el enlace al detalle completo; el acceso vence a los 14 días, se puede revocar y no requiere iniciar sesión.
+11. La página lista todos los hallazgos del criterio del resumen, usa el dominio HTTPS y no muestra otros datos personales.

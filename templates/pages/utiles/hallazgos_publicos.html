@@ -1,0 +1,300 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="referrer" content="no-referrer">
+    <title>Seguimiento de hallazgos | AN &amp; Asociados</title>
+    <link rel="icon" href="{% static 'assets/images/favicon.ico' %}">
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #18302f;
+            --muted: #667779;
+            --brand: #17433d;
+            --brand-deep: #102f2c;
+            --mint: #dceee8;
+            --paper: #f3f6f5;
+            --line: #dce5e2;
+            --white: #fff;
+            --danger: #a64234;
+            --danger-soft: #fff0ec;
+            --amber: #946012;
+            --amber-soft: #fff6df;
+            --shadow: 0 18px 46px rgba(25, 55, 51, .08);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink);
+            background: var(--paper);
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .shell { width: min(1040px, calc(100% - 36px)); margin: 0 auto; }
+        .masthead {
+            display: flex;
+            min-height: 82px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            border-bottom: 1px solid var(--line);
+        }
+        .brand { display: flex; align-items: center; gap: 13px; }
+        .brand img { width: 46px; height: 46px; object-fit: contain; }
+        .brand-name { font-size: 14px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
+        .brand-caption { margin-top: 3px; color: var(--muted); font-size: 11px; letter-spacing: .13em; text-transform: uppercase; }
+        .secure-note { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+        .secure-dot { width: 8px; height: 8px; border-radius: 50%; background: #29846b; box-shadow: 0 0 0 4px #dceee8; }
+        main { padding: 34px 0 48px; }
+        .hero {
+            position: relative;
+            overflow: hidden;
+            padding: clamp(26px, 5vw, 48px);
+            border-radius: 18px;
+            color: var(--white);
+            background: var(--brand-deep);
+            box-shadow: var(--shadow);
+        }
+        .hero::after {
+            position: absolute;
+            right: -62px;
+            bottom: -108px;
+            width: 270px;
+            height: 270px;
+            border: 1px solid rgba(220, 238, 232, .18);
+            border-radius: 50%;
+            content: "";
+            box-shadow: 0 0 0 28px rgba(220, 238, 232, .035), 0 0 0 58px rgba(220, 238, 232, .025);
+        }
+        .eyebrow { margin: 0 0 12px; color: #a8d5c7; font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+        h1 { position: relative; z-index: 1; max-width: 760px; margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(30px, 5vw, 45px); font-weight: 500; line-height: 1.1; letter-spacing: -.025em; }
+        .hero-subtitle { position: relative; z-index: 1; max-width: 670px; margin: 15px 0 0; color: #d4e3df; font-size: 15px; line-height: 1.65; }
+        .hero-meta { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 9px; margin-top: 24px; }
+        .hero-chip { padding: 8px 11px; border: 1px solid rgba(220, 238, 232, .2); border-radius: 6px; color: #e9f4f0; background: rgba(255,255,255,.045); font-size: 12px; }
+        .hero-chip strong { color: #fff; }
+        .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+        .stat {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 92px;
+            padding: 18px 21px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: var(--white);
+            box-shadow: 0 6px 20px rgba(25, 55, 51, .035);
+        }
+        .stat-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+        .stat-help { margin-top: 5px; color: var(--muted); font-size: 12px; }
+        .stat-number { font-family: Georgia, "Times New Roman", serif; font-size: 38px; line-height: 1; }
+        .stat.overdue .stat-number { color: var(--danger); }
+        .stat.upcoming .stat-number { color: var(--amber); }
+        .groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 18px; }
+        .group {
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: var(--white);
+            box-shadow: 0 6px 20px rgba(25, 55, 51, .035);
+        }
+        .group-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+        .group-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; font-weight: 800; }
+        .group-mark { width: 9px; height: 9px; border-radius: 2px; background: var(--danger); transform: rotate(45deg); }
+        .upcoming-group .group-mark { background: #c08a27; }
+        .group-count { min-width: 28px; padding: 4px 8px; border-radius: 20px; color: var(--danger); background: var(--danger-soft); font-size: 12px; font-weight: 800; text-align: center; }
+        .upcoming-group .group-count { color: var(--amber); background: var(--amber-soft); }
+        .finding-list { padding: 0 20px; }
+        .finding { padding: 17px 0 18px; border-bottom: 1px solid #edf1ef; }
+        .finding:last-child { border-bottom: 0; }
+        .finding-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+        .finding-date { color: var(--muted); font-size: 12px; font-weight: 700; }
+        .finding-status { padding: 4px 8px; border-radius: 4px; color: var(--brand); background: var(--mint); font-size: 10px; font-weight: 800; letter-spacing: .035em; }
+        .finding-description { margin: 0; color: #263c3a; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+        .empty { margin: 17px 20px 20px; padding: 19px; border-radius: 8px; color: var(--muted); background: #f6f8f7; font-size: 13px; line-height: 1.55; }
+        .loading, .error-panel {
+            margin-top: 18px;
+            padding: 22px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: var(--white);
+            box-shadow: var(--shadow);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .error-panel { border-color: #f1d2ca; color: #70392f; background: #fff8f5; }
+        .error-title { margin: 0 0 6px; font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 500; }
+        .footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 1.55; }
+        [hidden] { display: none !important; }
+        @media (max-width: 700px) {
+            .shell { width: min(100% - 24px, 1040px); }
+            .masthead { min-height: 72px; }
+            .brand img { width: 40px; height: 40px; }
+            .secure-note { max-width: 105px; text-align: right; line-height: 1.35; }
+            main { padding: 20px 0 32px; }
+            .hero { border-radius: 13px; }
+            .stats, .groups { grid-template-columns: 1fr; gap: 11px; }
+            .stat { min-height: 78px; }
+            .footer { flex-direction: column; gap: 5px; }
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            .group, .stat { animation: rise-in .35s ease both; }
+            .upcoming-group { animation-delay: .06s; }
+            @keyframes rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        }
+    </style>
+</head>
+<body data-datos-url="{{ datos_url }}">
+    <div class="shell">
+        <header class="masthead">
+            <div class="brand">
+                <img src="{% static 'assets/images/icono_almada_neri.png' %}" alt="AN &amp; Asociados">
+                <div>
+                    <div class="brand-name">AN &amp; Asociados</div>
+                    <div class="brand-caption">Seguridad e higiene</div>
+                </div>
+            </div>
+            <div class="secure-note"><span class="secure-dot" aria-hidden="true"></span>Consulta privada por enlace</div>
+        </header>
+
+        <main>
+            <section class="hero" aria-labelledby="page-title">
+                <p class="eyebrow">Seguimiento de acciones correctivas</p>
+                <h1 id="page-title">Resumen de hallazgos</h1>
+                <p class="hero-subtitle" id="hero-subtitle">Estamos validando el acceso y preparando la información actual.</p>
+                <div class="hero-meta" id="hero-meta" hidden>
+                    <span class="hero-chip">Empresa: <strong id="empresa"></strong></span>
+                    <span class="hero-chip">Área: <strong id="area"></strong></span>
+                    <span class="hero-chip">Actualizado: <strong id="actualizado"></strong></span>
+                </div>
+            </section>
+
+            <div class="loading" id="loading" role="status" aria-live="polite">Cargando el resumen…</div>
+            <section class="error-panel" id="error-panel" role="alert" hidden>
+                <h2 class="error-title">Este enlace ya no está disponible</h2>
+                <p id="error-message">Pedí al equipo de AN &amp; Asociados que te envíe un nuevo resumen.</p>
+            </section>
+
+            <div id="contenido" hidden>
+                <section class="stats" aria-label="Totales del resumen">
+                    <article class="stat overdue">
+                        <div><div class="stat-label">Vencidos</div><div class="stat-help">Requieren seguimiento</div></div>
+                        <div class="stat-number" id="total-vencidos">0</div>
+                    </article>
+                    <article class="stat upcoming">
+                        <div><div class="stat-label">Por vencer</div><div class="stat-help">Dentro de los próximos cinco días</div></div>
+                        <div class="stat-number" id="total-por-vencer">0</div>
+                    </article>
+                </section>
+
+                <div class="groups">
+                    <section class="group" aria-labelledby="vencidos-heading">
+                        <header class="group-head">
+                            <h2 class="group-title" id="vencidos-heading"><span class="group-mark" aria-hidden="true"></span>Vencidos</h2>
+                            <span class="group-count" id="count-vencidos">0</span>
+                        </header>
+                        <div class="finding-list" id="lista-vencidos"></div>
+                    </section>
+                    <section class="group upcoming-group" aria-labelledby="por-vencer-heading">
+                        <header class="group-head">
+                            <h2 class="group-title" id="por-vencer-heading"><span class="group-mark" aria-hidden="true"></span>Próximos a vencer</h2>
+                            <span class="group-count" id="count-por-vencer">0</span>
+                        </header>
+                        <div class="finding-list" id="lista-por-vencer"></div>
+                    </section>
+                </div>
+                <footer class="footer">
+                    <span>La lista refleja el estado actual de los hallazgos al momento de abrir este enlace.</span>
+                    <span>Enlace válido hasta <strong id="vence"></strong>.</span>
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    (function () {
+        const loading = document.getElementById('loading');
+        const errorPanel = document.getElementById('error-panel');
+        const content = document.getElementById('contenido');
+        const token = window.location.hash.slice(1);
+
+        function showError(message) {
+            loading.hidden = true;
+            document.getElementById('error-message').textContent = message;
+            errorPanel.hidden = false;
+        }
+
+        function formatDate(isoDate) {
+            const parts = isoDate.split('-');
+            return parts.length === 3 ? parts[2] + '/' + parts[1] + '/' + parts[0] : isoDate;
+        }
+
+        function renderFindings(targetId, findings, emptyText) {
+            const target = document.getElementById(targetId);
+            if (!findings.length) {
+                const empty = document.createElement('p');
+                empty.className = 'empty';
+                empty.textContent = emptyText;
+                target.appendChild(empty);
+                return;
+            }
+            findings.forEach(function (finding) {
+                const article = document.createElement('article');
+                article.className = 'finding';
+                const top = document.createElement('div');
+                top.className = 'finding-top';
+                const date = document.createElement('time');
+                date.className = 'finding-date';
+                date.dateTime = finding.fecha;
+                date.textContent = 'Vencimiento · ' + formatDate(finding.fecha);
+                const status = document.createElement('span');
+                status.className = 'finding-status';
+                status.textContent = finding.estado;
+                const description = document.createElement('p');
+                description.className = 'finding-description';
+                description.textContent = finding.descripcion;
+                top.append(date, status);
+                article.append(top, description);
+                target.appendChild(article);
+            });
+        }
+
+        if (!token) {
+            showError('El enlace está incompleto. Pedí al equipo de AN & Asociados que te envíe un nuevo resumen.');
+            return;
+        }
+
+        fetch(document.body.dataset.datosUrl, {
+            method: 'GET',
+            cache: 'no-store',
+            referrerPolicy: 'no-referrer',
+            headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+        }).then(async function (response) {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'El enlace ya no está disponible.');
+            return data;
+        }).then(function (data) {
+            loading.hidden = true;
+            document.getElementById('hero-subtitle').textContent = 'Estado de los hallazgos abiertos con vencimiento pasado o dentro de los próximos cinco días.';
+            document.getElementById('empresa').textContent = data.empresa;
+            document.getElementById('area').textContent = data.area;
+            document.getElementById('actualizado').textContent = data.actualizado;
+            document.getElementById('vence').textContent = data.vence;
+            document.getElementById('hero-meta').hidden = false;
+            document.getElementById('total-vencidos').textContent = data.total_vencidos;
+            document.getElementById('total-por-vencer').textContent = data.total_por_vencer;
+            document.getElementById('count-vencidos').textContent = data.total_vencidos;
+            document.getElementById('count-por-vencer').textContent = data.total_por_vencer;
+            renderFindings('lista-vencidos', data.vencidos, 'No hay hallazgos vencidos actualmente.');
+            renderFindings('lista-por-vencer', data.por_vencer, 'No hay hallazgos por vencer dentro de los próximos cinco días.');
+            content.hidden = false;
+        }).catch(function (error) {
+            showError(error.message);
+        });
+    })();
+    </script>
+</body>
+</html>

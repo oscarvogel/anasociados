@@ -1,0 +1,200 @@
+{% extends 'layouts/base.html' %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+{% block content %}
+<div class="container mt-4"
+     id="whatsapp-hallazgos"
+     data-areas-url="{% url 'utiles:whatsapp_hallazgos_areas' %}"
+     data-preview-url="{% url 'utiles:whatsapp_hallazgos_preview' %}"
+     data-send-url="{% url 'utiles:whatsapp_hallazgos_send' %}">
+    <h5 class="an-page-title">Resumen de hallazgos por WhatsApp</h5>
+    <p class="text-muted">Elegí una empresa y un área para preparar el resumen de hallazgos vencidos y próximos a vencer.</p>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="empresa">Empresa</label>
+                    <select id="empresa" class="form-control">
+                        <option value="">Seleccioná una empresa</option>
+                        {% for empresa in empresas %}
+                        <option value="{{ empresa.pk }}">{{ empresa.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="area">Área</label>
+                    <select id="area" class="form-control" disabled>
+                        <option value="">Primero seleccioná una empresa</option>
+                    </select>
+                </div>
+            </div>
+            <div id="estado-resumen" class="alert alert-secondary mb-0" role="status" aria-live="polite">
+                Seleccioná un área para consultar sus hallazgos.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-whatsapp-hallazgos" tabindex="-1" role="dialog" aria-labelledby="titulo-modal-whatsapp" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="titulo-modal-whatsapp">Confirmar envío por WhatsApp</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p id="contexto-modal" class="text-muted mb-3"></p>
+                <div id="aviso-contacto" class="alert alert-info d-none" role="status">
+                    Esta área no tiene un número guardado. Ingresá el destino para este envío; no se guardará.
+                </div>
+                <div class="form-group">
+                    <label for="telefono-whatsapp">Número de destino</label>
+                    <input type="tel" id="telefono-whatsapp" class="form-control" autocomplete="tel" placeholder="5493764000000" required>
+                    <small class="form-text text-muted">Se usará solo para este envío y no se guardará en el contacto del área.</small>
+                </div>
+                <div class="form-group">
+                    <label for="mensaje-whatsapp">Mensaje que se enviará</label>
+                    <textarea id="mensaje-whatsapp" class="form-control" rows="8" readonly></textarea>
+                </div>
+                <div id="resultado-envio" class="alert d-none" role="status" aria-live="polite"></div>
+                <form id="csrf-form" class="d-none">{% csrf_token %}</form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" id="confirmar-envio" class="btn btn-success">Enviar WhatsApp</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const root = document.getElementById('whatsapp-hallazgos');
+    const empresa = document.getElementById('empresa');
+    const area = document.getElementById('area');
+    const estado = document.getElementById('estado-resumen');
+    const modal = $('#modal-whatsapp-hallazgos');
+    const telefono = document.getElementById('telefono-whatsapp');
+    const avisoContacto = document.getElementById('aviso-contacto');
+    const mensaje = document.getElementById('mensaje-whatsapp');
+    const botonEnviar = document.getElementById('confirmar-envio');
+    const resultadoEnvio = document.getElementById('resultado-envio');
+    let previewToken = '';
+    let requestVersion = 0;
+
+    function mostrarEstado(texto, clase) {
+        estado.className = 'alert mb-0 ' + clase;
+        estado.textContent = texto;
+    }
+
+    async function leerJson(response) {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo completar la solicitud.');
+        return data;
+    }
+
+    empresa.addEventListener('change', async function () {
+        const version = ++requestVersion;
+        area.innerHTML = '<option value="">Cargando áreas…</option>';
+        area.disabled = true;
+        mostrarEstado('Seleccioná un área para consultar sus hallazgos.', 'alert-secondary');
+        if (!empresa.value) {
+            area.innerHTML = '<option value="">Primero seleccioná una empresa</option>';
+            return;
+        }
+        try {
+            const url = new URL(root.dataset.areasUrl, window.location.origin);
+            url.searchParams.set('cliente_id', empresa.value);
+            const data = await leerJson(await fetch(url, {headers: {'X-Requested-With': 'XMLHttpRequest'}}));
+            if (version !== requestVersion) return;
+            area.innerHTML = '<option value="">Seleccioná un área</option>';
+            data.areas.forEach(function (item) {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.nombre;
+                area.appendChild(option);
+            });
+            area.disabled = false;
+            if (!data.areas.length) mostrarEstado('Esta empresa no tiene áreas disponibles.', 'alert-warning');
+        } catch (error) {
+            if (version !== requestVersion) return;
+            area.innerHTML = '<option value="">No se pudieron cargar las áreas</option>';
+            mostrarEstado(error.message, 'alert-danger');
+        }
+    });
+
+    area.addEventListener('change', async function () {
+        const version = ++requestVersion;
+        previewToken = '';
+        botonEnviar.disabled = false;
+        botonEnviar.textContent = 'Enviar WhatsApp';
+        resultadoEnvio.className = 'alert d-none';
+        if (!area.value) {
+            mostrarEstado('Seleccioná un área para consultar sus hallazgos.', 'alert-secondary');
+            return;
+        }
+        mostrarEstado('Preparando resumen…', 'alert-info');
+        try {
+            const url = new URL(root.dataset.previewUrl, window.location.origin);
+            url.searchParams.set('cliente_id', empresa.value);
+            url.searchParams.set('area_id', area.value);
+            const response = await fetch(url, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+            const data = await response.json();
+            if (version !== requestVersion) return;
+            if (!response.ok) throw new Error(data.error || 'No se pudo preparar el resumen.');
+            if (!data.hay_novedades) {
+                mostrarEstado('No hay hallazgos vencidos ni próximos a vencer para esta área.', 'alert-secondary');
+                return;
+            }
+            previewToken = data.preview_token;
+            telefono.value = data.telefono || '';
+            avisoContacto.classList.toggle('d-none', data.contacto_configurado);
+            mensaje.value = data.mensaje;
+            document.getElementById('contexto-modal').textContent = data.empresa + ' · ' + data.area + ' — ' + data.total_vencidos + ' vencidos y ' + data.total_por_vencer + ' por vencer.';
+            mostrarEstado('Resumen listo: ' + data.total_vencidos + ' vencidos y ' + data.total_por_vencer + ' por vencer. Revisá el mensaje antes de enviarlo.', 'alert-success');
+            modal.modal('show');
+        } catch (error) {
+            if (version === requestVersion) mostrarEstado(error.message, 'alert-warning');
+        }
+    });
+
+    botonEnviar.addEventListener('click', async function () {
+        if (!previewToken || !telefono.value.trim()) {
+            resultadoEnvio.textContent = 'Revisá el número de destino antes de enviar.';
+            resultadoEnvio.className = 'alert alert-warning';
+            return;
+        }
+        botonEnviar.disabled = true;
+        resultadoEnvio.textContent = 'Enviando…';
+        resultadoEnvio.className = 'alert alert-info';
+        const body = new URLSearchParams();
+        body.set('preview_token', previewToken);
+        body.set('telefono', telefono.value);
+        try {
+            const response = await fetch(root.dataset.sendUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: body.toString()
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'No se pudo enviar el mensaje.');
+            resultadoEnvio.textContent = data.mensaje + (data.message_id ? ' ID: ' + data.message_id : '');
+            resultadoEnvio.className = 'alert alert-success';
+            botonEnviar.textContent = 'Enviado';
+        } catch (error) {
+            resultadoEnvio.textContent = error.message;
+            resultadoEnvio.className = 'alert alert-danger';
+            botonEnviar.disabled = false;
+        }
+    });
+})();
+</script>
+{% endblock extra_js %}
