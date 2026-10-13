@@ -1,10 +1,16 @@
 from functools import wraps
+import hashlib
 import secrets
+from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.core import signing
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import render
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from syh.models import Area, Cliente
@@ -12,12 +18,27 @@ from utiles.alertas_hallazgos import (
     SeleccionEmpresaAreaInvalida,
     construir_resumen_hallazgos_whatsapp,
 )
-from utiles.models import AreaWhatsAppContacto
+from utiles.models import AreaWhatsAppContacto, EnlacePublicoHallazgos
 from utiles.notificaciones import WhatsAppClient, WhatsAppError
 
 
 PREVIEW_SALT = "utiles.whatsapp_hallazgos.preview"
 PREVIEW_MAX_AGE = 300
+ENLACE_PUBLICO_DIAS = 14
+
+
+def _url_hallazgos_publicos(token):
+    ruta = reverse("utiles:hallazgos_publicos")
+    base = settings.WHATSAPP_PUBLIC_BASE_URL.rstrip("/")
+    return f"{base}{ruta}#{token}"
+
+
+def _respuesta_publica(response):
+    response["Cache-Control"] = "private, no-store, max-age=0"
+    response["Pragma"] = "no-cache"
+    response["Referrer-Policy"] = "no-referrer"
+    response["X-Robots-Tag"] = "noindex, nofollow, noarchive"
+    return response
 
 
 def superusuario_requerido(view):
@@ -81,14 +102,21 @@ def whatsapp_hallazgos_preview(request):
     except AreaWhatsAppContacto.DoesNotExist:
         contacto = None
 
+    public_token = secrets.token_urlsafe(32)
+    public_url = _url_hallazgos_publicos(public_token)
+    mensaje = f"{resumen.mensaje}\n\nVer todos los hallazgos: {public_url}"
     data = {
         "cliente_id": str(cliente_id),
         "area_id": str(area_id),
-        "mensaje": resumen.mensaje,
+        "mensaje_resumen": resumen.mensaje,
+        "mensaje": mensaje,
+        "public_token": public_token,
         "nonce": secrets.token_urlsafe(18),
     }
     response["telefono"] = contacto.telefono if contacto else ""
     response["contacto_configurado"] = contacto is not None
+    response["mensaje"] = mensaje
+    response["enlace_publico"] = public_url
     response["preview_token"] = signing.dumps(data, salt=PREVIEW_SALT)
     return JsonResponse(response)
 
@@ -117,8 +145,14 @@ def whatsapp_hallazgos_send(request):
 
     if not resumen.hay_novedades:
         return JsonResponse({"error": "Ya no hay hallazgos vencidos o próximos a vencer para enviar."}, status=409)
-    if resumen.mensaje != preview.get("mensaje"):
+    if resumen.mensaje != preview.get("mensaje_resumen"):
         return JsonResponse({"error": "Los hallazgos cambiaron desde la vista previa. Actualizá el resumen antes de enviar."}, status=409)
+
+    public_token = preview.get("public_token", "")
+    if not public_token or preview.get("mensaje") != (
+        f"{resumen.mensaje}\n\nVer todos los hallazgos: {_url_hallazgos_publicos(public_token)}"
+    ):
+        return JsonResponse({"error": "El enlace de consulta no es válido. Volvé a preparar el resumen."}, status=400)
 
     cliente = WhatsAppClient()
     try:
@@ -129,6 +163,23 @@ def whatsapp_hallazgos_send(request):
         }, status=400)
     if len(telefono_destino) < 10 or len(telefono_destino) > 15:
         return JsonResponse({"error": "El número internacional tiene una longitud inválida."}, status=400)
+
+    token_hash = hashlib.sha256(public_token.encode("utf-8")).hexdigest()
+    enlace, _ = EnlacePublicoHallazgos.objects.get_or_create(
+        token_hash=token_hash,
+        defaults={
+            "area_id": preview["area_id"],
+            "cliente_id": preview["cliente_id"],
+            "expires_at": timezone.now() + timedelta(days=ENLACE_PUBLICO_DIAS),
+        },
+    )
+    if (
+        enlace.area_id != preview["area_id"]
+        or enlace.cliente_id != preview["cliente_id"]
+        or enlace.revoked_at is not None
+        or enlace.expires_at <= timezone.now()
+    ):
+        return JsonResponse({"error": "El enlace venció o fue revocado. Volvé a preparar el resumen."}, status=409)
 
     try:
         resultado = cliente.enviar_texto(
@@ -150,3 +201,59 @@ def whatsapp_hallazgos_send(request):
         "message_id": resultado.get("messageId"),
         "mensaje": "WhatsApp aceptó el mensaje. Esto no confirma que el destinatario lo haya leído.",
     })
+
+
+@never_cache
+@require_GET
+def hallazgos_publicos_page(request):
+    response = render(
+        request,
+        "pages/utiles/hallazgos_publicos.html",
+        {"datos_url": reverse("utiles:hallazgos_publicos_datos")},
+    )
+    return _respuesta_publica(response)
+
+
+@never_cache
+@require_GET
+def hallazgos_publicos_datos(request):
+    authorization = request.headers.get("Authorization", "")
+    esquema, _, token = authorization.partition(" ")
+    if esquema.lower() != "bearer" or not token.strip():
+        return _respuesta_publica(JsonResponse({"error": "El enlace no es válido o ya venció."}, status=404))
+
+    token_hash = hashlib.sha256(token.strip().encode("utf-8")).hexdigest()
+    enlace = EnlacePublicoHallazgos.objects.filter(
+        token_hash=token_hash,
+        revoked_at__isnull=True,
+        expires_at__gt=timezone.now(),
+    ).select_related("area", "area__cliente").first()
+    if enlace is None:
+        return _respuesta_publica(JsonResponse({"error": "El enlace no es válido o ya venció."}, status=404))
+
+    try:
+        resumen = construir_resumen_hallazgos_whatsapp(enlace.cliente_id, enlace.area_id)
+    except SeleccionEmpresaAreaInvalida:
+        return _respuesta_publica(JsonResponse({"error": "El enlace no es válido o ya venció."}, status=404))
+
+    def serializar(movimientos):
+        return [
+            {
+                "fecha": movimiento.fecha_cumplimiento.isoformat(),
+                "estado": movimiento.estado,
+                "descripcion": movimiento.hallazgo or "Sin descripción",
+            }
+            for movimiento in movimientos
+        ]
+
+    payload = {
+        "empresa": resumen.cliente,
+        "area": resumen.area,
+        "actualizado": timezone.localtime().strftime("%d/%m/%Y %H:%M"),
+        "vence": timezone.localtime(enlace.expires_at).strftime("%d/%m/%Y"),
+        "total_vencidos": resumen.total_vencidos,
+        "total_por_vencer": resumen.total_por_vencer,
+        "vencidos": serializar(resumen.vencidos),
+        "por_vencer": serializar(resumen.por_vencer),
+    }
+    return _respuesta_publica(JsonResponse(payload))

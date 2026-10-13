@@ -46,6 +46,14 @@ El texto será breve e incluirá el nombre de la empresa, el área, los totales 
 
 El modal muestra el mensaje final en un campo de solo lectura; el número de destino sí es editable. La edición del texto del mensaje queda fuera de alcance.
 
+## Enlace público con el detalle completo
+
+El mensaje de WhatsApp incluye un enlace a una página de consulta de solo lectura que muestra todos los movimientos incluidos en el resumen: vencidos y con vencimiento entre hoy y los próximos cinco días. Cada fila muestra descripción completa, estado y fecha de cumplimiento; no se exponen responsables, emails ni otros datos de contacto. La página consulta el estado actual al abrirse.
+
+El enlace usa un token aleatorio de alta entropía, queda limitado a la empresa y área seleccionadas, vence a los 14 días y puede revocarse desde Django Admin. En la base de datos se guarda solo el hash del token. El token viaja en el fragmento del enlace (`#token`) y el navegador lo envía al endpoint de lectura mediante `Authorization: Bearer`; así no aparece en la ruta, la query, el referer ni los registros habituales de acceso. La página y su respuesta no se indexan ni se cachean. Cualquier persona que reciba el enlace puede consultar los datos hasta que venza o se revoque.
+
+La página pública usa el dominio HTTPS canónico y el logo de AN & Asociados, con diseño adaptable a celulares y escritorio. El enlace solo se activa cuando se confirma el envío del WhatsApp.
+
 ## Errores y datos sensibles
 
 - Un teléfono vacío o inválido impide enviar. La falta de un teléfono guardado no impide abrir el modal: el superusuario puede ingresar un número para ese envío.
@@ -73,3 +81,5 @@ El modal muestra el mensaje final en un campo de solo lectura; el número de des
 7. El mensaje se envía al número editado para esa solicitud y se informa el resultado del gateway.
 8. Si no hay teléfono válido o no hay hallazgos aplicables, no se envía; el teléfono no necesita estar guardado previamente.
 9. La API key no se expone en respuestas, la interfaz ni registros.
+10. El WhatsApp incluye el enlace al detalle completo; el acceso vence a los 14 días, se puede revocar y no requiere iniciar sesión.
+11. La página lista todos los hallazgos del criterio del resumen, usa el dominio HTTPS y no muestra otros datos personales.

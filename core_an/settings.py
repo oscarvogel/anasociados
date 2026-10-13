@@ -42,7 +42,16 @@ DEBUG = str2bool(os.environ.get('DEBUG'))
 ALLOWED_HOSTS = ['*']
 
 # Add here your deployment HOSTS
-CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://localhost:5085', 'http://127.0.0.1:8000', 'http://127.0.0.1:5085']
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://localhost:5085',
+    'http://127.0.0.1:8000',
+    'http://127.0.0.1:5085',
+    'https://portal.anasociados.com.ar',
+]
+
+# TLS terminates at Nginx; trust its forwarded scheme for secure request checks.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
@@ -289,6 +298,9 @@ WHATSAPP_API_URL = os.getenv('WHATSAPP_API_URL', 'https://whatsapp.vogelconsulto
 WHATSAPP_API_KEY = os.getenv('WHATSAPP_API_KEY', '')
 WHATSAPP_INSTANCE_ID = os.getenv('WHATSAPP_INSTANCE_ID', 'default')
 WHATSAPP_API_TIMEOUT = int(os.environ.get('WHATSAPP_API_TIMEOUT', '15'))
+WHATSAPP_PUBLIC_BASE_URL = os.environ.get(
+    'WHATSAPP_PUBLIC_BASE_URL', 'https://portal.anasociados.com.ar'
+).rstrip('/')
 # Numeros que reciben las alertas, separados por coma, internacional sin +:
 # ALERTA_WHATSAPP_DESTINATARIOS=5493764000000,5491155555555
 ALERTA_WHATSAPP_DESTINATARIOS = os.environ.get('ALERTA_WHATSAPP_DESTINATARIOS', '')

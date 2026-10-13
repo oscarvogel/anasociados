@@ -111,3 +111,18 @@
 - [ ] Add a superuser-only sidebar entry to the new page.
 - [ ] Run `python manage.py check` and review the final diff for permission enforcement, CSRF, and absence of credentials in templates or JavaScript.
 - [ ] Commit as `feat: agregar pantalla para enviar resumenes WhatsApp`.
+
+### Task 5: Include a revocable public detail link in each WhatsApp
+
+**Files:**
+- Modify: `utiles/models.py`, `utiles/admin.py`, `utiles/views.py`, `utiles/urls.py`
+- Create: `utiles/migrations/0002_enlacepublicohallazgos.py`
+- Create: `templates/pages/utiles/hallazgos_publicos.html`
+- Modify: `core_an/settings.py`, `.env.example`
+
+- [ ] Persist a SHA-256 hash of a random bearer token, company and area scope, creation/expiration timestamps, and revocation timestamp; expire links after 14 days.
+- [ ] Put the token in the URL fragment and fetch page data in a same-origin `Authorization: Bearer` request; return no sensitive data without a valid, unexpired, unrevoked token.
+- [ ] Activate the token as part of the confirmed WhatsApp send, append its canonical HTTPS link to the message, and preserve the existing preview signature and idempotency reference.
+- [ ] Render every overdue and next-five-day finding with full description, state, and due date, using the AN logo and a responsive read-only page.
+- [ ] Expose superuser-only revocation in Django Admin; set no-store, no-referrer, and noindex headers on the public page and data endpoint.
+- [ ] Apply the migration after a database backup and verify Django/Nginx configuration and HTTPS behavior.
