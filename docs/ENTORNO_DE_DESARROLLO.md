@@ -7,18 +7,27 @@ proyecto no era instalable ni reproducible.
 
 ## Que se necesita
 
-- Python 3.11 (probado) con `uv` para crear el entorno
+- Python 3.12 (probado) con `uv` para crear el entorno
 - MySQL 8.x para las pruebas (opcional: sin BD el proyecto cae a SQLite)
 
-## Dependencias reales
+## Dependencias
 
-`requirements.txt` esta incompleto. El set que el proyecto importa de verdad
-incluye, ademas de lo que ya figura:
+`requirements.txt` esta pineado completo (30 paquetes directos mas sus
+transitivas criticas), asi que alcanza con:
+
+```powershell
+python -m uv python install 3.12
+python -m uv venv --python 3.12 .venv
+python -m uv pip install --python .venv -r requirements.txt
+```
+
+Antes el archivo listaba 10 paquetes y el proyecto no era instalable. Los que
+faltaban y mas importan:
 
 | Paquete | Para que |
 |---|---|
-| `django` | el framework (no estaba fijado: ver la nota de versiones) |
-| `djangorestframework` | `rest_framework`, visteas y serializers |
+| `django` | el framework, ahora **fijado en 5.2.18 LTS** |
+| `djangorestframework` | `rest_framework`, vistas y serializers |
 | `pymysql` | backend MySQL (`install_as_MySQLdb`) |
 | `cryptography` | **obligatorio** si el MySQL usa `caching_sha2_password` (MySQL 8) |
 | `celery`, `kombu`, `django-celery-results` | tareas asincronas y broker |
@@ -26,15 +35,6 @@ incluye, ademas de lo que ya figura:
 | `reportlab`, `pillow` | PDFs e imagenes (`utiles/impresiones.py`) |
 | `unidecode` | `syh/models.py` |
 | `requests`, `mysql-connector-python` | sincronizacion con Airtable |
-
-Instalacion con `uv`:
-
-```powershell
-python -m uv python install 3.11
-python -m uv venv --python 3.11 .venv
-python -m uv pip install --python .venv -r requirements.txt
-# ...mas las dependencias de la tabla de arriba
-```
 
 ## Correr sin tocar la base real
 
@@ -117,8 +117,28 @@ alcanzo a crear queda en la base y la siguiente corrida falla con
 
 ## Nota sobre versiones de Django
 
-El repo tiene migraciones generadas por Django **4.1.2, 5.0.1, 5.1 y 5.1.1**,
-y `requirements.txt` no fija la version. El codigo se valido con **4.1.13** y
-**5.0.1** (check limpio, migraciones al dia y suite funcional pasando en
-ambas), pero conviene fijar una sola version en `requirements.txt` para que los
-entornos no divergan.
+El repo arrastraba migraciones generadas por Django **4.1.2, 5.0.1, 5.1 y
+5.1.1**, y `requirements.txt` no fijaba la version, asi que cada entorno
+instalaba la que le de la gana.
+
+Ademas, **todas** esas versiones estan fuera de soporte:
+
+| Version | Fin de soporte |
+|---|---|
+| 4.1 | diciembre 2023 |
+| 4.2 LTS | abril 2026 |
+| 5.0 | abril 2025 |
+| 5.1 | diciembre 2025 |
+
+O sea, el proyecto venia operando sin parches de seguridad. Ahora
+`requirements.txt` fija **Django 5.2.18 LTS**, soportado hasta abril 2028 y
+compatible con Python 3.10 a 3.14.
+
+Verificado con `manage.py check`, `migrate` y la suite funcional contra MySQL
+real: primero con 4.1.13 y 5.0.1, para confirmar que el codigo no dependia de
+una version en particular, y despues con un venv instalado desde cero usando
+el `requirements.txt` nuevo (5.2.18). Los tres dieron lo mismo.
+
+Al desplegar en el VPS hay que actualizar el venv de `/var/www/venv` y correr
+`migrate`. `migrate --plan` contra la base de produccion responde *"No planned
+migration operations"*, asi que el unico cambio real es el de las librerias.

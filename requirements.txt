@@ -1,20 +1,58 @@
 # Core
-python-dotenv==1.0.1
+# Django 5.2 LTS: soportado hasta abril 2028. La 4.1 que usaba el proyecto
+# esta en EOL desde diciembre 2023 (sin parches de seguridad).
+# Validado con 'manage.py check', 'migrate' y la suite funcional contra MySQL.
+django==5.2.18
+python-dotenv==1.1.1
 str2bool==1.1
 
-# UI 
-django-admin-datta==1.0.10
+# UI
+django-admin-datta==1.0.19
 
 # Tooling
-django-dynamic-datatb==1.0.25
-django-api-generator==1.0.17
-django-debug-toolbar==4.2.0
-openpyxl==3.1.2
+django-dynamic-datatb==1.0.26
+django-api-generator==1.0.18
+django-debug-toolbar==6.0.0
 
-# Deployment
-whitenoise==6.6.0
-gunicorn==21.2.0
+# API
+djangorestframework==3.16.1
 
 # DB Layer
-# psycopg2-binary
-# mysqlclient
+pymysql==1.1.2
+# Imprescindible: sin el, PyMySQL no puede autenticarse contra MySQL 8
+# con caching_sha2_password, que es el default de MySQL 8.
+cryptography==50.0.2
+# Solo para la sincronizacion con Airtable (utiles/sync_airtable_to_mysql.py)
+mysql-connector-python==9.4.0
+
+# Celery (broker RabbitMQ)
+celery==5.5.3
+django-celery-results==2.6.0
+# Transitivas fijadas: si flotan, un pip install nuevo puede romper el worker
+kombu==5.5.4
+amqp==5.4.1
+billiard==4.3.1
+vine==5.1.0
+tzdata==2026.5
+
+# Graficos, PDF e imagenes
+matplotlib==3.10.8
+numpy==2.3.4
+reportlab==4.4.4
+pillow==11.3.0
+
+# Exports y varios
+openpyxl==3.1.5
+# Importado por syh/models.py
+unidecode==1.3.8
+# Sincronizacion con Airtable
+requests==2.32.5
+
+# Deployment
+whitenoise==6.11.0
+gunicorn==23.0.0
+
+# Transitivas de Django/DRF (fijadas para installs reproducibles)
+asgiref==3.12.1
+sqlparse==0.6.0
+typing-extensions==4.16.0
