@@ -4,11 +4,11 @@
 {% block content %}
 <meta name="csrf-token" content="{{ csrf_token }}">
 <div id="app-gastos-movil" class="container mt-4">
-    <h5 class="an-page-title">Gastos de Móviles</h5>
+    <h5 class="an-page-title an-page-header__title">Gastos de móviles</h5>
     <div class="an-filter-bar">
     <div class="row mb-2">
         <div class="col-md-6">
-            <input v-model="searchQuery" @input="onSearch" class="form-control" placeholder="Buscar por móvil, cliente o descripción" />
+            <input v-model="searchQuery" @input="onSearch" class="form-control an-field" placeholder="Buscar por móvil, cliente o descripción" />
         </div>
         <div class="col-md-6 text-right">
             <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> Agregar Gasto</button>
@@ -69,7 +69,7 @@
     <!-- Modal para Agregar/Editar Gastos de Móvil -->
     <div class="modal" tabindex="-1" role="dialog" id="modal-form">
         <div class="modal-dialog" role="document">
-            <div class="modal-content">
+            <div class="modal-content an-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">[[ modalTitle ]]</h5>
                     <button type="button" class="close" @click="closeModal">
@@ -80,51 +80,51 @@
                     <form @submit.prevent="saveGastoMovil">
                         <div class="form-group">
                             <label for="movil">Móvil</label>
-                            <select v-model="formData.movil" class="form-control" required>
+                            <select v-model="formData.movil" class="form-control an-field" required>
                                 <option value="">-- Seleccione un Móvil --</option>
                                 <option v-for="movil in moviles" :key="movil.id" :value="movil.id">[[ movil.patente ]]</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="cliente">Cliente</label>
-                            <select v-model="formData.cliente" class="form-control">
+                            <select v-model="formData.cliente" class="form-control an-field">
                                 <option value="">-- Seleccione un Cliente --</option>
                                 <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">[[ cliente.nombre ]]</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="centro_costos">Centro de Costos</label>
-                            <select v-model="formData.centro_costos" class="form-control" required>
+                            <select v-model="formData.centro_costos" class="form-control an-field" required>
                                 <option value="">-- Seleccione un Centro de Costos --</option>
                                 <option v-for="centro in centros_costos" :key="centro.id" :value="centro.id">[[ centro.descripcion ]]</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="area">Área</label>
-                            <select v-model="formData.area" class="form-control">
+                            <select v-model="formData.area" class="form-control an-field">
                                 <option value="">-- Seleccione un Área --</option>
                                 <option v-for="area in filteredAreas" :key="area.id" :value="area.id">[[ area.detalle ]]</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="fecha">Fecha</label>
-                            <input v-model="formData.fecha" class="form-control" type="date" required>
+                            <input v-model="formData.fecha" class="form-control an-field" type="date" required>
                         </div>                        
                         <div class="form-group">
                             <label for="descripcion">Descripción</label>
-                            <input v-model="formData.descripcion" class="form-control" type="text" required>
+                            <input v-model="formData.descripcion" class="form-control an-field" type="text" required>
                         </div>
                         <div class="form-group">
                             <label for="importe">Importe</label>
-                            <input v-model="formData.importe" class="form-control" type="number" step="0.01" required>
+                            <input v-model="formData.importe" class="form-control an-field" type="number" step="0.01" required>
                         </div>
                         <div class="form-group">
                             <label for="litros">Litros</label>
-                            <input v-model="formData.litros" class="form-control" type="number" step="0.01">
+                            <input v-model="formData.litros" class="form-control an-field" type="number" step="0.01">
                         </div>
                         <div class="form-group">
                             <label for="comprobante">Comprobante</label>
-                            <input v-model="formData.comprobante" class="form-control" type="text">
+                            <input v-model="formData.comprobante" class="form-control an-field" type="text">
                         </div>
                         <button type="submit" class="btn btn-success">[[ modalButtonLabel ]]</button>
                     </form>

@@ -8,22 +8,23 @@
     <meta name="referrer" content="no-referrer">
     <title>Seguimiento de hallazgos | AN &amp; Asociados</title>
     <link rel="icon" href="{% static 'assets/images/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'src/css/an-custom.css' %}">
     <style>
         :root {
             color-scheme: light;
-            --ink: #18302f;
-            --muted: #667779;
-            --brand: #17433d;
-            --brand-deep: #102f2c;
-            --mint: #dceee8;
-            --paper: #f3f6f5;
-            --line: #dce5e2;
+            --ink: var(--an-color-text);
+            --muted: var(--an-color-muted);
+            --brand: var(--an-color-primary);
+            --brand-deep: var(--an-color-primary-strong);
+            --mint: var(--an-color-surface-soft);
+            --paper: #f7f9f4;
+            --line: var(--an-color-border);
             --white: #fff;
-            --danger: #a64234;
+            --danger: var(--an-color-danger);
             --danger-soft: #fff0ec;
-            --amber: #946012;
+            --amber: var(--an-color-warning);
             --amber-soft: #fff6df;
-            --shadow: 0 18px 46px rgba(25, 55, 51, .08);
+            --shadow: 0 18px 46px rgb(44 74 29 / 9%);
         }
         * { box-sizing: border-box; }
         body {
@@ -147,11 +148,11 @@
         }
     </style>
 </head>
-<body data-datos-url="{{ datos_url }}">
+<body class="an-public" data-datos-url="{{ datos_url }}">
     <div class="shell">
         <header class="masthead">
             <div class="brand">
-                <img src="{% static 'assets/images/icono_almada_neri.png' %}" alt="AN &amp; Asociados">
+                <img src="{% static 'assets/images/logo_almada_neri.png' %}" alt="AN &amp; Asociados">
                 <div>
                     <div class="brand-name">AN &amp; Asociados</div>
                     <div class="brand-caption">Consultoría y Servicios</div>

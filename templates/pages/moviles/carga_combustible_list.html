@@ -7,11 +7,11 @@
 
 <meta name="csrf-token" content="{{ csrf_token }}">
 <div id="app-combustible" class="container mt-4">
-    <h5 class="an-page-title">Carga de Combustible</h5>
+    <h5 class="an-page-title an-page-header__title">Carga de combustible</h5>
     <div class="an-filter-bar">
     <div class="row mb-2">
         <div class="col-md-6">
-            <input v-model="searchQuery" @input="onSearch" class="form-control" placeholder="Buscar por chofer, patente o empresa" />
+            <input v-model="searchQuery" @input="onSearch" class="form-control an-field" placeholder="Buscar por chofer, patente o empresa" />
         </div>
         <div class="col-md-6 text-right">
             <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> </button>
@@ -72,7 +72,7 @@
     <!-- Modal para Agregar/Editar Tipo vencimiento... -->
     <div class="modal" tabindex="-1" role="dialog" id="modal-form">
         <div class="modal-dialog" role="document">
-            <div class="modal-content">
+            <div class="modal-content an-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">[[ modalTitle ]]</h5>
                     <button type="button" class="close" @click="closeModal">
@@ -83,7 +83,7 @@
                     <form @submit.prevent="saveCargaCombustible">
                         <div class="form-group">
                             <label for="movil">Movil</label>
-                            <select v-model="formData.movil" class="form-control">
+                            <select v-model="formData.movil" class="form-control an-field">
                                 <option value="">-- Seleccione un Movil --</option>
                                 <option v-for="movil in moviles" :key="movil.id" :value="movil.id">[[ movil.patente ]]</option>
                             </select>
@@ -91,7 +91,7 @@
 
                         <div class="form-group">
                             <label for="chofer">Chofer</label>
-                            <select v-model="formData.chofer" class="form-control">
+                            <select v-model="formData.chofer" class="form-control an-field">
                                 <option value="">-- Seleccione un Chofer --</option>
                                 <option v-for="chofer in choferes" :key="chofer.id" :value="chofer.id">[[ chofer.apellido ]] [[ chofer.nombre ]]</option>
                             </select>
@@ -99,7 +99,7 @@
 
                         <div class="form-group">
                             <label for="tipo_combustible">Tipo de combustible</label>
-                            <select v-model="formData.tipo_combustible" class="form-control">
+                            <select v-model="formData.tipo_combustible" class="form-control an-field">
                                 <option value="">-- Seleccione un Tipo combustible --</option>
                                 <option value="Super">Super</option>
                                 <option value="Infinia Nafta">Infinia Nafta</option>
@@ -111,22 +111,22 @@
 
                         <div class="form-group">
                             <label for="fecha">Fecha Carga</label>
-                            <input v-model="formData.fecha" class="form-control" type="date">
+                            <input v-model="formData.fecha" class="form-control an-field" type="date">
                         </div>                        
                       
                         <div class="form-group">
                             <label for="km_hora">Km / Hr</label>
-                            <input v-model="formData.km_hora" class="form-control" type="number">
+                            <input v-model="formData.km_hora" class="form-control an-field" type="number">
                         </div>
 
                         <div class="form-group">
                             <label for="litros">Litros</label>
-                            <input v-model="formData.litros" class="form-control" type="number">
+                            <input v-model="formData.litros" class="form-control an-field" type="number">
                         </div>
 
                         <div class="form-group">
                             <label for="importe">Precio x Lt</label>
-                            <input v-model="formData.importe" class="form-control" type="number">
+                            <input v-model="formData.importe" class="form-control an-field" type="number">
                         </div>
 
                         <button type="submit" class="btn btn-success">[[ modalButtonLabel ]]</button>

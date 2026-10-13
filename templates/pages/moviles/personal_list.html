@@ -7,11 +7,11 @@
 
 <meta name="csrf-token" content="{{ csrf_token }}">
 <div id="app-personal" class="container mt-4">
-    <h5 class="an-page-title">Personal</h5>
+    <h5 class="an-page-title an-page-header__title">Personal</h5>
     <div class="an-filter-bar">
     <div class="row mb-2">
         <div class="col-md-6">
-            <input v-model="searchQuery" @input="onSearch" class="form-control" placeholder="Buscar por nombre, apellido o empresa" />
+            <input v-model="searchQuery" @input="onSearch" class="form-control an-field" placeholder="Buscar por nombre, apellido o empresa" />
         </div>
         <div class="col-md-6 text-right">
             <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> </button>
@@ -56,7 +56,7 @@
     <!-- Modal para Agregar/Editar Tipo vencimiento... -->
     <div class="modal" tabindex="-1" role="dialog" id="modal-form">
         <div class="modal-dialog" role="document">
-            <div class="modal-content">
+            <div class="modal-content an-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">[[ modalTitle ]]</h5>
                     <button type="button" class="close" @click="closeModal">Cerrar
@@ -67,32 +67,32 @@
                     <form @submit.prevent="savePersonal">
                         <div class="form-group">
                             <label for="apellido">Apellido</label>
-                            <input v-model="formData.apellido" class="form-control">
+                            <input v-model="formData.apellido" class="form-control an-field">
                         </div>
 
                         <div class="form-group">
                             <label for="nombre">Nombre</label>
-                            <input v-model="formData.nombre" class="form-control">
+                            <input v-model="formData.nombre" class="form-control an-field">
                         </div>
 
                         <div class="form-group">
                             <label for="dni">DNI</label>
-                            <input v-model="formData.dni" class="form-control" type="number">
+                            <input v-model="formData.dni" class="form-control an-field" type="number">
                         </div>
 
                         <div class="form-group">
                             <label for="cuit">CUIT</label>
-                            <input v-model="formData.cuit" class="form-control" type="number">
+                            <input v-model="formData.cuit" class="form-control an-field" type="number">
                         </div>
 
                         <div class="form-group">
                             <label for="fecha">Fecha Nacimiento</label>
-                            <input v-model="formData.fecha_nacimiento" class="form-control" type="date">
+                            <input v-model="formData.fecha_nacimiento" class="form-control an-field" type="date">
                         </div>
 
                         <div class="form-group">
                             <label for="empresa">Empresa</label>
-                            <select v-model="formData.empresa" class="form-control">
+                            <select v-model="formData.empresa" class="form-control an-field">
                                 <option value="">-- Seleccione una Empresa --</option>
                                 <option v-for="empresa in empresas" :key="empresa.id" :value="empresa.id">[[ empresa.nombre ]]</option>
                             </select>

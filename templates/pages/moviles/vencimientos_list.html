@@ -7,11 +7,11 @@
 
 <meta name="csrf-token" content="{{ csrf_token }}">
 <div id="app-vencimientos" class="container mt-4">
-    <h5 class="an-page-title">Vencimientos de Móviles</h5>
+    <h5 class="an-page-title an-page-header__title">Vencimientos de móviles</h5>
     <div class="an-filter-bar">
     <div class="row mb-2">
         <div class="col-md-6">
-            <input v-model="searchQuery" @input="onSearch" class="form-control" placeholder="Buscar por detalle, móvil o tipo de vencimiento" />
+            <input v-model="searchQuery" @input="onSearch" class="form-control an-field" placeholder="Buscar por detalle, móvil o tipo de vencimiento" />
         </div>
         <div class="col-md-6 text-right">
             <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> </button>
@@ -54,7 +54,7 @@
     <!-- Modal para Agregar/Editar Tipo vencimiento... -->
     <div class="modal" tabindex="-1" role="dialog" id="modal-form">
         <div class="modal-dialog" role="document">
-            <div class="modal-content">
+            <div class="modal-content an-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">[[ modalTitle ]]</h5>
                     <button type="button" class="close" @click="closeModal">
@@ -65,17 +65,17 @@
                     <form @submit.prevent="saveVencimiento">
                         <div class="form-group">
                             <label for="detalle">Detalle</label>
-                            <input v-model="formData.detalle" class="form-control">
+                            <input v-model="formData.detalle" class="form-control an-field">
                         </div>
 
                         <div class="form-group">
                             <label for="fecha">Fecha</label>
-                            <input v-model="formData.fecha" class="form-control" type="date">
+                            <input v-model="formData.fecha" class="form-control an-field" type="date">
                         </div>
 
                         <div class="form-group">
                             <label for="movil">Movil</label>
-                            <select v-model="formData.movil" class="form-control">
+                            <select v-model="formData.movil" class="form-control an-field">
                                 <option value="">-- Seleccione un movil --</option>
                                 <option v-for="movil in moviles" :key="movil.id" :value="movil.id">[[ movil.patente ]]</option>
                             </select>
@@ -83,7 +83,7 @@
 
                         <div class="form-group">
                             <label for="tipo_vencimiento">Tipo Vencimiento</label>
-                            <select v-model="formData.tipo_vencimiento" class="form-control">
+                            <select v-model="formData.tipo_vencimiento" class="form-control an-field">
                                 <option value="">-- Seleccione un tipo de vencimiento --</option>
                                 <option v-for="tipo in tipos" :key="tipo.id" :value="tipo.id">[[ tipo.nombre ]]</option>
                             </select>

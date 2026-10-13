@@ -21,9 +21,9 @@
                     <h5 class="m-b-10">{{ opts.verbose_name_plural|capfirst }}</h5>
                   </div>
                   <ul class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="#"><i class="feather icon-home"></i></a></li>
-                    <li class="breadcrumb-item"><a href="javascript:">{{ opts.app_config.verbose_name }}</a></li>
-                    <li class="breadcrumb-item"><a href="javascript:">{{ opts.verbose_name_plural|capfirst }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'admin:index' %}" aria-label="Administración"><i class="feather icon-home"></i></a></li>
+                    <li class="breadcrumb-item">{{ opts.app_config.verbose_name }}</li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ opts.verbose_name_plural|capfirst }}</li>
                   </ul>
                 </div>
               </div>
@@ -58,8 +58,8 @@
 
     <div class="row">
         <div class="col-12 mb-4">
-            <div class="card">
-                <div class="card-body">
+            <div class="card an-card">
+                <div class="card-body an-card-body">
                     <form {% if has_file_field %}enctype="multipart/form-data" {% endif %}action="{{ form_url }}"
                           method="post" id="{{ opts.model_name }}_form" novalidate>
 

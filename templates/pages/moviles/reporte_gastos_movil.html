@@ -7,20 +7,20 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h5 class="an-page-title">Reporte de Gastos por Móvil</h5>
+    <h5 class="an-page-title an-page-header__title">Reporte de gastos por móvil</h5>
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
+            <div class="card an-card">
+                <div class="card-header an-card-header">
                     <h5 class="card-title">Filtros</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body an-card-body">
                     <form id="filterForm">
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="empresa">Empresa</label>
-                                    <select class="form-control" id="empresa" name="empresa">
+                                    <select class="form-control an-field" id="empresa" name="empresa">
                                         <option value="">Todas</option>
                                         {% for empresa in empresas %}
                                         <option value="{{ empresa.id }}">{{ empresa.nombre }}</option>
@@ -31,13 +31,13 @@
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label for="start_date">Fecha Desde</label>
-                                    <input type="date" class="form-control" id="start_date" name="start_date">
+                                    <input type="date" class="form-control an-field" id="start_date" name="start_date">
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label for="end_date">Fecha Hasta</label>
-                                    <input type="date" class="form-control" id="end_date" name="end_date">
+                                    <input type="date" class="form-control an-field" id="end_date" name="end_date">
                                 </div>
                             </div>
                             <div class="col-md-2">
@@ -56,22 +56,22 @@
     </div>
     <div class="row">
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
+            <div class="card an-card">
+                <div class="card-header an-card-header">
                     <h3 class="card-title">Distribución por Centro de Costos</h3>
                 </div>
-                <div class="card-body">
-                    <canvas id="pieChart" style="max-width: 100%; max-height: 300px;"></canvas>
+                <div class="card-body an-card-body">
+                    <canvas id="pieChart" class="an-report-chart"></canvas>
                 </div>
             </div>
         </div>
         <!-- Tabla para porcentajes -->
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
+            <div class="card an-card">
+                <div class="card-header an-card-header">
                     <h3 class="card-title">Porcentajes</h3>
                 </div>
-                <div class="card-body">
+                <div class="card-body an-card-body">
                     <table id="porcentajesTable" class="table table-bordered table-sm text-center">
                         <thead>
                             <tr>
@@ -92,11 +92,11 @@
 
     <div class="row">
         <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
+            <div class="card an-card">
+                <div class="card-header an-card-header">
                     <h3 class="card-title">Gastos</h3>
                 </div>
-                <div class="card-body">
+                <div class="card-body an-card-body">
                     <table id="gastosTable" class="table table-bordered table-striped">
                         <thead>
                             <tr>
@@ -204,13 +204,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         datasets: [{
                             data: values,
                             backgroundColor: [
-                                '#4e73df',
-                                '#1cc88a',
-                                '#36b9cc',
-                                '#f6c23e',
-                                '#e74a3b',
-                                '#858796',
-                                '#fd7e14'
+                                '#2c4a1d',
+                                '#3b5d30',
+                                '#556b2f',
+                                '#789b61',
+                                '#90a878',
+                                '#315e70',
+                                '#287044'
                             ]
                         }]
                     },

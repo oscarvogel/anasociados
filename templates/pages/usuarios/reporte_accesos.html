@@ -1,40 +1,23 @@
 {% extends "layouts/base.html" %}
 {% block title %} Reporte de Accesos {% endblock title %}
 
-{% block content %}
-<div class="pcoded-content">
-  <div class="pcoded-inner-content">
-    <div class="main-body">
-      <div class="page-wrapper">
+{% block breadcrumbs %}{% endblock breadcrumbs %}
 
-        <div class="page-header">
-          <div class="page-block">
-            <div class="row align-items-center">
-              <div class="col-md-12">
-                <div class="page-header-title">
-                  <h5 class="m-b-10">Reporte de accesos</h5>
-                </div>
-                <ul class="breadcrumb">
-                  <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>
-                  <li class="breadcrumb-item">Usuarios</li>
-                  <li class="breadcrumb-item">Reporte de accesos</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
+{% block content %}
+<section class="an-access-report">
+  <h1 class="an-page-title an-page-header__title">Reporte de accesos</h1>
 
         <div class="row">
           <div class="col-sm-12">
-            <div class="card">
-              <div class="card-header">
+            <div class="card an-card">
+              <div class="card-header an-card-header">
                 <h5>Filtros</h5>
               </div>
-              <div class="card-body">
+              <div class="card-body an-card-body">
                 <form method="get" class="row">
                   <div class="col-md-4">
                     <label for="periodo">Periodo</label>
-                    <select id="periodo" name="periodo" class="form-control">
+                    <select id="periodo" name="periodo" class="form-control an-field">
                       <option value="">Todos</option>
                       {% for periodo in periodos_disponibles %}
                         {% with periodo_valor=periodo|date:"Y-m" %}
@@ -47,7 +30,7 @@
                   </div>
                   <div class="col-md-4">
                     <label for="usuario">Usuario</label>
-                    <select id="usuario" name="usuario" class="form-control">
+                    <select id="usuario" name="usuario" class="form-control an-field">
                       <option value="">Todos</option>
                       {% for usuario in usuarios_disponibles %}
                         <option value="{{ usuario.id }}" {% if usuario.id|stringformat:"s" == usuario_seleccionado %}selected{% endif %}>
@@ -68,21 +51,21 @@
 
         <div class="row">
           <div class="col-xl-6 col-md-12">
-            <div class="card">
-              <div class="card-header">
-                <h5>Evolucion mensual de ingresos</h5>
+            <div class="card an-card">
+              <div class="card-header an-card-header">
+                <h5>Evolución mensual de ingresos</h5>
               </div>
-              <div class="card-body">
+              <div class="card-body an-card-body">
                 <canvas id="chartIngresosMensuales" height="120"></canvas>
               </div>
             </div>
           </div>
           <div class="col-xl-6 col-md-12">
-            <div class="card">
-              <div class="card-header">
-                <h5>Top menues mas visitados</h5>
+            <div class="card an-card">
+              <div class="card-header an-card-header">
+                <h5>Menús más visitados</h5>
               </div>
-              <div class="card-body">
+              <div class="card-body an-card-body">
                 <canvas id="chartMenusTop" height="120"></canvas>
               </div>
             </div>
@@ -91,11 +74,11 @@
 
         <div class="row">
           <div class="col-sm-12">
-            <div class="card">
-              <div class="card-header">
-                <h5>Top usuarios del mes {{ top_periodo_texto }}</h5>
+            <div class="card an-card">
+              <div class="card-header an-card-header">
+                <h5>Usuarios con más ingresos · {{ top_periodo_texto }}</h5>
               </div>
-              <div class="card-body">
+              <div class="card-body an-card-body">
                 <div class="row">
                   <div class="col-xl-6 col-md-12">
                     <canvas id="chartTopUsuarios" height="130"></canvas>
@@ -138,18 +121,18 @@
 
         <div class="row">
           <div class="col-sm-12">
-            <div class="card">
-              <div class="card-header">
+            <div class="card an-card">
+              <div class="card-header an-card-header">
                 <h5>Ingresos de usuarios por mes</h5>
               </div>
-              <div class="card-body table-border-style">
+              <div class="card-body an-card-body table-border-style">
                 <div class="table-responsive">
                   <table class="table table-striped">
                     <thead>
                       <tr>
                         <th>Periodo</th>
                         <th>Total de ingresos</th>
-                        <th>Usuarios unicos</th>
+                            <th>Usuarios únicos</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -174,14 +157,14 @@
 
         <div class="row">
           <div class="col-sm-12">
-            <div class="card">
-              <div class="card-header d-flex justify-content-between align-items-center">
-                <h5>Menues visitados</h5>
+            <div class="card an-card">
+              <div class="card-header an-card-header d-flex justify-content-between align-items-center">
+                <h5>Menús visitados</h5>
                 {% if usuario_seleccionado %}
                   <span class="badge badge-info">Filtrado por usuario</span>
                 {% endif %}
               </div>
-              <div class="card-body table-border-style">
+              <div class="card-body an-card-body table-border-style">
                 <div class="table-responsive">
                   <table class="table table-hover">
                     <thead>
@@ -214,17 +197,17 @@
         {% if usuario_seleccionado %}
         <div class="row">
           <div class="col-sm-12">
-            <div class="card">
-              <div class="card-header">
-                <h5>Donde ingresa el usuario seleccionado</h5>
+            <div class="card an-card">
+              <div class="card-header an-card-header">
+                <h5>Actividad del usuario seleccionado</h5>
               </div>
-              <div class="card-body table-border-style">
+              <div class="card-body an-card-body table-border-style">
                 <div class="table-responsive">
                   <table class="table table-striped">
                     <thead>
                       <tr>
                         <th>Fecha y hora</th>
-                        <th>Menu</th>
+                        <th>Menú</th>
                         <th>Ruta</th>
                       </tr>
                     </thead>
@@ -237,7 +220,7 @@
                       </tr>
                       {% empty %}
                       <tr>
-                        <td colspan="3">No hay accesos de menu para este usuario en el filtro actual.</td>
+                        <td colspan="3">No hay accesos a menús para este usuario con los filtros seleccionados.</td>
                       </tr>
                       {% endfor %}
                     </tbody>
@@ -249,10 +232,7 @@
         </div>
         {% endif %}
 
-      </div>
-    </div>
-  </div>
-</div>
+  </section>
 {% endblock content %}
 
 {% block extra_js %}
@@ -277,8 +257,8 @@
           {
             label: 'Total ingresos',
             data: ingresosTotales,
-            borderColor: '#1f77b4',
-            backgroundColor: 'rgba(31, 119, 180, 0.15)',
+            borderColor: '#3b5d30',
+            backgroundColor: 'rgba(59, 93, 48, 0.15)',
             fill: true,
             tension: 0.3,
             borderWidth: 2
@@ -286,8 +266,8 @@
           {
             label: 'Usuarios unicos',
             data: ingresosUsuarios,
-            borderColor: '#2ca02c',
-            backgroundColor: 'rgba(44, 160, 44, 0.15)',
+            borderColor: '#556b2f',
+            backgroundColor: 'rgba(85, 107, 47, 0.15)',
             fill: true,
             tension: 0.3,
             borderWidth: 2
@@ -325,8 +305,8 @@
             label: 'Accesos',
             data: menusTotales,
             backgroundColor: [
-              '#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51',
-              '#5e548e', '#386641', '#6d6875', '#8f2d56', '#0b7285'
+              '#2c4a1d', '#3b5d30', '#556b2f', '#789b61', '#90a878',
+              '#287044', '#8c6b28', '#6b7f5c', '#a33e36', '#315e70'
             ],
             borderWidth: 0
           }
@@ -363,7 +343,7 @@
           {
             label: 'Ingresos en el mes',
             data: topUsuariosTotales,
-            backgroundColor: '#1f77b4',
+            backgroundColor: '#3b5d30',
             borderRadius: 6
           }
         ]

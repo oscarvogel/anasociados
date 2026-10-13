@@ -20,6 +20,13 @@ class Profile(models.Model):
 class AreasProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_column="user")
     area = models.ForeignKey('syh.Area', on_delete=models.CASCADE, db_column="area")
+    telefono_whatsapp = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        verbose_name="WhatsApp del encargado",
+        help_text="Número internacional, por ejemplo 5493764000000.",
+    )
 
     def __str__(self):
         return f"{self.user.username} - {self.area.detalle}"

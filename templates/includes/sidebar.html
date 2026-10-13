@@ -5,7 +5,7 @@
     <div class="navbar-brand header-logo">
       <a href="{% url 'index' %}" class="b-brand">
         <div class="b-bg">
-          <img src="{% static 'assets/images/icono_almada_neri.png' %}" alt="logo">
+        <img src="{% static 'assets/images/logo_almada_neri.png' %}" alt="AN &amp; Asociados">
         </div>
         <span class="b-title">AN & Asociados</span>
       </a>
@@ -14,7 +14,7 @@
     <div class="navbar-content scroll-div">
       <ul class="nav pcoded-inner-navbar">
         <li class="nav-item pcoded-menu-caption">
-          <label>Navegación</label>
+          <label>Menú principal</label>
         </li>
         <li data-username="dashboard AN & Asociados" class="nav-item {% if 'index' in segment %}active{% endif %}">
           <a href="{% url 'index' %}" class="nav-link ">
@@ -65,33 +65,33 @@
             </a>
           </li>
         {% endif %}
-        <li class="nav-item pcoded-hasmenu" data-username="informes">
+          <li class="nav-item pcoded-hasmenu" data-username="informes">
           <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-bar-chart-2"></i></span><span
               class="pcoded-mtext">Informes</span></a>
               <ul class="pcoded-submenu">
-                <li class=""><a href="{% url 'syh:visualizar_movimientos' %}" class="nav-link" >Hallazgos</a></li>
-                <li class=""><a href="{% url 'syh:excesos_plantilla' %}" class="nav-link" >Excesos de Velocidad</a></li>
-                <li class=""><a href="{% url 'syh:generar_resumen_mensual' %}" class="nav-link" >Resumen Mensual</a></li>
-                <li class=""><a href="{% url 'moviles:consumo_combustible_por_mes' %}" class="nav-link" >Consumo de Combustible</a></li>
+                <li class=""><a href="{% url 'syh:visualizar_movimientos' %}" class="nav-link">Hallazgos</a></li>
+                <li class=""><a href="{% url 'syh:excesos_plantilla' %}" class="nav-link">Excesos de velocidad</a></li>
+                <li class=""><a href="{% url 'syh:generar_resumen_mensual' %}" class="nav-link">Resumen mensual</a></li>
+                <li class=""><a href="{% url 'moviles:consumo_combustible_por_mes' %}" class="nav-link">Consumo de combustible</a></li>
                 {% if request.user.is_superuser %}
-                  <li class=""><a href="{% url 'moviles:reporte_gastos_movil' %}" class="nav-link" >Reporte de gastos</a></li>
-                  <li class=""><a href="{% url 'usuarios:reporte_accesos' %}" class="nav-link" >Reporte de accesos</a></li>
+                  <li class=""><a href="{% url 'moviles:reporte_gastos_movil' %}" class="nav-link">Reporte de gastos</a></li>
+                  <li class=""><a href="{% url 'usuarios:reporte_accesos' %}" class="nav-link">Reporte de accesos</a></li>
                 {% endif %}
               </ul>
         </li>
         {%if request.user.is_authenticated%}
-          <li class="nav-item pcoded-hasmenu" data-username="Moviles">
+          <li class="nav-item pcoded-hasmenu" data-username="Móviles">
             <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-settings"></i></span><span
                 class="pcoded-mtext">Moviles</span></a>
                 <ul class="pcoded-submenu">
-                  <li class=""><a href="{% url 'moviles:tipo_vencimientos_list' %}" >Tipos de vencimiento</a></li>
-                  <li class=""><a href="{% url 'moviles:moviles_list' %}" >Listado</a></li>
+                  <li class=""><a href="{% url 'moviles:tipo_vencimientos_list' %}">Tipos de vencimiento</a></li>
+                  <li class=""><a href="{% url 'moviles:moviles_list' %}">Listado de móviles</a></li>
                   {%if request.user.is_superuser%}
                     <li class=""><a href="{% url 'moviles:personal_list' %}" >Personal</a></li>
                   {%endif%}
-                  <li class=""><a href="{% url 'moviles:vencimientos_list' %}" >Vencimientos Moviles</a></li>
-                  <li class=""><a href="{% url 'moviles:gastos_movil_list' %}" >Gastos de Moviles</a></li>
-                  <li class=""><a href="{% url 'moviles:viajes_list' %}" >Lista de Viajes</a></li>
+                  <li class=""><a href="{% url 'moviles:vencimientos_list' %}">Vencimientos de móviles</a></li>
+                  <li class=""><a href="{% url 'moviles:gastos_movil_list' %}">Gastos de móviles</a></li>
+                  <li class=""><a href="{% url 'moviles:viajes_list' %}">Viajes</a></li>
                 </ul>
           </li>
 
@@ -99,7 +99,7 @@
             <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-settings"></i></span><span
                 class="pcoded-mtext">Matafuegos</span></a>
                 <ul class="pcoded-submenu">
-                  <li class=""><a href="{% url 'moviles:matafuegos_list' %}" >Listado de Matafuegos</a></li>
+                <li class=""><a href="{% url 'moviles:matafuegos_list' %}">Listado de matafuegos</a></li>
                 </ul>
           </li>
         {%endif%}

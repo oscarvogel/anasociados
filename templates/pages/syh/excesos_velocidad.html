@@ -7,11 +7,11 @@
 
 
 <div id="app-exceso" class="container mt-4">
-    <h5 class="an-page-title">Excesos de Velocidad</h5>
+    <h5 class="an-page-title an-page-header__title">Excesos de Velocidad</h5>
     <div class="an-filter-bar">
     <div class="row mb-2">
         <div class="col-md-6">
-            <input v-model="searchQuery" class="form-control" placeholder="Buscar por cliente o área...">
+            <input v-model="searchQuery" class="form-control an-field" placeholder="Buscar por cliente o área...">
         </div>
         <div class="col-md-6 text-right">
             <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> </button>
@@ -54,7 +54,7 @@
     <!-- Modal para Agregar/Editar Exceso -->
     <div class="modal" tabindex="-1" role="dialog" id="modal-form">
         <div class="modal-dialog" role="document">
-            <div class="modal-content">
+            <div class="modal-content an-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">[[ modalTitle ]]</h5>
                     <button type="button" class="close" @click="closeModal">
@@ -65,7 +65,7 @@
                     <form @submit.prevent="saveExceso">
                         <div class="form-group">
                             <label for="cliente">Cliente</label>
-                            <select v-model="formData.cliente" class="form-control">
+                            <select v-model="formData.cliente" class="form-control an-field">
                                 <option value="">-- Seleccione un cliente --</option>
                                 <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">[[ cliente.nombre ]]</option>
                             </select>
@@ -73,7 +73,7 @@
 
                         <div class="form-group">
                             <label for="anio">Año</label>
-                            <select v-model="formData.anio" class="form-control">
+                            <select v-model="formData.anio" class="form-control an-field">
                                 <option value="">-- Seleccione un año --</option>
                                 <option v-for="year in years" :key="year" :value="year">[[ year ]]</option>
                             </select>
@@ -81,7 +81,7 @@
 
                         <div class="form-group">
                             <label for="mes">Mes</label>
-                            <select v-model="formData.mes" class="form-control">
+                            <select v-model="formData.mes" class="form-control an-field">
                                 <option value="">-- Seleccione un mes --</option>
                                 <option v-for="(month, index) in months" :key="index + 1" :value="index + 1">[[ month ]]</option>
                             </select>
@@ -89,7 +89,7 @@
 
                         <div class="form-group">
                             <label for="excesos">Excesos</label>
-                            <input v-model="formData.excesos" type="number" class="form-control" required>
+                            <input v-model="formData.excesos" type="number" class="form-control an-field" required>
                         </div>
 
                         <button type="submit" class="btn btn-success">[[ modalButtonLabel ]]</button>

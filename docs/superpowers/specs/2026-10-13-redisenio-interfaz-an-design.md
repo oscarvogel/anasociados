@@ -23,6 +23,7 @@ El rediseño se basa en la identidad del sitio público de AN & Asociados, no en
 
 - El shell autenticado: encabezado, navegación lateral, contenido, títulos de página y breadcrumb.
 - La pantalla de inicio de sesión de `templates/admin/login.html`, con un rediseño completo y una identidad AN clara. Comparte los tokens institucionales, pero conserva un layout de acceso propio.
+- Las pantallas activas de CRUD de Django Admin, incluidos listados, filtros, formularios, acciones, confirmaciones y el shell que usan. Se unifican visualmente con el portal AN, preservando el comportamiento administrativo.
 - Las páginas operativas activas: tablero, hallazgos, excesos, resumen mensual, móviles, personal, vencimientos, combustible, gastos, viajes y reportes; perfil y reporte de accesos; y envío del resumen por WhatsApp.
 - La página pública de detalle de hallazgos, con el mismo lenguaje visual y logo, pero sin navegación o elementos que requieran autenticación.
 - Componentes que se repiten: filtros, formularios, botones, tablas, tarjetas KPI, alertas, estados, modales, paginación, gráficos, estados vacíos y mensajes de carga/error.
@@ -30,7 +31,6 @@ El rediseño se basa en la identidad del sitio público de AN & Asociados, no en
 
 ### Excluido
 
-- Django Admin y sus plantillas personalizadas, excepto la pantalla de inicio de sesión indicada en el alcance. Las demás mantienen su flujo y apariencia durante esta iniciativa.
 - Plantillas de correo `hallazgos_incumplidos.html` y `recordatorio_hallazgos.html`. Sus estilos en línea son parte de la compatibilidad con clientes de correo y no deben convertirse a CSS de navegador.
 - Páginas de muestra del tema, componentes de demostración, gráficos/mapas de ejemplo y pantallas no enlazadas desde los flujos activos. Antes de excluir una plantilla se confirmará que no la usa una ruta operativa.
 - Cambios de lógica de negocio, API, permisos, modelos, filtros, nombres de URL, reglas de acceso o contratos de datos.
@@ -60,7 +60,7 @@ El rediseño se basa en la identidad del sitio público de AN & Asociados, no en
 
 - Mantener Django Templates y Bootstrap como soporte de grilla/utilidades mientras se migran las páginas.
 - Definir una única fuente de verdad para tokens y componentes AN bajo `static/src/css/`; separar los estilos del shell, componentes y páginas únicamente si el tamaño lo justifica.
-- Mantener clases propias con prefijo `an-` y evitar reglas globales que redefinan `.card`, `h1`–`h6`, `.alert-*`, `.progress-bar`, `.pagination` u otros componentes Bootstrap sin un alcance explícito.
+- Mantener clases propias con prefijo `an-` y limitar las reglas del sistema visual al shell autenticado compartido por el portal y el CRUD activo de Django Admin, al login y al portal público.
 - Migrar estilos de páginas activas desde bloques `<style>` y atributos `style` a clases compartidas o clases locales acotadas. Los valores dinámicos imprescindibles (por ejemplo, progreso generado en tiempo de ejecución) pueden seguir asignándose desde JavaScript.
 - Mantener los nombres de clases/hook que consume JavaScript, Vue, jQuery, gráficos o Bootstrap. Si un hook visual y un hook de comportamiento están acoplados, separarlos con atributos `data-*` solo cuando sea seguro y dentro de la pantalla que se migra.
 - El portal público puede conservar un layout propio, pero consumirá los mismos tokens institucionales mediante CSS estático común; no debe duplicar la paleta.
@@ -73,7 +73,7 @@ El rediseño se basa en la identidad del sitio público de AN & Asociados, no en
 - Preservar filtros, tablas, exportaciones, descargas, impresión, formularios, confirmaciones, modales y enlaces existentes.
 - El acceso público al detalle mantiene token aleatorio, alcance por empresa/área, expiración de 14 días, revocación, almacenamiento de hash y respuestas no cacheadas/no indexables.
 - El inicio de sesión conserva la vista/formulario Django actual, validación, protección CSRF, errores, redirecciones y política de autenticación; el cambio es visual y de textos visibles.
-- La separación entre páginas operativas, Django Admin y correos debe mantenerse; los nuevos estilos no pueden cambiar inadvertidamente estos contextos.
+- El portal y el CRUD activo de Django Admin comparten shell y sistema visual. Correos, demos y páginas no operativas siguen fuera del alcance y no deben recibir estos estilos.
 
 ## Enfoques considerados
 
@@ -84,12 +84,13 @@ El rediseño se basa en la identidad del sitio público de AN & Asociados, no en
 ## Implementación por etapas
 
 1. **Inventario y línea base:** confirmar rutas/templates realmente activos, clasificar estilos compartidos y locales, registrar interacciones existentes y verificar disponibilidad/calidad de logo y favicon institucionales.
-2. **Fundación visual:** definir tokens de marca y semánticos, tipografía, espaciado, foco, superficies y componentes base. Evitar cambios globales accidentales a Bootstrap/Admin/correos.
+2. **Fundación visual:** definir tokens de marca y semánticos, tipografía, espaciado, foco, superficies y componentes base para portal y CRUD.
 3. **Login:** rediseñar `templates/admin/login.html` y su layout de autenticación para que la primera pantalla ya presente la identidad AN; conservar intacto el flujo de autenticación.
-4. **Shell compartido:** actualizar marca, header, sidebar, navegación móvil, breadcrumb y contenedor de página; retirar controles de muestra sin acción real.
-5. **Pantallas piloto:** migrar Hallazgos y una pantalla frecuente de Móviles/Viajes para ajustar filtros, formularios, tablas, tarjetas KPI, estados y modales sobre casos reales.
-6. **Migración de módulos:** aplicar componentes aprobados a SYH, Móviles/Informes, Usuarios y WhatsApp, una pantalla o conjunto de pantallas acopladas por vez; luego unificar la página pública con los tokens.
-7. **Limpieza y cierre:** quitar estilos duplicados de las pantallas migradas, revisar selectores CSS restantes, verificar que el resto de Admin/correos/demos no haya cambiado y documentar el sistema visual resultante.
+4. **CRUD de Django Admin:** unificar listados, filtros, formularios y acciones con los componentes compartidos; preservar permisos, campos, hooks, CSRF y URLs.
+5. **Shell compartido:** actualizar marca, header, sidebar, navegación móvil, breadcrumb y contenedor de página; retirar controles de muestra sin acción real.
+6. **Pantallas piloto:** migrar Hallazgos y una pantalla frecuente de Móviles/Viajes para ajustar filtros, formularios, tablas, tarjetas KPI, estados y modales sobre casos reales.
+7. **Migración de módulos:** aplicar componentes aprobados a SYH, Móviles/Informes, Usuarios y WhatsApp, una pantalla o conjunto de pantallas acopladas por vez; luego unificar la página pública con los tokens.
+8. **Limpieza y cierre:** quitar estilos duplicados de las pantallas migradas, revisar selectores CSS restantes, verificar que los flujos de Admin fuera del CRUD activo, correos y demos se conserven, y documentar el sistema visual resultante.
 
 El orden exacto de pantallas se cierra en el plan de implementación, a partir de rutas activas y uso operativo. Cada etapa debe quedar desplegable sin esperar la reescritura del resto del sitio.
 
@@ -103,7 +104,7 @@ El orden exacto de pantallas se cierra en el plan de implementación, a partir d
 - Foco de teclado, contraste y movimiento reducido se contemplan en el sistema común.
 - Las capacidades existentes, filtros, formularios, permisos, respuestas, gráficos, archivos, impresión y enlace público mantienen su comportamiento.
 - El token público continúa sin figurar en la ruta HTTP, no habilita datos vencido/revocado y el documento conserva políticas de no cacheo/indexación.
-- Django Admin, correos HTML y demos fuera de alcance conservan su comportamiento y no reciben estilos del nuevo sistema por selectores globales.
+- El CRUD activo de Django Admin comparte los componentes visuales del portal; correos HTML y demos fuera de alcance conservan su presentación y no reciben estos estilos.
 
 ## Verificación prevista
 
@@ -111,7 +112,7 @@ El orden exacto de pantallas se cierra en el plan de implementación, a partir d
 - Recorrido manual en staging para login/permisos y navegación, filtros, tablas/paginación, crear/editar/eliminar donde ya exista, modales, gráficos, descargas, impresión y enlace público.
 - Verificar inicio de sesión correcto e incorrecto, CSRF, retorno al destino solicitado y estados de error sin alterar autenticación ni permisos.
 - Revisión de contraste, navegación por teclado, foco visible, mensajes de carga/error/vacío y preferencia de movimiento reducido.
-- Inspección de CSS para confirmar que las pantallas migradas ya no dependen de estilos duplicados y que los selectores globales no alteran Admin ni correos.
+- Inspección de CSS para confirmar que las pantallas migradas ya no dependen de estilos duplicados y que los selectores del shell compartido no alteran correos ni demos.
 - Confirmar que no hubo cambios en rutas, contratos de API, consultas o reglas de negocio.
 
 ## Referencias de marca

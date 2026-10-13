@@ -6,12 +6,12 @@
 {% block content %}
 
   <!-- [ Main Content ] start -->
-  <h5 class="an-page-title">Dashboard</h5>
-  <div class="card an-filter-bar">
-    <div class="card-body">
+  <h5 class="an-page-title an-page-header__title">Tablero</h5>
+  <div class="card an-card an-filter-bar">
+    <div class="card-body an-card-body">
         <div class="row">
             <div class="col-md-4 mb-3">
-                <select id="cliente-select" class="form-control">
+                <select id="cliente-select" class="form-control an-field">
                     <option value="">--Selecciona un cliente--</option>
                     {% for cliente in clientes %}
                     <option value="{{ cliente.id }}" {% if cliente.id == cliente_id_selected %}selected{% endif %}>
@@ -21,7 +21,7 @@
                 </select>
             </div>
             <div class="col-md-4 mb-3">
-                <select id="area-select" class="form-control">
+                <select id="area-select" class="form-control an-field">
                     <option value="">--Selecciona un área--</option>
                     {% for area in areas %}
                     <option value="{{ area.id }}" data-cliente="{{ area.cliente.id }}" {% if area.id == area_id_selected %}selected{% endif %}>
@@ -39,20 +39,20 @@
   
   <div class="row">
     <div class="col-xl-6">
-      <div class="card">
-        <div class="card-header">
+      <div class="card an-card">
+        <div class="card-header an-card-header">
           <h5>Tareas por Estado</h5>
         </div>
         <div class="card-block d-flex justify-content-center align-items-center text-center" >
-          <div id="morris-tareas" style="height:300px">
+          <div id="morris-tareas" class="an-chart-frame an-chart-frame--compact">
             <canvas id="graficoAreas" ></canvas>
           </div>
         </div>
       </div>
     </div>
     <div class="col-xl-6">
-      <div class="card">
-        <div class="card-header">
+      <div class="card an-card">
+        <div class="card-header an-card-header">
           <h5>Emisión kg CO2</h5>
         </div>
         <div class="card-block">
@@ -63,8 +63,8 @@
       </div>
     </div>
     <div class="col-xl-6">
-      <div class="card">
-        <div class="card-header">
+      <div class="card an-card">
+        <div class="card-header an-card-header">
           <h5>Porcentaje de cumplidos por área</h5>
         </div>
         <div class="card-block">
@@ -75,8 +75,8 @@
       </div>
     </div>
     <div class="col-xl-6">
-      <div class="card">
-        <div class="card-header">
+      <div class="card an-card">
+        <div class="card-header an-card-header">
           <h5>Excesos de velocidad</h5>
         </div>
         <div class="card-block">
@@ -87,8 +87,8 @@
       </div>
     </div>
     <div class="col-xl-12">
-      <div class="card">
-        <div class="card-header">
+      <div class="card an-card">
+        <div class="card-header an-card-header">
           <h5>Estados de hallazgos mes a mes (%)</h5>
         </div>
         <div class="card-block">
@@ -97,8 +97,8 @@
       </div>
     </div>
     <div class="col-xl-3">
-      <div class="card">
-        <div class="card-body">
+      <div class="card an-card">
+        <div class="card-body an-card-body">
           <h5 class="card-title">Plazo promedio para la gestion de hallazgos</h5>
           <ul class="list-group list-group-flush">
             <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -111,8 +111,8 @@
     </div>
     {%if request.user.is_superuser%}
       <div class="col-xl-3">
-        <div class="card">
-          <div class="card-body">
+        <div class="card an-card">
+          <div class="card-body an-card-body">
             <h5 class="card-title">Plazos promedio por cliente</h5>
             <ul class="list-group list-group-flush">
               {%for cliente in plazo_promedio_clientes%}
@@ -127,8 +127,8 @@
       </div>
     {% endif %}
     <div class="col-xl-3">
-      <div class="card">
-          <div class="card-body">
+      <div class="card an-card">
+          <div class="card-body an-card-body">
               <h5 class="card-title">Índices de Accidentabilidad</h5>
               <ul class="list-group list-group-flush">
                   <li class="list-group-item">Índice de Frecuencia: {{ indice_frecuencia|floatformat:2 }}</li>
@@ -143,8 +143,8 @@
   <!-- [ Graficos  ]inicio -->
   <div class="row">
     <div class="col-12">
-      <div class="card">
-        <div class="card-body">
+      <div class="card an-card">
+        <div class="card-body an-card-body">
           <h5 class="card-title text-center">Indicadores de seguridad</h5>
           <div class="row">
             <div class="col-12 col-md-6">
@@ -152,46 +152,46 @@
               <canvas id="myGaugeChartIG"></canvas>
               <!-- Tabla de referencia -->
               <div >
-                <p style="text-align: center;">Indice: {{indice_gravedad|floatformat:2}}</p>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                <p class="an-table-caption">Indice: {{indice_gravedad|floatformat:2}}</p>
+                <table class="table an-table an-reference-table">
                     <thead>
                         <tr>
-                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Rango</th>
-                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Valor Mínimo</th>
-                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Valor Máximo</th>
-                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Clasificación</th>
+                            <th class="an-reference-table__head">Rango</th>
+                            <th class="an-reference-table__head">Valor Mínimo</th>
+                            <th class="an-reference-table__head">Valor Máximo</th>
+                            <th class="an-reference-table__head">Clasificación</th>
                         </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">0</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">10</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; background-color: #147A73;">WC</td>
+                        <td class="an-reference-table__cell">1</td>
+                        <td class="an-reference-table__cell">0</td>
+                        <td class="an-reference-table__cell">10</td>
+                        <td class="an-reference-table__cell an-reference-table__classification an-score--wc">WC</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">2</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">10</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">100</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; background-color: #90EE90;">Superior</td>
+                        <td class="an-reference-table__cell">2</td>
+                        <td class="an-reference-table__cell">10</td>
+                        <td class="an-reference-table__cell">100</td>
+                        <td class="an-reference-table__cell an-reference-table__classification an-score--superior">Superior</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">3</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">100</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">500</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; background-color: #FFFF99;">Estándar</td>
+                        <td class="an-reference-table__cell">3</td>
+                        <td class="an-reference-table__cell">100</td>
+                        <td class="an-reference-table__cell">500</td>
+                        <td class="an-reference-table__cell an-reference-table__classification an-score--standard">Estándar</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">4</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">500</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1000</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; background-color: #FFB266;">Alerta</td>
+                        <td class="an-reference-table__cell">4</td>
+                        <td class="an-reference-table__cell">500</td>
+                        <td class="an-reference-table__cell">1000</td>
+                        <td class="an-reference-table__cell an-reference-table__classification an-score--alert">Alerta</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">5</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1000</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">>1000</td>
-                        <td style="padding: 8px; border: 1px solid #ddd; background-color: #FF9999;">No aceptable</td>
+                        <td class="an-reference-table__cell">5</td>
+                        <td class="an-reference-table__cell">1000</td>
+                        <td class="an-reference-table__cell">>1000</td>
+                        <td class="an-reference-table__cell an-reference-table__classification an-score--unacceptable">No aceptable</td>
                     </tr>
                     </tbody>
                 </table>
@@ -200,47 +200,47 @@
             <div class="col-12 col-md-6">
               <h5 class="card-title text-center">Índice de Frecuencia</h5>
               <canvas id="myGaugeChartIF"></canvas>
-              <div style="width: 100%; max-width: 600px; margin: 0 auto;">
-                <p style="text-align: center;">Indice: {{indice_frecuencia|floatformat:2}}</p>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+              <div class="an-score-block">
+                <p class="an-table-caption">Indice: {{indice_frecuencia|floatformat:2}}</p>
+                <table class="table an-table an-reference-table">
                     <thead>
                         <tr>
-                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Rango</th>
-                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Valor Mínimo</th>
-                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Valor Máximo</th>
-                            <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Clasificación</th>
+                            <th class="an-reference-table__head">Rango</th>
+                            <th class="an-reference-table__head">Valor Mínimo</th>
+                            <th class="an-reference-table__head">Valor Máximo</th>
+                            <th class="an-reference-table__head">Clasificación</th>
                         </tr>
                     </thead>
                     <tbody>
                           <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">0</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #147A73;">WC</td>
+                            <td class="an-reference-table__cell">1</td>
+                            <td class="an-reference-table__cell">0</td>
+                            <td class="an-reference-table__cell">1</td>
+                            <td class="an-reference-table__cell an-reference-table__classification an-score--wc">WC</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">2</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">1</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">10</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #90EE90;">Superior</td>
+                            <td class="an-reference-table__cell">2</td>
+                            <td class="an-reference-table__cell">1</td>
+                            <td class="an-reference-table__cell">10</td>
+                            <td class="an-reference-table__cell an-reference-table__classification an-score--superior">Superior</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">3</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">10</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">50</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #FFFF99;">Estándar</td>
+                            <td class="an-reference-table__cell">3</td>
+                            <td class="an-reference-table__cell">10</td>
+                            <td class="an-reference-table__cell">50</td>
+                            <td class="an-reference-table__cell an-reference-table__classification an-score--standard">Estándar</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">4</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">50</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">100</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #FFB266;">Alerta</td>
+                            <td class="an-reference-table__cell">4</td>
+                            <td class="an-reference-table__cell">50</td>
+                            <td class="an-reference-table__cell">100</td>
+                            <td class="an-reference-table__cell an-reference-table__classification an-score--alert">Alerta</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">5</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">100</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">>100</td>
-                            <td style="padding: 8px; border: 1px solid #ddd; background-color: #FF9999;">No aceptable</td>
+                            <td class="an-reference-table__cell">5</td>
+                            <td class="an-reference-table__cell">100</td>
+                            <td class="an-reference-table__cell">>100</td>
+                            <td class="an-reference-table__cell an-reference-table__classification an-score--unacceptable">No aceptable</td>
                         </tr>
                     </tbody>
                 </table>
@@ -373,8 +373,8 @@
           datasets: [{
               label: 'Emisión kg CO2 ',
               data: valores,
-              backgroundColor: 'rgba(75, 192, 192, 0.2)',
-              borderColor: 'rgba(75, 192, 192, 1)',
+              backgroundColor: 'rgba(59, 93, 48, 0.16)',
+              borderColor: 'rgba(59, 93, 48, 1)',
               borderWidth: 1,
               fill: false
           }]
@@ -421,24 +421,24 @@
           {
             label: 'Cumplido (%)',
             data: estadosMensualesRaw.cumplido,
-            borderColor: 'rgba(40, 167, 69, 1)',
-            backgroundColor: 'rgba(40, 167, 69, 0.15)',
+            borderColor: 'rgba(40, 112, 68, 1)',
+            backgroundColor: 'rgba(40, 112, 68, 0.15)',
             tension: 0.25,
             fill: false,
           },
           {
             label: 'Incumplido (%)',
             data: estadosMensualesRaw.incumplido,
-            borderColor: 'rgba(220, 53, 69, 1)',
-            backgroundColor: 'rgba(220, 53, 69, 0.15)',
+            borderColor: 'rgba(163, 62, 54, 1)',
+            backgroundColor: 'rgba(163, 62, 54, 0.15)',
             tension: 0.25,
             fill: false,
           },
           {
             label: 'Gestión en Curso (%)',
             data: estadosMensualesRaw.gestion_en_curso,
-            borderColor: 'rgba(255, 193, 7, 1)',
-            backgroundColor: 'rgba(255, 193, 7, 0.15)',
+            borderColor: 'rgba(128, 91, 18, 1)',
+            backgroundColor: 'rgba(128, 91, 18, 0.15)',
             tension: 0.25,
             fill: false,
           },
@@ -521,7 +521,7 @@ var config = {
         datasets: [{
             data: data_ig,
             value: convertValueIG(value_ig), // Convertimos el valor a la escala visual
-            backgroundColor: ['#147A73', '#90EE90', '#FFFF99', '#FFB266', '#FF9999'],
+            backgroundColor: ['#2C4A1D', '#5D8B50', '#D4E7D3', '#E6B759', '#A33E36'],
             borderWidth: 2
         }]
     },
@@ -593,7 +593,7 @@ var config = {
           datasets: [{
               data: data_ig,
               value: convertValueIF(value_if), // Convertimos el valor a la escala visual
-              backgroundColor: ['#147A73', '#90EE90', '#FFFF99', '#FFB266', '#FF9999'],
+            backgroundColor: ['#2C4A1D', '#5D8B50', '#D4E7D3', '#E6B759', '#A33E36'],
               borderWidth: 2
           }]
       },
@@ -655,8 +655,8 @@ var config = {
             datasets: [{
                 label: 'Excesos por Mes',
                 data: dataPoints,
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(59, 93, 48, 0.16)',
+                borderColor: 'rgba(59, 93, 48, 1)',
                 borderWidth: 1,
                 fill: false,
                 trendlineLinear: {
@@ -696,14 +696,14 @@ var config = {
       datasets: [{
         label: 'Porcentaje de cumplidos',
         data: ordenados.map(item => item.porcentaje),
-        backgroundColor: 'rgba(0, 128, 0, 0.2)', // Color verde
-        borderColor: 'rgba(0, 128, 0, 1)', // Color verde
+        backgroundColor: 'rgba(40, 112, 68, 0.16)',
+        borderColor: 'rgba(40, 112, 68, 1)',
         borderWidth: 1,
         type: 'bar'
       }, {
         label: 'Meta',
         data: ordenados.map(() => meta_porcentaje),
-        borderColor: 'rgba(255, 0, 0, 1)',
+        borderColor: 'rgba(163, 62, 54, 1)',
         borderWidth: 2,
         pointRadius: 0,
         pointHitRadius: 0,

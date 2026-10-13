@@ -18,8 +18,9 @@ from utiles.alertas_hallazgos import (
     SeleccionEmpresaAreaInvalida,
     construir_resumen_hallazgos_whatsapp,
 )
-from utiles.models import AreaWhatsAppContacto, EnlacePublicoHallazgos
+from utiles.models import EnlacePublicoHallazgos
 from utiles.notificaciones import WhatsAppClient, WhatsAppError
+from usuarios.models import AreasProfile
 
 
 PREVIEW_SALT = "utiles.whatsapp_hallazgos.preview"
@@ -97,10 +98,15 @@ def whatsapp_hallazgos_preview(request):
     if not resumen.hay_novedades:
         return JsonResponse(response)
 
-    try:
-        contacto = AreaWhatsAppContacto.objects.get(area_id=area_id)
-    except AreaWhatsAppContacto.DoesNotExist:
-        contacto = None
+    asignaciones = list(
+        AreasProfile.objects.filter(
+            area_id=area_id,
+            area__cliente_id=cliente_id,
+            user__profile__cliente_id=cliente_id,
+        ).select_related("user")[:2]
+    )
+    asignacion = asignaciones[0] if len(asignaciones) == 1 else None
+    telefono = asignacion.telefono_whatsapp if asignacion else ""
 
     public_token = secrets.token_urlsafe(32)
     public_url = _url_hallazgos_publicos(public_token)
@@ -113,8 +119,9 @@ def whatsapp_hallazgos_preview(request):
         "public_token": public_token,
         "nonce": secrets.token_urlsafe(18),
     }
-    response["telefono"] = contacto.telefono if contacto else ""
-    response["contacto_configurado"] = contacto is not None
+    response["telefono"] = telefono
+    response["contacto_configurado"] = bool(telefono)
+    response["contacto_ambiguo"] = len(asignaciones) > 1
     response["mensaje"] = mensaje
     response["enlace_publico"] = public_url
     response["preview_token"] = signing.dumps(data, salt=PREVIEW_SALT)

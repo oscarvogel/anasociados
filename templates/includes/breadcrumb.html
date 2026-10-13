@@ -8,11 +8,11 @@
           <h5 class="m-b-10">{{ segment|replace_value:"_" }}</h5>
         </div>
         <ul class="breadcrumb">
-          <li class="breadcrumb-item"><a href="{% url 'index' %}"><i class="feather icon-home"></i></a></li>
+          <li class="breadcrumb-item"><a href="{% url 'index' %}" aria-label="Inicio"><i class="feather icon-home"></i></a></li>
           {% if parent %}
-            <li class="breadcrumb-item"><a href="javascript:">{{ parent|replace_value:"_" }}</a></li>
+            <li class="breadcrumb-item">{{ parent|replace_value:"_" }}</li>
           {% endif %}
-          <li class="breadcrumb-item"><a href="javascript:">{{ segment|replace_value:"_" }}</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ segment|replace_value:"_" }}</li>
         </ul>
       </div>
     </div>

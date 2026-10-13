@@ -8,15 +8,15 @@
      data-areas-url="{% url 'utiles:whatsapp_hallazgos_areas' %}"
      data-preview-url="{% url 'utiles:whatsapp_hallazgos_preview' %}"
      data-send-url="{% url 'utiles:whatsapp_hallazgos_send' %}">
-    <h5 class="an-page-title">Resumen de hallazgos por WhatsApp</h5>
+    <h5 class="an-page-title an-page-header__title">Resumen de hallazgos por WhatsApp</h5>
     <p class="text-muted">Elegí una empresa y un área para preparar el resumen de hallazgos vencidos y próximos a vencer.</p>
 
-    <div class="card">
-        <div class="card-body">
+    <div class="card an-card">
+        <div class="card-body an-card-body">
             <div class="form-row">
                 <div class="form-group col-md-6">
                     <label for="empresa">Empresa</label>
-                    <select id="empresa" class="form-control">
+                    <select id="empresa" class="form-control an-field">
                         <option value="">Seleccioná una empresa</option>
                         {% for empresa in empresas %}
                         <option value="{{ empresa.pk }}">{{ empresa.nombre }}</option>
@@ -25,7 +25,7 @@
                 </div>
                 <div class="form-group col-md-6">
                     <label for="area">Área</label>
-                    <select id="area" class="form-control" disabled>
+                    <select id="area" class="form-control an-field" disabled>
                         <option value="">Primero seleccioná una empresa</option>
                     </select>
                 </div>
@@ -39,7 +39,7 @@
 
 <div class="modal fade" id="modal-whatsapp-hallazgos" tabindex="-1" role="dialog" aria-labelledby="titulo-modal-whatsapp" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
+        <div class="modal-content an-modal">
             <div class="modal-header">
                 <h5 class="modal-title" id="titulo-modal-whatsapp">Confirmar envío por WhatsApp</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
@@ -47,16 +47,16 @@
             <div class="modal-body">
                 <p id="contexto-modal" class="text-muted mb-3"></p>
                 <div id="aviso-contacto" class="alert alert-info d-none" role="status">
-                    Esta área no tiene un número guardado. Ingresá el destino para este envío; no se guardará.
+                    No hay un WhatsApp único configurado para el encargado de esta área. Ingresá el número para este envío; no se guardará en el perfil.
                 </div>
                 <div class="form-group">
                     <label for="telefono-whatsapp">Número de destino</label>
-                    <input type="tel" id="telefono-whatsapp" class="form-control" autocomplete="tel" placeholder="5493764000000" required>
-                    <small class="form-text text-muted">Se usará solo para este envío y no se guardará en el contacto del área.</small>
+                    <input type="tel" id="telefono-whatsapp" class="form-control an-field" autocomplete="tel" placeholder="5493764000000" required>
+                    <small class="form-text text-muted">Podés corregirlo para este envío; el teléfono del Área de Perfil no se modifica.</small>
                 </div>
                 <div class="form-group">
                     <label for="mensaje-whatsapp">Mensaje que se enviará</label>
-                    <textarea id="mensaje-whatsapp" class="form-control" rows="8" readonly></textarea>
+                    <textarea id="mensaje-whatsapp" class="form-control an-field" rows="8" readonly></textarea>
                 </div>
                 <div id="resultado-envio" class="alert d-none" role="status" aria-live="polite"></div>
                 <form id="csrf-form" class="d-none">{% csrf_token %}</form>

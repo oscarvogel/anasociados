@@ -4,16 +4,16 @@
 {% block breadcrumbs %}{% endblock breadcrumbs %}
 
 {% block content %}
-  <h5 class="an-page-title">Consumo de combustible por mes por móvil</h5>
+  <h5 class="an-page-title an-page-header__title">Consumo mensual de combustible por móvil</h5>
   <div class="an-filter-bar">
   <div class="form-group row">
-    <select id="empresa-select" name="empresa" class="form-control col-mb-12 col-6">
+    <select id="empresa-select" name="empresa" class="form-control an-field col-mb-12 col-6">
       {% for empresa in empresas %}
         <option value="{{ empresa.id }}">{{ empresa.nombre }}</option>
       {% endfor %}
     </select>
-    <input type="date" id="fecha-inicio" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control col-mb-12 col-3">
-    <input type="date" id="fecha-fin" name="fecha_fin" value="{{ fecha_fin }}" class="form-control col-mb-12 col-3">
+    <input type="date" id="fecha-inicio" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control an-field col-mb-12 col-3">
+    <input type="date" id="fecha-fin" name="fecha_fin" value="{{ fecha_fin }}" class="form-control an-field col-mb-12 col-3">
   </div>
   <div class="row">
     <button id="generar-datos" onclick="generarDatos()" class="btn btn-primary col-mb-12 col-12">Generar Datos</button>
@@ -34,6 +34,24 @@
     });
   </script>
   <script>
+    const paletaMoviles = [
+      { fondo: 'rgba(59, 93, 48, 0.16)', linea: '#3b5d30' },
+      { fondo: 'rgba(85, 107, 47, 0.16)', linea: '#556b2f' },
+      { fondo: 'rgba(120, 155, 97, 0.16)', linea: '#789b61' },
+      { fondo: 'rgba(49, 94, 112, 0.16)', linea: '#315e70' },
+      { fondo: 'rgba(40, 112, 68, 0.16)', linea: '#287044' },
+      { fondo: 'rgba(128, 91, 18, 0.16)', linea: '#805b12' }
+    ];
+
+    function colorParaMovil(nombre) {
+      var clave = String(nombre);
+      var hash = 0;
+      for (var i = 0; i < clave.length; i++) {
+        hash = (hash * 31 + clave.charCodeAt(i)) >>> 0;
+      }
+      return paletaMoviles[hash % paletaMoviles.length];
+    }
+
     function generarDatos() {
       if (window.chart) {
         window.chart.destroy();
@@ -54,11 +72,12 @@
               datasets: data.reduce((acc, dato) => {
                 var movil = dato.movil;
                 if (!acc[movil]) {
+                  var color = colorParaMovil(movil);
                   acc[movil] = {
                     label: movil,
                     data: data.filter(d => d.movil === movil).map(d => d.consumo),
-                    backgroundColor: 'rgba(' + Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ', 0.2)',
-                    borderColor: 'rgba(' + Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ', 1)',
+                    backgroundColor: color.fondo,
+                    borderColor: color.linea,
                     borderWidth: 1
                   };
                 }
@@ -67,11 +86,12 @@
               datasets: Object.values(data.reduce((acc, dato) => {
                 var movil = dato.movil;
                 if (!acc[movil]) {
+                  var color = colorParaMovil(movil);
                   acc[movil] = {
                     label: movil,
                     data: data.filter(d => d.movil === movil).map(d => d.consumo),
-                    backgroundColor: 'rgba(' + Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ', 0.2)',
-                    borderColor: 'rgba(' + Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ','+ Math.floor(Math.random() * 256) + ', 1)',
+                    backgroundColor: color.fondo,
+                    borderColor: color.linea,
                     borderWidth: 1
                   };
                 }

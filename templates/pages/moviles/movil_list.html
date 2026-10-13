@@ -6,13 +6,13 @@
 {% block content %}
     <meta name="csrf-token" content="{{ csrf_token }}">
     <div id="app-moviles" class="container mt-4">
-        <h5 class="an-page-title">Gestión de Móviles</h5>
+        <h5 class="an-page-title an-page-header__title">Gestión de móviles</h5>
         <div class="an-filter-bar d-flex justify-content-between align-items-center flex-wrap">
-            <div class="input-group mb-2" style="max-width: 380px;">
+            <div class="input-group mb-2 an-search-field">
                 <div class="input-group-prepend">
                     <span class="input-group-text"><i class="fas fa-search"></i></span>
                 </div>
-                <input v-model="searchQuery" class="form-control" placeholder="Buscar por patente o empresa" />
+                <input v-model="searchQuery" class="form-control an-field" placeholder="Buscar por patente o empresa" />
             </div>
             <div class="mb-2">
                 <button @click="openModal('create')" class="btn btn-primary mr-2"><i class="fas fa-plus"></i> Nuevo Móvil</button>
@@ -54,7 +54,7 @@
 
         <div class="modal" role="dialog" id="modal-form">
             <div class="modal-dialog modal-lg">
-                <div class="modal-content">
+                <div class="modal-content an-modal">
                     <div class="modal-header">
                         <h5 class="modal-title"><i class="fas fa-car mr-2"></i> [[ modalMode === 'create' ? 'Nuevo Móvil' : 'Editar Móvil' ]]</h5>
                         <button @click="closeModal()" class="close"><span>&times;</span></button>
@@ -64,31 +64,31 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Patente</label>
-                                    <input v-model="form.patente" class="form-control" />
+                                    <input v-model="form.patente" class="form-control an-field" />
                                 </div>
                                 <div class="form-group">
                                     <label>Marca</label>
-                                    <input v-model="form.marca" class="form-control" />
+                                    <input v-model="form.marca" class="form-control an-field" />
                                 </div>
                                 <div class="form-group">
                                     <label>Modelo</label>
-                                    <input v-model="form.modelo" class="form-control" />
+                                    <input v-model="form.modelo" class="form-control an-field" />
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label>Año</label>
-                                    <input v-model="form.anio" class="form-control" type="number" />
+                                    <input v-model="form.anio" class="form-control an-field" type="number" />
                                 </div>
                                 <div class="form-group">
                                     <label>Empresa</label>
-                                    <select v-model="form.empresa" class="form-control">
+                                    <select v-model="form.empresa" class="form-control an-field">
                                         <option v-for="empresa in empresas" :value="empresa.id">[[ empresa.nombre ]]</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label>Viajes Mes</label>
-                                    <input v-model="form.viajes_mes" class="form-control" type="number" />
+                                    <input v-model="form.viajes_mes" class="form-control an-field" type="number" />
                                 </div>
                             </div>
                         </div>

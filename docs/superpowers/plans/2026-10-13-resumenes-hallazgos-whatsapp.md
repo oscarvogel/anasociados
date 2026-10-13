@@ -33,22 +33,24 @@
 
 ### Task 1: Persist and administer one WhatsApp contact per area
 
+> **Ajuste de diseño (2026-10-13):** el destinatario se administra en `AreasProfile`, que vincula usuario y área; `Profile` aporta la empresa. El teléfono vive en esa asignación y se configura solo por superusuarios. `usuarios.0007` agrega el campo y `utiles.0003` elimina la tabla separada, que estaba vacía en producción.
+
 **Files:**
-- Create: `utiles/models.py`
-- Create: `utiles/admin.py`
-- Create: `utiles/migrations/__init__.py`
-- Create: `utiles/migrations/0001_initial.py` (generated from the model)
+- Modify: `usuarios/models.py`
+- Modify: `usuarios/admin.py`
+- Modify: `utiles/models.py`
+- Modify: `utiles/admin.py`
+- Create: `usuarios/migrations/0007_add_areasprofile_whatsapp.py`
+- Create: `utiles/migrations/0003_delete_areawhatsappcontacto.py`
 
 **Interfaces:**
-- Produces `AreaWhatsAppContacto`, a Django-managed record uniquely associated with one `syh.Area` and containing the saved international phone number.
-- Use a relation to `syh.Area` with `db_constraint=False`; `syh.Area` is unmanaged and must not gain a database constraint or schema change.
-- Expose the record in Django admin for superusers only.
+- `AreasProfile` holds the responsible user's international phone number for that area.
+- `Profile` supplies the user's company; admin validation keeps the area within that company.
+- The send modal can override the saved number for a single send without changing `AreasProfile`.
 
-- [ ] Add `AreaWhatsAppContacto` with a unique one-to-one area relation (`db_constraint=False`), a phone field, and an `updated_at` timestamp.
-- [ ] Register it in `utiles/admin.py`; expose the area and phone fields, and explicitly restrict admin view/add/change/delete operations to superusers.
-- [ ] Generate and review the `utiles` initial migration; confirm it creates only the managed contact table and does not alter `syh_cliente` or `syh_area`.
-- [ ] Run `python manage.py check` and `python manage.py migrate --plan`; confirm the new table is the only planned schema operation.
-- [ ] Commit as `feat: agregar destinatario WhatsApp por area`.
+- [x] Add the WhatsApp number to `AreasProfile`, normalize it, and expose editing only to superusers.
+- [x] Resolve the preview recipient through the user's company profile and area assignment.
+- [x] Remove the separate contact model/table; production had no contact rows.
 
 ### Task 2: Build the findings summary for a selected company and area
 

@@ -5,12 +5,12 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h5 class="an-page-title">Hallazgos</h5>
+    <h5 class="an-page-title an-page-header__title">Hallazgos</h5>
     <div class="an-filter-bar">
     <form method="get">
         <div class="row">
             <div class="col-md-6 mb-3">
-                <select id="cliente-select" class="form-control" name="cliente">
+                <select id="cliente-select" class="form-control an-field" name="cliente">
                     <option value="">--Selecciona un cliente--</option>
                     {% for cliente in clientes %}
                     <option value="{{ cliente.id }}" {% if cliente.id == request.GET.cliente %}selected{% endif %}>{{ cliente.nombre }}</option>
@@ -18,7 +18,7 @@
                 </select>
             </div>
             <div class="col-md-6 mb-3">
-                <select id="area-select" class="form-control" name="area">
+                <select id="area-select" class="form-control an-field" name="area">
                     <option value="">--Selecciona un área--</option>
                     {% for area in areas %}
                     <option value="{{ area.id }}" {% if area.id == request.GET.area %}selected{% endif %}>{{ area.detalle }}</option>
@@ -28,7 +28,7 @@
         </div>
         <div class="row">
             <div class="form-group col-6">
-                <select multiple class="form-control" id="estado" name="estado">
+                <select multiple class="form-control an-field" id="estado" name="estado">
                     {% for estado in estados %}
                         <option value="{{ estado }}" {% if estado in filtro_estados %}selected{% endif %}>{{ estado }}</option>
                     {% endfor %}

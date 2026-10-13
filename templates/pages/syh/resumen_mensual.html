@@ -5,13 +5,13 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h5 class="an-page-title">Resumen Mensual</h5>
-    <div class="card">
-        <div class="card-header"><h5>Seleccionar cliente</h5></div>
-        <div class="card-body">
+    <h5 class="an-page-title an-page-header__title">Resumen mensual</h5>
+    <div class="card an-card">
+        <div class="card-header an-card-header"><h5>Seleccionar cliente</h5></div>
+        <div class="card-body an-card-body">
             <div class="row">
                 <div class="col-md-4 mb-3">
-                    <select id="cliente-select" class="form-control">
+                    <select id="cliente-select" class="form-control an-field">
                         <option value="">--Selecciona un cliente--</option>
                         {% for cliente in clientes %}
                         <option value="{{ cliente.id }}" {% if cliente.id == cliente_id_selected %}selected{% endif %}>
@@ -24,7 +24,7 @@
             <div class="row">
                 <button type="button" id="resumen-button" class="btn btn-secondary" onclick="iniciarTarea()">Generar</button>
                 <div class="progress mt-3 container" >
-                    <div id="progress-bar" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">
+                    <div id="progress-bar" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
                     </div>
                 </div>
             </div>
@@ -35,7 +35,7 @@
         </div>
         <hr>
         <h5 class="text-center">Descargar archivos</h5>
-        <div class="row" id="descarga-archivos" style="display: none;">
+        <div class="row" id="descarga-archivos">
             <div class="col-md-6">
                 {% comment %} <a class="btn btn-primary" href="{% url 'syh:download_file' 'resumen_mensual.pdf' %}" download>Descargar archivo</a> {% endcomment %}
                 <a class="btn btn-primary" href="#" id="download-link" download>Descargar archivo</a>

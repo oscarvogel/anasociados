@@ -35,9 +35,9 @@
                     <h5 class="m-b-10">{{ cl.opts.verbose_name_plural|capfirst }}</h5>
                   </div>
                   <ul class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="#"><i class="feather icon-home"></i></a></li>
-                    <li class="breadcrumb-item"><a href="javascript:">{{ cl.opts.app_config.verbose_name }}</a></li>
-                    <li class="breadcrumb-item"><a href="javascript:">{{ cl.opts.verbose_name_plural|capfirst }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'admin:index' %}" aria-label="Administración"><i class="feather icon-home"></i></a></li>
+                    <li class="breadcrumb-item">{{ cl.opts.app_config.verbose_name }}</li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ cl.opts.verbose_name_plural|capfirst }}</li>
                   </ul>
                 </div>
               </div>
@@ -77,7 +77,7 @@
                     <div>{{ cl.formset.management_form }}</div>
                 {% endif %}
 
-                <div class="card card-body border-0 shadow table-wrapper table-responsive">
+                <div class="card an-card card-body border-0 shadow table-wrapper table-responsive">
                     {% block result_list %}
                         {% if action_form and actions_on_top and cl.show_admin_actions %}
                             {% admin_actions %}
@@ -97,8 +97,8 @@
         <div class="col-md-4">
             {% if cl.has_filters %}
                 {% block filters %}
-                    <div class="card card-body border-0 shadow table-wrapper table-responsive">
-                        <div class="card-header filter_card_header">
+                    <div class="card an-card card-body border-0 shadow table-wrapper table-responsive">
+                        <div class="card-header an-card-header filter_card_header">
                             <h5>{% trans 'Filter' %}</h5>
                         </div>
                         <div class="card-body">

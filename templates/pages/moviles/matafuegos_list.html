@@ -7,11 +7,11 @@
 
 <meta name="csrf-token" content="{{ csrf_token }}">
 <div id="app-matafuegos" class="container mt-4">
-    <h5 class="an-page-title">Listado de Matafuegos</h5>
+    <h5 class="an-page-title an-page-header__title">Listado de matafuegos</h5>
     <div class="an-filter-bar">
     <div class="row mb-2">
         <div class="col-md-6">
-            <input v-model="searchQuery" @input="onSearch" class="form-control" placeholder="Buscar por empresa o area" />
+            <input v-model="searchQuery" @input="onSearch" class="form-control an-field" placeholder="Buscar por empresa o area" />
         </div>
         <div class="col-md-6 text-right">
             <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> </button>
@@ -70,7 +70,7 @@
     <!-- Modal para Agregar/Editar Tipo vencimiento... -->
     <div class="modal" tabindex="-1" role="dialog" id="modal-form">
         <div class="modal-dialog" role="document">
-            <div class="modal-content">
+            <div class="modal-content an-modal">
                 <div class="modal-header">
                     <h5 class="modal-title">[[ modalTitle ]]</h5>
                     <button type="button" class="close" @click="closeModal">
@@ -81,12 +81,12 @@
                     <form @submit.prevent="saveMatafuego">
                         <div class="form-group">
                             <label for="codigo_interno">Codigo interno</label>
-                            <input v-model="formData.codigo_interno" class="form-control">
+                            <input v-model="formData.codigo_interno" class="form-control an-field">
                         </div>
 
                         <div class="form-group">
                             <label for="cliente">Cliente</label>
-                            <select v-model="formData.cliente" class="form-control">
+                            <select v-model="formData.cliente" class="form-control an-field">
                                 <option value="">-- Seleccione un Cliente --</option>
                                 <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">[[ cliente.nombre ]]</option>
                             </select>
@@ -94,7 +94,7 @@
 
                         <div class="form-group">
                             <label for="area">Area</label>
-                            <select v-model="formData.area" class="form-control">
+                            <select v-model="formData.area" class="form-control an-field">
                                 <option value="">-- Seleccione un Area --</option>
                                 <option v-for="area in filteredAreas" :key="area.id" :value="area.id">[[ area.detalle ]]</option>
                             </select>
@@ -102,27 +102,27 @@
                         
                         <div class="form-group">
                             <label for="fecha_vencimiento">Fecha Vencimiento</label>
-                            <input v-model="formData.fecha_vencimiento" class="form-control" type="date">
+                            <input v-model="formData.fecha_vencimiento" class="form-control an-field" type="date">
                         </div>
 
                         <div class="form-group">
                             <label for="cantidad">Cantidad</label>
-                            <input v-model="formData.cantidad" class="form-control" type="number">
+                            <input v-model="formData.cantidad" class="form-control an-field" type="number">
                         </div>                        
                       
                         <div class="form-group">
                             <label for="capacidad">Capacidad KG</label>
-                            <input v-model="formData.capacidad" class="form-control" type="number">
+                            <input v-model="formData.capacidad" class="form-control an-field" type="number">
                         </div>
 
                         <div class="form-group">
                             <label for="ubicacion">Ubicacion</label>
-                            <input v-model="formData.ubicacion" class="form-control">
+                            <input v-model="formData.ubicacion" class="form-control an-field">
                         </div>
                         
                         <div class="form-group">
                             <label for="mail_responsable">EMail Responsable</label>
-                            <input v-model="formData.mail_responsable" class="form-control">
+                            <input v-model="formData.mail_responsable" class="form-control an-field">
                         </div>
 
                         <button type="submit" class="btn btn-success">[[ modalButtonLabel ]]</button>
