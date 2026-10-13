@@ -129,6 +129,10 @@ celerybeat.pid
 .env.development
 .env.test
 .env.production
+# Cualquier variante de .env (backups incluidos) tiene credenciales dentro.
+# .env.example si se versiona, porque es la plantilla sin secretos.
+.env.*
+!.env.example
 .venv
 .venv*/
 env/
