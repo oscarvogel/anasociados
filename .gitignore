@@ -202,6 +202,10 @@ secret_key.txt
 *.sqlite3
 db.sqlite3-*
 
+# Dump de la base (datos reales de clientes): nunca al repo
+/mysql/
+*.sql
+
 # Migration files (optional - remove if you want to track migrations)
 # */migrations/*
 # !*/migrations/__init__.py
