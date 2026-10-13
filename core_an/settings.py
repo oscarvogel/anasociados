@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     "usuarios.apps.UsuariosConfig",
     "syh",
     "moviles",
+    "utiles",   # sin models: aporta los management commands (alerta_prueba)
 
     # Tooling Dynamic_DT
     'django_dyn_dt',             # <-- NEW: Dynamic_DT
@@ -276,6 +277,21 @@ CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_RESULT_EXPIRES = 60 * 60 * 24  # 24 horas
+
+# --- Alertas por WhatsApp (Vogel WhatsApp API) ---------------------------
+# Gateway: https://github.com/oscarvogel/vogel_whatsapp_api
+#
+# Deshabilitado por defecto: hasta que haya API key en el .env, las alertas
+# salen solo por mail. El modulo utiles/notificaciones.py trata a WhatsApp
+# como canal secundario: si esto falla, la alerta igual sale por mail.
+WHATSAPP_ENABLED = str2bool(os.environ.get('WHATSAPP_ENABLED', 'False'))
+WHATSAPP_API_URL = os.getenv('WHATSAPP_API_URL', 'https://whatsapp.vogelconsultoria.com.ar')
+WHATSAPP_API_KEY = os.getenv('WHATSAPP_API_KEY', '')
+WHATSAPP_INSTANCE_ID = os.getenv('WHATSAPP_INSTANCE_ID', 'default')
+WHATSAPP_API_TIMEOUT = int(os.environ.get('WHATSAPP_API_TIMEOUT', '15'))
+# Numeros que reciben las alertas, separados por coma, internacional sin +:
+# ALERTA_WHATSAPP_DESTINATARIOS=5493764000000,5491155555555
+ALERTA_WHATSAPP_DESTINATARIOS = os.environ.get('ALERTA_WHATSAPP_DESTINATARIOS', '')
 
 if DEBUG:
     CELERY_TASK_ALWAYS_EAGER = True
