@@ -4,7 +4,8 @@
 {% block breadcrumbs %}{% endblock breadcrumbs %}
 
 {% block content %}
-  <h5>Consumo de combustible por mes por móvil</h5>
+  <h5 class="an-page-title">Consumo de combustible por mes por móvil</h5>
+  <div class="an-filter-bar">
   <div class="form-group row">
     <select id="empresa-select" name="empresa" class="form-control col-mb-12 col-6">
       {% for empresa in empresas %}
@@ -16,6 +17,7 @@
   </div>
   <div class="row">
     <button id="generar-datos" onclick="generarDatos()" class="btn btn-primary col-mb-12 col-12">Generar Datos</button>
+  </div>
   </div>
   <div class="container">
     <canvas id="myChartConsumoCombustiblePorMes" ></canvas>

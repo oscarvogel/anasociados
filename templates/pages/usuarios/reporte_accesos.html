@@ -1,0 +1,391 @@
+{% extends "layouts/base.html" %}
+{% block title %} Reporte de Accesos {% endblock title %}
+
+{% block content %}
+<div class="pcoded-content">
+  <div class="pcoded-inner-content">
+    <div class="main-body">
+      <div class="page-wrapper">
+
+        <div class="page-header">
+          <div class="page-block">
+            <div class="row align-items-center">
+              <div class="col-md-12">
+                <div class="page-header-title">
+                  <h5 class="m-b-10">Reporte de accesos</h5>
+                </div>
+                <ul class="breadcrumb">
+                  <li class="breadcrumb-item"><a href="/"><i class="feather icon-home"></i></a></li>
+                  <li class="breadcrumb-item">Usuarios</li>
+                  <li class="breadcrumb-item">Reporte de accesos</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="card">
+              <div class="card-header">
+                <h5>Filtros</h5>
+              </div>
+              <div class="card-body">
+                <form method="get" class="row">
+                  <div class="col-md-4">
+                    <label for="periodo">Periodo</label>
+                    <select id="periodo" name="periodo" class="form-control">
+                      <option value="">Todos</option>
+                      {% for periodo in periodos_disponibles %}
+                        {% with periodo_valor=periodo|date:"Y-m" %}
+                          <option value="{{ periodo_valor }}" {% if periodo_valor == periodo_seleccionado %}selected{% endif %}>
+                            {{ periodo|date:"m/Y" }}
+                          </option>
+                        {% endwith %}
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="usuario">Usuario</label>
+                    <select id="usuario" name="usuario" class="form-control">
+                      <option value="">Todos</option>
+                      {% for usuario in usuarios_disponibles %}
+                        <option value="{{ usuario.id }}" {% if usuario.id|stringformat:"s" == usuario_seleccionado %}selected{% endif %}>
+                          {{ usuario.username }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary mr-2">Aplicar</button>
+                    <a href="{% url 'usuarios:reporte_accesos' %}" class="btn btn-light">Limpiar</a>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-xl-6 col-md-12">
+            <div class="card">
+              <div class="card-header">
+                <h5>Evolucion mensual de ingresos</h5>
+              </div>
+              <div class="card-body">
+                <canvas id="chartIngresosMensuales" height="120"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="col-xl-6 col-md-12">
+            <div class="card">
+              <div class="card-header">
+                <h5>Top menues mas visitados</h5>
+              </div>
+              <div class="card-body">
+                <canvas id="chartMenusTop" height="120"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="card">
+              <div class="card-header">
+                <h5>Top usuarios del mes {{ top_periodo_texto }}</h5>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-xl-6 col-md-12">
+                    <canvas id="chartTopUsuarios" height="130"></canvas>
+                  </div>
+                  <div class="col-xl-6 col-md-12">
+                    <div class="table-responsive">
+                      <table class="table table-hover an-table">
+                        <thead>
+                          <tr>
+                            <th>Usuario</th>
+                            <th>Total de ingresos</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for row in top_usuarios_mes %}
+                            <tr>
+                              <td>
+                                {% if row.user__first_name or row.user__last_name %}
+                                  {{ row.user__first_name }} {{ row.user__last_name }}
+                                {% else %}
+                                  {{ row.user__username }}
+                                {% endif %}
+                              </td>
+                              <td>{{ row.total_ingresos }}</td>
+                            </tr>
+                          {% empty %}
+                            <tr>
+                              <td colspan="2">No hay ingresos para el periodo seleccionado.</td>
+                            </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="card">
+              <div class="card-header">
+                <h5>Ingresos de usuarios por mes</h5>
+              </div>
+              <div class="card-body table-border-style">
+                <div class="table-responsive">
+                  <table class="table table-striped">
+                    <thead>
+                      <tr>
+                        <th>Periodo</th>
+                        <th>Total de ingresos</th>
+                        <th>Usuarios unicos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for row in resumen_ingresos %}
+                      <tr>
+                        <td>{{ row.periodo|date:"m/Y" }}</td>
+                        <td>{{ row.total_ingresos }}</td>
+                        <td>{{ row.usuarios_unicos }}</td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="3">Sin datos de ingresos registrados.</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>Menues visitados</h5>
+                {% if usuario_seleccionado %}
+                  <span class="badge badge-info">Filtrado por usuario</span>
+                {% endif %}
+              </div>
+              <div class="card-body table-border-style">
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Menu</th>
+                        <th>Total de accesos</th>
+                        <th>Usuarios unicos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for row in resumen_menus %}
+                      <tr>
+                        <td>{{ row.menu_nombre }}</td>
+                        <td>{{ row.total_ingresos }}</td>
+                        <td>{{ row.usuarios_unicos }}</td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="3">No hay accesos de menu para el periodo seleccionado.</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if usuario_seleccionado %}
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="card">
+              <div class="card-header">
+                <h5>Donde ingresa el usuario seleccionado</h5>
+              </div>
+              <div class="card-body table-border-style">
+                <div class="table-responsive">
+                  <table class="table table-striped">
+                    <thead>
+                      <tr>
+                        <th>Fecha y hora</th>
+                        <th>Menu</th>
+                        <th>Ruta</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for acceso in detalle_usuario_accesos %}
+                      <tr>
+                        <td>{{ acceso.fecha_hora|date:"d/m/Y H:i" }}</td>
+                        <td>{{ acceso.menu_nombre }}</td>
+                        <td>{{ acceso.path }}</td>
+                      </tr>
+                      {% empty %}
+                      <tr>
+                        <td colspan="3">No hay accesos de menu para este usuario en el filtro actual.</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ingresosLabels = JSON.parse('{{ chart_ingresos_labels|escapejs }}');
+  const ingresosTotales = JSON.parse('{{ chart_ingresos_totales|escapejs }}');
+  const ingresosUsuarios = JSON.parse('{{ chart_ingresos_usuarios|escapejs }}');
+
+  const menusLabels = JSON.parse('{{ chart_menus_labels|escapejs }}');
+  const menusTotales = JSON.parse('{{ chart_menus_totales|escapejs }}');
+  const topUsuariosLabels = JSON.parse('{{ chart_top_usuarios_labels|escapejs }}');
+  const topUsuariosTotales = JSON.parse('{{ chart_top_usuarios_totales|escapejs }}');
+
+  const ctxIngresos = document.getElementById('chartIngresosMensuales');
+  if (ctxIngresos) {
+    new Chart(ctxIngresos, {
+      type: 'line',
+      data: {
+        labels: ingresosLabels,
+        datasets: [
+          {
+            label: 'Total ingresos',
+            data: ingresosTotales,
+            borderColor: '#1f77b4',
+            backgroundColor: 'rgba(31, 119, 180, 0.15)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 2
+          },
+          {
+            label: 'Usuarios unicos',
+            data: ingresosUsuarios,
+            borderColor: '#2ca02c',
+            backgroundColor: 'rgba(44, 160, 44, 0.15)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top'
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+  }
+
+  const ctxMenus = document.getElementById('chartMenusTop');
+  if (ctxMenus) {
+    new Chart(ctxMenus, {
+      type: 'bar',
+      data: {
+        labels: menusLabels,
+        datasets: [
+          {
+            label: 'Accesos',
+            data: menusTotales,
+            backgroundColor: [
+              '#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51',
+              '#5e548e', '#386641', '#6d6875', '#8f2d56', '#0b7285'
+            ],
+            borderWidth: 0
+          }
+        ]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+  }
+
+  const ctxTopUsuarios = document.getElementById('chartTopUsuarios');
+  if (ctxTopUsuarios) {
+    new Chart(ctxTopUsuarios, {
+      type: 'bar',
+      data: {
+        labels: topUsuariosLabels,
+        datasets: [
+          {
+            label: 'Ingresos en el mes',
+            data: topUsuariosTotales,
+            backgroundColor: '#1f77b4',
+            borderRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+  }
+</script>
+{% endblock extra_js %}

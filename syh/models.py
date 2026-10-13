@@ -1,4 +1,5 @@
 import uuid
+from calendar import monthrange
 
 from django.db.models import Avg, Q
 
@@ -8,6 +9,7 @@ from django.db.models import Count
 from django.utils.html import mark_safe
 from django.utils import timezone
 import matplotlib.pyplot as plt
+from unidecode import unidecode
 
 # Create your models here.
 
@@ -216,6 +218,103 @@ class Movimientos(models.Model):
                 'backgroundColor': colores[index % len(colores)]  # Asigna un color de la lista
             })
         return datasets, labels
+
+    @staticmethod
+    def _sumar_un_mes(fecha):
+        if fecha.month == 12:
+            return date(fecha.year + 1, 1, 1)
+        return date(fecha.year, fecha.month + 1, 1)
+
+    @classmethod
+    def _estado_al_cierre_de_mes(cls, fecha_cumplimiento, fecha_realizado, fin_mes):
+        # Regla 3: si la fecha realizado es menor o igual al fin de mes, está cumplido.
+        if fecha_realizado and fecha_realizado <= fin_mes:
+            return 'Cumplido'
+
+        # Regla 1: si la fecha de cumplimiento es posterior al fin de mes, está en curso.
+        if fecha_cumplimiento and fecha_cumplimiento > fin_mes:
+            return 'Gestión en Curso'
+
+        # Regla 2: si ya venció al fin de mes y no fue realizado, está incumplido.
+        if fecha_cumplimiento and fecha_cumplimiento <= fin_mes:
+            return 'Incumplido'
+
+        # Sin fecha de cumplimiento definida, se considera en gestión.
+        return 'Gestión en Curso'
+
+    @classmethod
+    def obtener_porcentaje_estados_mensual(cls, cliente_id=None, area_id=None, fecha_desde=None, fecha_hasta=None):
+        queryset = cls.objects.all()
+
+        if cliente_id and cliente_id != 'Todos':
+            queryset = queryset.filter(cliente_id=cliente_id)
+        if area_id:
+            queryset = queryset.filter(area_id=area_id)
+
+        movimientos = list(
+            queryset.values('fecha', 'fecha_cumplimiento', 'fecha_realizado').order_by('fecha')
+        )
+
+        if not movimientos:
+            return {
+                'labels': [],
+                'cumplido': [],
+                'incumplido': [],
+                'gestion_en_curso': [],
+            }
+
+        primer_mes = date(movimientos[0]['fecha'].year, movimientos[0]['fecha'].month, 1)
+        ultimo_relevante = fecha_hasta or date.today()
+        ultimo_mes = date(ultimo_relevante.year, ultimo_relevante.month, 1)
+
+        if fecha_desde:
+            primer_mes = date(fecha_desde.year, fecha_desde.month, 1)
+
+        labels = []
+        cumplido = []
+        incumplido = []
+        gestion_en_curso = []
+
+        mes_actual = primer_mes
+        while mes_actual <= ultimo_mes:
+            ultimo_dia = monthrange(mes_actual.year, mes_actual.month)[1]
+            fin_mes = date(mes_actual.year, mes_actual.month, ultimo_dia)
+
+            movimientos_hasta_mes = [m for m in movimientos if m['fecha'] and m['fecha'] <= fin_mes]
+            total = len(movimientos_hasta_mes)
+
+            cantidades = {
+                'Cumplido': 0,
+                'Incumplido': 0,
+                'Gestión en Curso': 0,
+            }
+
+            for movimiento in movimientos_hasta_mes:
+                estado = cls._estado_al_cierre_de_mes(
+                    movimiento['fecha_cumplimiento'],
+                    movimiento['fecha_realizado'],
+                    fin_mes,
+                )
+                cantidades[estado] += 1
+
+            if total > 0:
+                cumplido.append(round((cantidades['Cumplido'] / total) * 100, 2))
+                incumplido.append(round((cantidades['Incumplido'] / total) * 100, 2))
+                gestion_en_curso.append(round((cantidades['Gestión en Curso'] / total) * 100, 2))
+            else:
+                cumplido.append(0)
+                incumplido.append(0)
+                gestion_en_curso.append(0)
+
+            labels.append(mes_actual.strftime('%Y-%m'))
+            mes_actual = cls._sumar_un_mes(mes_actual)
+
+        return {
+            'labels': labels,
+            'cumplido': cumplido,
+            'incumplido': incumplido,
+            'gestion_en_curso': gestion_en_curso,
+        }
     
     @classmethod
     def plazo_promedio(cls, cliente):

@@ -1,4 +1,5 @@
 from datetime import date
+import json
 from django.shortcuts import render, redirect
 from admin_datta.forms import RegistrationForm, LoginForm, UserPasswordChangeForm, UserPasswordResetForm, UserSetPasswordForm
 from django.contrib.auth.views import LoginView, PasswordChangeView, PasswordResetConfirmView, PasswordResetView
@@ -51,6 +52,11 @@ def index(request):
       areas = Area.objects.filter(cliente = cliente_id)
     else:
       areas = Area.objects.filter(id__in=[area.area.id for area in areas_profile])
+
+  # Validar área seleccionada según permisos vigentes.
+  area_ids_permitidas = set(areas.values_list('id', flat=True))
+  if area_id and area_id not in area_ids_permitidas:
+    area_id = None
   
   # if cliente_id:
   #    cliente = cliente_id
@@ -78,6 +84,7 @@ def index(request):
   excesos_velocidad = ExcesosVelocidad.chart_view(cliente_id)
 
   porcentaje_por_area = Movimientos.get_porcentaje_cumplidos_por_area(cliente_id, fecha_desde=date(2020, 1, 1), fecha_hasta=date.today())
+  grafico_estados_mensual = Movimientos.obtener_porcentaje_estados_mensual(cliente_id=cliente_id, area_id=area_id)
 
   # Obtener la meta de porcentaje desde la instancia de cliente si está disponible.
   meta_porcentaje = 85
@@ -115,6 +122,7 @@ def index(request):
     'tasa_riesgo': datos['tasa_riesgo'],
     'excesos_velocidad': excesos_velocidad,
     'porcentaje_por_area': porcentaje_por_area,
+    'grafico_estados_mensual': json.dumps(grafico_estados_mensual),
     'meta_porcentaje': meta_porcentaje,
     #'products' : Product.objects.all()
   }

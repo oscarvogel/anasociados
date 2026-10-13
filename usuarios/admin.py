@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import AreasProfile, Profile
+from .models import AreasProfile, Profile, UsuarioIngreso, UsuarioMenuAcceso
 
 # Register your models here.
 @admin.register(Profile)
@@ -23,3 +23,19 @@ class AreasProfileAdmin(admin.ModelAdmin):
     list_editable = ('area',)
     list_display_links = ('user',)
     ordering = ('user',)
+
+
+@admin.register(UsuarioIngreso)
+class UsuarioIngresoAdmin(admin.ModelAdmin):
+    list_display = ('user', 'fecha_hora')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name')
+    list_filter = ('fecha_hora',)
+    ordering = ('-fecha_hora',)
+
+
+@admin.register(UsuarioMenuAcceso)
+class UsuarioMenuAccesoAdmin(admin.ModelAdmin):
+    list_display = ('user', 'menu_nombre', 'fecha_hora')
+    search_fields = ('user__username', 'menu_nombre', 'menu_codigo', 'path')
+    list_filter = ('menu_nombre', 'fecha_hora')
+    ordering = ('-fecha_hora',)

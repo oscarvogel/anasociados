@@ -67,6 +67,7 @@
                 <li class=""><a href="{% url 'moviles:consumo_combustible_por_mes' %}" class="nav-link" >Consumo de Combustible</a></li>
                 {% if request.user.is_superuser %}
                   <li class=""><a href="{% url 'moviles:reporte_gastos_movil' %}" class="nav-link" >Reporte de gastos</a></li>
+                  <li class=""><a href="{% url 'usuarios:reporte_accesos' %}" class="nav-link" >Reporte de accesos</a></li>
                 {% endif %}
               </ul>
         </li>

@@ -130,6 +130,7 @@ celerybeat.pid
 .env.test
 .env.production
 .venv
+.venv*/
 env/
 venv/
 ENV/
@@ -188,7 +189,11 @@ $RECYCLE.BIN/
 # Django specific
 /media/
 /staticfiles/
-/static/
+# static/ se trackea (assets del tema); solo se ignora lo que se compile.
+/static/*
+# El design system propio (static/src/css/an-custom.css) lo referencia
+# templates/includes/head.html, asi que no puede quedar fuera del repo.
+!/static/src/
 secret_key.txt
 
 # Database files

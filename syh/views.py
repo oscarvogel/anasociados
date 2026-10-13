@@ -1,4 +1,5 @@
 from email import message
+from datetime import date
 from multiprocessing import context
 import os
 from venv import logger
@@ -146,6 +147,63 @@ def obtener_areas_vue(request):
         areas = []
     print(areas)
     return JsonResponse(list(areas), safe=False)
+
+
+def api_estados_mensuales(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    cliente_id = request.GET.get('cliente')
+    area_id = request.GET.get('area')
+    fecha_desde_raw = request.GET.get('fecha_desde')
+    fecha_hasta_raw = request.GET.get('fecha_hasta')
+
+    def parse_fecha(valor, nombre_parametro):
+        if not valor:
+            return None
+        try:
+            return date.fromisoformat(valor)
+        except ValueError:
+            raise ValueError(f'{nombre_parametro} debe tener formato YYYY-MM-DD')
+
+    try:
+        fecha_desde = parse_fecha(fecha_desde_raw, 'fecha_desde')
+        fecha_hasta = parse_fecha(fecha_hasta_raw, 'fecha_hasta')
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+
+    if request.user.is_superuser:
+        if cliente_id and area_id and not Area.objects.filter(id=area_id, cliente_id=cliente_id).exists():
+            return JsonResponse({'error': 'El área no pertenece al cliente seleccionado'}, status=400)
+    else:
+        try:
+            profile = Profile.objects.get(user=request.user)
+        except Profile.DoesNotExist:
+            return JsonResponse({'error': 'No tiene perfil asociado para consultar este informe'}, status=403)
+
+        cliente_permitido = str(profile.cliente_id)
+        if cliente_id and str(cliente_id) != cliente_permitido:
+            return JsonResponse({'error': 'No tiene permiso para el cliente seleccionado'}, status=403)
+
+        cliente_id = cliente_permitido
+
+        areas_profile = AreasProfile.objects.filter(user=request.user)
+        if areas_profile.exists():
+            area_ids_permitidas = set(str(area_pk) for area_pk in areas_profile.values_list('area_id', flat=True))
+        else:
+            area_ids_permitidas = set(str(area_pk) for area_pk in Area.objects.filter(cliente_id=cliente_id).values_list('id', flat=True))
+
+        if area_id and str(area_id) not in area_ids_permitidas:
+            return JsonResponse({'error': 'No tiene permiso para el área seleccionada'}, status=403)
+
+    data = Movimientos.obtener_porcentaje_estados_mensual(
+        cliente_id=cliente_id,
+        area_id=area_id,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+
+    return JsonResponse(data)
 
 @csrf_exempt
 def excesos_list(request):

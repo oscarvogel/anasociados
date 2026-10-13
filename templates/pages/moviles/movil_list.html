@@ -5,140 +5,23 @@
 
 {% block content %}
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <style>
-        .modern-container {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .modern-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            padding: 30px;
-            margin-bottom: 30px;
-        }
-        .modern-table {
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-        }
-        .modern-table thead {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .modern-table tbody tr:hover {
-            background-color: #f8f9fa;
-            transform: scale(1.01);
-            transition: all 0.2s ease;
-        }
-        .modern-btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 25px;
-            padding: 10px 20px;
-            color: white;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        .modern-btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        .modern-btn-secondary {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            border: none;
-            border-radius: 25px;
-            padding: 8px 16px;
-            color: white;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        .modern-btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
-        }
-        .modern-btn-danger {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-            border: none;
-            border-radius: 25px;
-            padding: 8px 16px;
-            color: white;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        .modern-btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(238, 90, 36, 0.4);
-        }
-        .modern-input {
-            border-radius: 25px;
-            border: 2px solid #e9ecef;
-            padding: 10px 20px;
-            transition: all 0.3s ease;
-        }
-        .modern-input:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .modern-modal .modal-content {
-            border-radius: 15px;
-            border: none;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-        }
-        .modern-modal .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px 15px 0 0;
-            border-bottom: none;
-        }
-        .modern-modal .modal-body {
-            padding: 30px;
-        }
-        .modern-modal .form-control {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 10px 15px;
-            transition: all 0.3s ease;
-        }
-        .modern-modal .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .modern-modal label {
-            font-weight: bold;
-            color: #495057;
-            margin-bottom: 5px;
-        }
-        .pagination .page-link {
-            border-radius: 50% !important;
-            margin: 0 2px;
-            border: none;
-            background: #f8f9fa;
-            color: #667eea;
-        }
-        .pagination .page-item.active .page-link {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-    </style>
-    <div id="app-moviles" class="modern-container">
-        <div class="modern-card">
-            <h1 class="text-center mb-4" style="color: #495057; font-weight: bold;">Gestión de Móviles</h1>
-            <div class="mb-4 d-flex justify-content-between align-items-center">
-                <div class="input-group" style="max-width: 400px;">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text" style="border-radius: 25px 0 0 25px; border: 2px solid #e9ecef; background: #f8f9fa;"><i class="fas fa-search"></i></span>
-                    </div>
-                    <input v-model="searchQuery" class="form-control modern-input" placeholder="Buscar por patente o empresa" style="border-radius: 0 25px 25px 0;" />
+    <div id="app-moviles" class="container mt-4">
+        <h5 class="an-page-title">Gestión de Móviles</h5>
+        <div class="an-filter-bar d-flex justify-content-between align-items-center flex-wrap">
+            <div class="input-group mb-2" style="max-width: 380px;">
+                <div class="input-group-prepend">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
                 </div>
-                <div>
-                    <button @click="openModal('create')" class="btn modern-btn-primary mr-2"><i class="fas fa-plus"></i> Nuevo Móvil</button>
-                    <button @click="fetchMoviles(1)" class="btn modern-btn-secondary"><i class="fa-solid fa-rotate-right"></i> Actualizar</button>
-                </div>
+                <input v-model="searchQuery" class="form-control" placeholder="Buscar por patente o empresa" />
             </div>
+            <div class="mb-2">
+                <button @click="openModal('create')" class="btn btn-primary mr-2"><i class="fas fa-plus"></i> Nuevo Móvil</button>
+                <button @click="fetchMoviles(1)" class="btn btn-outline-secondary"><i class="fa-solid fa-rotate-right"></i> Actualizar</button>
+            </div>
+        </div>
+        <div class="an-table-wrapper">
             <div class="table-responsive">
-                <table class="table table-hover modern-table">
+                <table class="table an-table table-hover">
                     <thead>
                         <tr>
                             <th>Patente</th>
@@ -159,8 +42,8 @@
                             <td>[[ movil.empresa_nombre ]]</td>
                             <td>[[ movil.viajes_mes ]]</td>
                             <td>
-                                <button @click="openModal('edit', movil)" class="btn modern-btn-secondary btn-sm mr-1"><i class="fas fa-edit"></i></button>
-                                <button @click="deleteMovil(movil.id)" class="btn modern-btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                                <button @click="openModal('edit', movil)" class="btn btn-warning btn-sm mr-1"><i class="fas fa-edit"></i></button>
+                                <button @click="deleteMovil(movil.id)" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
                     </tbody>
@@ -169,12 +52,12 @@
             <pagination :current-page="currentPage" :total-pages="totalPages" @page-changed="fetchMoviles"></pagination>
         </div>
 
-        <div class="modal modern-modal" role="dialog" id="modal-form">
+        <div class="modal" role="dialog" id="modal-form">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-car"></i> [[ modalMode === 'create' ? 'Nuevo Móvil' : 'Editar Móvil' ]]</h5>
-                        <button @click="closeModal()" class="btn btn-light" style="border-radius: 50%;"><i class="fas fa-times"></i></button>
+                        <h5 class="modal-title"><i class="fas fa-car mr-2"></i> [[ modalMode === 'create' ? 'Nuevo Móvil' : 'Editar Móvil' ]]</h5>
+                        <button @click="closeModal()" class="close"><span>&times;</span></button>
                     </div>
                     <div class="modal-body">
                         <div class="row">
@@ -211,7 +94,7 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button @click="saveMovil(form)" class="btn modern-btn-primary"><i class="fas fa-save"></i> [[ modalMode === 'create' ? 'Crear' : 'Guardar' ]]</button>
+                        <button @click="saveMovil(form)" class="btn btn-primary"><i class="fas fa-save"></i> [[ modalMode === 'create' ? 'Crear' : 'Guardar' ]]</button>
                     </div>
                 </div>
             </div>

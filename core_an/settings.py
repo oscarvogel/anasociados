@@ -46,6 +46,10 @@ CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://localhost:5085', 'http:
 
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
+# Running over plain HTTP causes browser COOP warnings; disable header for now.
+# If HTTPS is enabled later, this can be changed back to "same-origin".
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
+
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:    
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -64,7 +68,7 @@ INSTALLED_APPS = [
     
     "home",
 
-    "usuarios",
+    "usuarios.apps.UsuariosConfig",
     "syh",
     "moviles",
 
@@ -84,6 +88,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "usuarios.middleware.MenuAccessTrackingMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

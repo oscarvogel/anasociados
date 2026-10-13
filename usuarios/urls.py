@@ -7,4 +7,5 @@ app_name = 'usuarios'
 urlpatterns = [
   path(''       , views.user_logout, name='logout'),
   path('update/', views.update_user, name='update_user'),
+  path('reporte-accesos/', views.reporte_accesos, name='reporte_accesos'),
 ]

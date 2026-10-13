@@ -1,0 +1,380 @@
+/* ============================================================
+   AN & Asociados — Design System
+   Palette: Datta Able theme primary (#04a9f5) + professional navy
+   ============================================================ */
+
+/* ---------- 1. Design Tokens -------------------------------- */
+:root {
+  --an-primary:        #04a9f5;
+  --an-primary-dark:   #0288d1;
+  --an-primary-darker: #01579b;
+  --an-primary-light:  #e1f5fe;
+  --an-gradient:       linear-gradient(135deg, #0288d1 0%, #04a9f5 100%);
+  --an-gradient-hover: linear-gradient(135deg, #01579b 0%, #0288d1 100%);
+
+  --an-success:        #2e7d32;
+  --an-success-bg:     #e8f5e9;
+  --an-warning:        #e65100;
+  --an-warning-bg:     #fff3e0;
+  --an-danger:         #c62828;
+  --an-danger-bg:      #fce4ec;
+  --an-info-bg:        #e3f2fd;
+
+  --an-text-main:      #2d3748;
+  --an-text-muted:     #718096;
+  --an-text-light:     #a0aec0;
+
+  --an-bg-page:        #f4f6f9;
+  --an-bg-card:        #ffffff;
+  --an-border:         #e8ecf0;
+  --an-border-light:   #f1f4f8;
+
+  --an-radius-sm:      6px;
+  --an-radius:         10px;
+  --an-radius-lg:      14px;
+  --an-shadow-sm:      0 2px 8px rgba(2, 136, 209, 0.08);
+  --an-shadow:         0 4px 18px rgba(2, 136, 209, 0.12);
+  --an-shadow-lg:      0 8px 32px rgba(2, 136, 209, 0.16);
+
+  --an-font-body:      'Nunito', 'Segoe UI', sans-serif;
+  --an-font-mono:      'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ---------- 2. Typography ----------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
+
+body {
+  font-family: var(--an-font-body);
+  color: var(--an-text-main);
+  background-color: var(--an-bg-page);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--an-font-body);
+  font-weight: 700;
+  color: var(--an-text-main);
+}
+
+/* ---------- 3. Page Title / Section Header ------------------ */
+.an-page-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--an-text-main);
+  border-left: 4px solid var(--an-primary);
+  padding-left: 0.85rem;
+  margin-bottom: 1.4rem;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- 4. Card ----------------------------------------- */
+.an-card {
+  background: var(--an-bg-card);
+  border: none;
+  border-radius: var(--an-radius-lg);
+  box-shadow: var(--an-shadow);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.an-card-header {
+  background: var(--an-gradient);
+  color: #fff;
+  padding: 0.9rem 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.an-card-header h4,
+.an-card-header h5,
+.an-card-header .an-card-title {
+  color: #fff;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.an-card-body {
+  padding: 1.4rem;
+}
+
+/* ---------- 5. Filter Bar ----------------------------------- */
+.an-filter-bar {
+  background: var(--an-bg-card);
+  border-radius: var(--an-radius);
+  padding: 1rem 1.4rem 0.6rem;
+  margin-bottom: 1.2rem;
+  box-shadow: var(--an-shadow-sm);
+  border: 1px solid var(--an-border-light);
+}
+
+/* ---------- 6. Table ---------------------------------------- */
+.an-table {
+  width: 100%;
+  margin-bottom: 0;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.an-table thead th {
+  background: var(--an-gradient);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.75rem 1rem;
+  border: none;
+  white-space: nowrap;
+}
+
+.an-table tbody td {
+  padding: 0.6rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--an-border-light);
+  color: var(--an-text-main);
+}
+
+.an-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.an-table tbody tr:hover {
+  background-color: var(--an-primary-light);
+  transition: background-color 0.15s ease;
+}
+
+/* Wrap tables inside an-card automatically */
+.an-table-wrapper {
+  border-radius: var(--an-radius);
+  overflow: hidden;
+  box-shadow: var(--an-shadow-sm);
+}
+
+/* ---------- 7. Buttons -------------------------------------- */
+.an-btn,
+.btn-primary {
+  background: var(--an-gradient) !important;
+  border: none !important;
+  border-radius: var(--an-radius-sm) !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  padding: 0.45rem 1rem;
+  transition: filter 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.an-btn:hover,
+.btn-primary:hover,
+.btn-primary:focus {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(2, 136, 209, 0.35) !important;
+  color: #fff !important;
+}
+
+.an-btn-sm {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+  border-radius: var(--an-radius-sm);
+}
+
+/* Edit button */
+.btn-warning {
+  border-radius: var(--an-radius-sm) !important;
+  font-weight: 600 !important;
+}
+
+/* Danger button */
+.btn-danger {
+  border-radius: var(--an-radius-sm) !important;
+  font-weight: 600 !important;
+}
+
+/* ---------- 8. Forms & Inputs ------------------------------- */
+.form-control {
+  border: 1.5px solid var(--an-border);
+  border-radius: var(--an-radius-sm) !important;
+  color: var(--an-text-main);
+  font-size: 0.9rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus {
+  border-color: var(--an-primary) !important;
+  box-shadow: 0 0 0 0.18rem rgba(4, 169, 245, 0.22) !important;
+  outline: none;
+}
+
+.form-control::placeholder {
+  color: var(--an-text-light);
+}
+
+label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--an-text-muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ---------- 9. Modal ---------------------------------------- */
+.modal-content {
+  border: none;
+  border-radius: var(--an-radius-lg) !important;
+  box-shadow: var(--an-shadow-lg);
+  overflow: hidden;
+}
+
+.modal-header {
+  background: var(--an-gradient);
+  color: #fff;
+  border-bottom: none;
+  padding: 1rem 1.4rem;
+}
+
+.modal-header .modal-title {
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.modal-header .close {
+  color: #fff;
+  opacity: 0.85;
+  font-size: 1.4rem;
+  text-shadow: none;
+}
+
+.modal-header .close:hover {
+  opacity: 1;
+}
+
+.modal-body {
+  padding: 1.4rem 1.6rem;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--an-border-light);
+  padding: 0.9rem 1.4rem;
+}
+
+/* ---------- 10. Pagination ---------------------------------- */
+.pagination .page-link {
+  color: var(--an-primary);
+  border: 1px solid var(--an-border);
+  border-radius: var(--an-radius-sm) !important;
+  margin: 0 2px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.pagination .page-link:hover {
+  background-color: var(--an-primary-light);
+  color: var(--an-primary-dark);
+  border-color: var(--an-primary);
+}
+
+.pagination .page-item.active .page-link {
+  background: var(--an-gradient) !important;
+  border-color: var(--an-primary-dark) !important;
+  color: #fff !important;
+}
+
+.pagination .page-item.disabled .page-link {
+  color: var(--an-text-light);
+  background: transparent;
+}
+
+/* ---------- 11. Status Badges ------------------------------- */
+.an-badge {
+  display: inline-block;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.an-badge-success { background-color: var(--an-success-bg); color: var(--an-success); }
+.an-badge-warning { background-color: var(--an-warning-bg); color: var(--an-warning); }
+.an-badge-danger  { background-color: var(--an-danger-bg);  color: var(--an-danger);  }
+.an-badge-info    { background-color: var(--an-info-bg);    color: var(--an-primary-dark); }
+
+/* ---------- 12. Alerts & Toast ----------------------------- */
+.alert-info {
+  background-color: var(--an-info-bg);
+  border-color: var(--an-primary);
+  color: var(--an-primary-darker);
+}
+
+/* ---------- 13. Sidebar & Navbar Overrides ------------------ */
+.pcoded-navbar .navbar-brand.header-logo {
+  background: var(--an-gradient);
+}
+
+.pcoded-navbar .pcoded-inner-navbar li.active > a,
+.pcoded-navbar .pcoded-inner-navbar li:focus > a,
+.pcoded-navbar .pcoded-inner-navbar li:hover > a {
+  color: var(--an-primary) !important;
+}
+
+.pcoded-navbar .pcoded-inner-navbar > li.active:before,
+.pcoded-navbar .pcoded-inner-navbar > li.pcoded-trigger:before {
+  background: var(--an-primary) !important;
+}
+
+/* Navbar top header icon accent */
+.pcoded-header .input-group .search-btn {
+  background: var(--an-gradient) !important;
+  border-color: var(--an-primary-dark) !important;
+}
+
+/* ---------- 14. Card inside existing theme (.card) ---------- */
+.card {
+  border: none !important;
+  border-radius: var(--an-radius-lg) !important;
+  box-shadow: var(--an-shadow) !important;
+}
+
+.card-header {
+  border-radius: var(--an-radius-lg) var(--an-radius-lg) 0 0 !important;
+}
+
+.card-header h5 {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--an-text-main);
+}
+
+/* ---------- 15. Progress Bar -------------------------------- */
+.progress-bar {
+  background: var(--an-gradient) !important;
+}
+
+/* ---------- 16. Breadcrumb accent --------------------------- */
+.breadcrumb-item a {
+  color: var(--an-primary);
+}
+
+/* ---------- 17. Select2 / native select accent -------------- */
+select.form-control:focus {
+  border-color: var(--an-primary) !important;
+}
+
+/* ---------- 18. Utilities ----------------------------------- */
+.text-an-primary { color: var(--an-primary) !important; }
+.bg-an-gradient  { background: var(--an-gradient) !important; }
+
+/* small chip for numeric values in tables */
+.an-chip {
+  display: inline-block;
+  background: var(--an-primary-light);
+  color: var(--an-primary-dark);
+  border-radius: 20px;
+  padding: 2px 9px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}

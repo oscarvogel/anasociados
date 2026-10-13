@@ -7,6 +7,8 @@
 
 <meta name="csrf-token" content="{{ csrf_token }}">
 <div id="app-combustible" class="container mt-4">
+    <h5 class="an-page-title">Carga de Combustible</h5>
+    <div class="an-filter-bar">
     <div class="row mb-2">
         <div class="col-md-6">
             <input v-model="searchQuery" @input="onSearch" class="form-control" placeholder="Buscar por chofer, patente o empresa" />
@@ -15,8 +17,10 @@
             <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> </button>
         </div>
     </div>
+    </div>
 
-    <table class="table table-bordered">
+    <div class="an-table-wrapper">
+    <table class="table an-table">
         <thead>
             <tr>
                 <th>Fecha</th>
@@ -49,6 +53,7 @@
             </tr>
         </tbody>
     </table>
+    </div>
 
     <nav aria-label="Page navigation example">
         <ul class="pagination">

@@ -14,6 +14,7 @@ urlpatterns = [
     path('imprimir_movimientos', views.imprimir_movimientos, name='imprimir_movimientos'),
     path('obtener-areas/', views.obtener_areas, name='obtener_areas'),
     path('api/obtener-areas-vue/', views.obtener_areas_vue, name='obtener_areas_vue'),
+    path('api/estados-mensuales/', views.api_estados_mensuales, name='api_estados_mensuales'),
 
     path('plantilla-excesos/', views.excesos_plantilla, name='excesos_plantilla'),
     # API para Excesos de Velocidad

@@ -6,7 +6,8 @@
 {% block content %}
 
   <!-- [ Main Content ] start -->
-  <div class="card">
+  <h5 class="an-page-title">Dashboard</h5>
+  <div class="card an-filter-bar">
     <div class="card-body">
         <div class="row">
             <div class="col-md-4 mb-3">
@@ -84,7 +85,17 @@
           </div>
         </div>
       </div>
-    </div>    
+    </div>
+    <div class="col-xl-12">
+      <div class="card">
+        <div class="card-header">
+          <h5>Estados de hallazgos mes a mes (%)</h5>
+        </div>
+        <div class="card-block">
+          <canvas id="graficoEstadosMensuales"></canvas>
+        </div>
+      </div>
+    </div>
     <div class="col-xl-3">
       <div class="card">
         <div class="card-body">
@@ -339,14 +350,17 @@
   });
 
   //implementacion del boton de resumen
-  document.getElementById('resumen-button').addEventListener('click', function() {
-    const clienteId = document.getElementById('cliente-select').value;
-    if (clienteId) {
-        window.location.href = `{% url 'syh:generar_resumen' %}?cliente=${clienteId}`;
-    } else {
-        alert('Por favor selecciona un cliente');
-    }
+  const resumenButton = document.getElementById('resumen-button');
+  if (resumenButton) {
+    resumenButton.addEventListener('click', function() {
+      const clienteId = document.getElementById('cliente-select').value;
+      if (clienteId) {
+          window.location.href = `{% url 'syh:generar_resumen' %}?cliente=${clienteId}`;
+      } else {
+          alert('Por favor selecciona un cliente');
+      }
     });
+  }
 
 
   var ctx = document.getElementById('graficoEmisiones').getContext('2d');
@@ -396,6 +410,78 @@
           }
       }
   });
+
+    const estadosMensualesRaw = JSON.parse('{{ grafico_estados_mensual|escapejs }}');
+    const ctxEstadosMensuales = document.getElementById('graficoEstadosMensuales').getContext('2d');
+    new Chart(ctxEstadosMensuales, {
+      type: 'line',
+      data: {
+        labels: estadosMensualesRaw.labels,
+        datasets: [
+          {
+            label: 'Cumplido (%)',
+            data: estadosMensualesRaw.cumplido,
+            borderColor: 'rgba(40, 167, 69, 1)',
+            backgroundColor: 'rgba(40, 167, 69, 0.15)',
+            tension: 0.25,
+            fill: false,
+          },
+          {
+            label: 'Incumplido (%)',
+            data: estadosMensualesRaw.incumplido,
+            borderColor: 'rgba(220, 53, 69, 1)',
+            backgroundColor: 'rgba(220, 53, 69, 0.15)',
+            tension: 0.25,
+            fill: false,
+          },
+          {
+            label: 'Gestión en Curso (%)',
+            data: estadosMensualesRaw.gestion_en_curso,
+            borderColor: 'rgba(255, 193, 7, 1)',
+            backgroundColor: 'rgba(255, 193, 7, 0.15)',
+            tension: 0.25,
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `${context.dataset.label}: ${Number(context.raw).toFixed(2)}%`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            min: 0,
+            max: 100,
+            ticks: {
+              callback: function(value) {
+                return `${value}%`;
+              }
+            },
+            title: {
+              display: true,
+              text: 'Porcentaje'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Mes'
+            }
+          }
+        }
+      }
+    });
 
 </script>
 <script src="https://unpkg.com/chart.js@2.8.0/dist/Chart.bundle.js"></script>

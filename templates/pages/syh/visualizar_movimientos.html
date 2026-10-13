@@ -4,8 +4,9 @@
 {% block breadcrumbs %}{% endblock breadcrumbs %}
 
 {% block content %}
-<div class="container">
-    <h3>Hallazgos</h3>
+<div class="container mt-4">
+    <h5 class="an-page-title">Hallazgos</h5>
+    <div class="an-filter-bar">
     <form method="get">
         <div class="row">
             <div class="col-md-6 mb-3">
@@ -36,10 +37,12 @@
         </div>
         <div class="row">
             <button type="submit" class="btn btn-primary">Aplicar Filtro</button>
-            <button type="button" id="btnImprimir" class="btn btn-secondary">Imprimir</button>
+            <button type="button" id="btnImprimir" class="btn btn-outline-secondary ml-2">Imprimir</button>
         </div>
     </form>
-    <table class="table table-striped mt-5">
+    </div>
+    <div class="an-table-wrapper mt-3">
+    <table class="table an-table">
         <thead>
         <tr>
             <th>Cliente</th>
@@ -79,6 +82,7 @@
         {% endfor %}
         </tbody>
     </table>
+    </div>
     <nav aria-label="Page navigation example">
         <ul class="pagination justify-content-center">
             <li class="page-item {% if not movimientos.has_previous %}disabled{% endif %}">

@@ -4,6 +4,8 @@
 {% block content %}
 <meta name="csrf-token" content="{{ csrf_token }}">
 <div id="app-gastos-movil" class="container mt-4">
+    <h5 class="an-page-title">Gastos de Móviles</h5>
+    <div class="an-filter-bar">
     <div class="row mb-2">
         <div class="col-md-6">
             <input v-model="searchQuery" @input="onSearch" class="form-control" placeholder="Buscar por móvil, cliente o descripción" />
@@ -12,7 +14,9 @@
             <button class="btn btn-primary" @click="openModal('add')"><i class="fas fa-plus"></i> Agregar Gasto</button>
         </div>
     </div>
-    <table class="table table-bordered">
+    </div>
+    <div class="an-table-wrapper">
+    <table class="table an-table">
         <thead>
             <tr>
                 <th>Fecha</th>
@@ -47,6 +51,8 @@
             </tr>
         </tbody>
     </table>
+    </div>
+
     <nav aria-label="Page navigation example">
         <ul class="pagination">
             <li class="page-item" :class="{ disabled: currentPage === 1 }">
