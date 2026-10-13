@@ -29,6 +29,7 @@ urlpatterns = [
     path('usuarios/', include('usuarios.urls', namespace='usuarios')),
     path('syh/', include('syh.urls', namespace='syh')),
     path('moviles/', include('moviles.urls', namespace='moviles')),
+    path('utiles/', include('utiles.urls', namespace='utiles')),
 ]
 
 # Lazy-load on routing is needed
