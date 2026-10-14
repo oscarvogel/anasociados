@@ -1,0 +1,77 @@
+{% extends 'includes/an-auth-shell.html' %}
+
+{% comment %} Alta de cuenta. La vista `register` de admin_datta usa
+RegistrationForm (username, email, password1, password2) y NO es de Django:
+si Django no puede crear el usuario, la vista revienta con AttributeError.
+Por eso aca no se promete que funcione: se muestra el formulario y, si algo
+falla, el error se ve en vez de dejar una pantalla a medias.{% endcomment %}
+
+{% block titulo %}Crear una cuenta{% endblock %}
+{% block intro_texto %}Pedí tu acceso a AN &amp; Asociados.{% endblock %}
+
+{% block avisos %}
+  {% if form.non_field_errors %}
+    <div class="an-login__error" role="alert">
+      {% for error in form.non_field_errors %}<p class="mb-0">{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block cuerpo %}
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="an-login__field">
+      <label for="{{ form.username.id_for_label }}">Usuario</label>
+      <input type="text"
+             name="{{ form.username.name }}"
+             id="{{ form.username.id_for_label }}"
+             value="{{ form.username.value|default:'' }}"
+             autocomplete="username"
+             autocapitalize="none"
+             required
+             autofocus>
+      {% for error in form.username.errors %}<p class="an-login__field-error">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="an-login__field">
+      <label for="{{ form.email.id_for_label }}">Correo electrónico</label>
+      <input type="email"
+             name="{{ form.email.name }}"
+             id="{{ form.email.id_for_label }}"
+             value="{{ form.email.value|default:'' }}"
+             autocomplete="email"
+             autocapitalize="none"
+             required>
+      {% for error in form.email.errors %}<p class="an-login__field-error">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="an-login__field">
+      <label for="{{ form.password1.id_for_label }}">Contraseña</label>
+      <input type="password"
+             name="{{ form.password1.name }}"
+             id="{{ form.password1.id_for_label }}"
+             autocomplete="new-password"
+             required>
+      {% for error in form.password1.errors %}<p class="an-login__field-error">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="an-login__field">
+      <label for="{{ form.password2.id_for_label }}">Repetí la contraseña</label>
+      <input type="password"
+             name="{{ form.password2.name }}"
+             id="{{ form.password2.id_for_label }}"
+             autocomplete="new-password"
+             required>
+      {% for error in form.password2.errors %}<p class="an-login__field-error">{{ error }}</p>{% endfor %}
+    </div>
+
+    <button class="an-login__submit" type="submit">Crear la cuenta</button>
+  </form>
+{% endblock %}
+
+{% block pie %}
+  <div class="an-login__pie">
+    <a href="{% url 'login' %}">Ya tengo cuenta, quiero entrar</a>
+  </div>
+{% endblock %}

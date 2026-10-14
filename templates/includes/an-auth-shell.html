@@ -1,0 +1,42 @@
+{% extends 'layouts/base-auth.html' %}
+{% load static %}
+
+{% comment %}
+Cáscara compartida de todas las pantallas de acceso: login, registro,
+cambio y recuperación de contraseña.
+
+Existe para que el panel de marca (logo, titular, pie) esté escrito una sola
+vez. Las nueve pantallas de auth del paquete django-admin-datta traen su
+propia versión de ese panel con el tema de Colorlib, y mantener nueve copias
+es como seensurece que unas queden viejas y otras nuevas.
+
+Cada pantalla entra por acá y llena sus bloques: titulo, intro, avisos,
+cuerpo y pie. Lo que no defina, queda vacío.
+{% endcomment %}
+
+{% block content %}
+<main class="an-login">
+  <section class="an-login__brand" aria-label="AN &amp; Asociados">
+    <a href="https://anasociados.com.ar/" aria-label="AN &amp; Asociados, sitio institucional">
+      <img class="an-login__logo" src="{% static 'assets/images/logo_almada_neri.png' %}" alt="AN &amp; Asociados">
+    </a>
+    <div class="an-login__message">
+      <p class="an-login__eyebrow">Consultoría y Servicios</p>
+      <p class="an-login__headline">Un espacio de trabajo para cada desafío.</p>
+      <p class="an-login__description">Ingresá para continuar con la gestión y el seguimiento de tus operaciones.</p>
+    </div>
+    <p class="an-login__footer">AN &amp; Asociados · Consultoría y Servicios</p>
+  </section>
+
+  <section class="an-login__panel">
+    <div class="an-login__form-wrap">
+      <h1>{% block titulo %}{% endblock %}</h1>
+      {% block intro %}<p class="an-login__intro">{% block intro_texto %}{% endblock %}</p>{% endblock %}
+
+      {% block avisos %}{% endblock %}
+      {% block cuerpo %}{% endblock %}
+      {% block pie %}{% endblock %}
+    </div>
+  </section>
+</main>
+{% endblock content %}
