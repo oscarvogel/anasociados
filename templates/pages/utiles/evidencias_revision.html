@@ -422,7 +422,7 @@
                     if (!area.value.trim()) { mostrarAviso('Escribí el motivo del rechazo.', true); area.focus(); return; }
                     decidir(evidencia, 'rechazar', area.value.trim(), confirmar);
                 });
-                panelRechazo.append(labela, area, ayuda, confirmar);
+                panelRechazo.append(etiqueta, area, ayuda, confirmar);
             }
             montarPanel();
 
