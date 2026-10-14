@@ -6,6 +6,7 @@ import os
 from venv import logger
 import django.utils.timezone
 from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import models
 from django.db.models import Count, OuterRef, Q, Subquery, Value
@@ -89,6 +90,7 @@ def _armar_grupo(empresa, hallazgos, hoy, limite):
     }
 
 
+@login_required
 def visualizar_movimientos(request):
     """
     Hallazgos agrupados por empresa, con lo pendiente arriba.
@@ -98,6 +100,10 @@ def visualizar_movimientos(request):
     seccion por empresa ordenada por urgencia, con sus hallazgos abiertos y
     las fotos a un click. El buscador existe para encontrar algo puntual, no
     para filtrar la tabla.
+
+    `login_required` no es cosmetico: sin el, un usuario anonimo hacia
+    `Profile.objects.get(user=AnonymousUser)`, que tira TypeError (no
+    Profile.DoesNotExist) y el except no lo agarraba. La pagina daba 500.
     """
     try:
         profile = Profile.objects.get(user=request.user)
@@ -187,6 +193,7 @@ def visualizar_movimientos(request):
 
 
 @require_GET
+@login_required
 def hallazgo_evidencias(request, movimiento_id):
     """Las evidencias de un hallazgo, para verlas sin entrar al admin."""
     movimiento = Movimientos.objects.filter(pk=movimiento_id).select_related(

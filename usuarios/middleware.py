@@ -3,7 +3,10 @@ from .models import UsuarioMenuAcceso
 
 MENU_LABELS = {
     "index": "Tablero",
-    "syh:visualizar_movimientos": "Informes - Hallazgos",
+    # "Hallazgos" es la pantalla de trabajo y va al primer nivel del menu,
+    # no dentro de Informes. La etiqueta se actualizo para que el reporte de
+    # accesos no la siga contando como un informe.
+    "syh:visualizar_movimientos": "Hallazgos",
     "syh:excesos_plantilla": "Informes - Excesos de Velocidad",
     "syh:generar_resumen_mensual": "Informes - Resumen Mensual",
     "moviles:consumo_combustible_por_mes": "Informes - Consumo de Combustible",

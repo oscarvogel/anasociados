@@ -114,6 +114,26 @@ class VistaHallazgosTest(TestCase):
         self.client.force_login(self.superusuario)
         return self.client.get(self.url)
 
+    # --- acceso --------------------------------------------------------
+
+    def test_sin_sesion_no_entra(self):
+        """Sin login la vista daba 500, no 403.
+
+        `Profile.objects.get(user=AnonymousUser)` tira TypeError, no
+        Profile.DoesNotExist, asi que el except de la vista no lo agarraba.
+        """
+        self.client.logout()
+        respuesta = self.client.get(self.url)
+        self.assertIn(respuesta.status_code, (302, 403))
+        self.assertNotEqual(respuesta.status_code, 500)
+
+    def test_el_endpoint_de_fotos_tambien_pide_sesion(self):
+        self.client.logout()
+        respuesta = self.client.get(
+            reverse("syh:hallazgo_evidencias", args=["mv00000001"])
+        )
+        self.assertIn(respuesta.status_code, (302, 403))
+
     def hallazgo(self, empresa, secuencia, texto, dias=-10, estado="Incumplido"):
         # El id va con contador, corto a proposito: `syh_evidencia.movimiento`
         # queda en varchar(10) cuando la base se construye desde cero, asi que

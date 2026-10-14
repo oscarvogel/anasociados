@@ -22,6 +22,18 @@
           </a>
         </li>
 
+        {# Hallazgos va al primer nivel, no escondido dentro de Informes: es la
+           pantalla de trabajo. Antes solo se llegaba por Informes > Hallazgos y
+           la gente terminaba laburando en el admin, que es para cargar datos. #}
+        {% if request.user.is_authenticated %}
+          <li data-username="hallazgos" class="nav-item {% if 'visualizar_movimientos' in segment %}active{% endif %}">
+            <a href="{% url 'syh:visualizar_movimientos' %}" class="nav-link">
+              <span class="pcoded-micon"><i class="feather icon-alert-triangle"></i></span>
+              <span class="pcoded-mtext">Hallazgos</span>
+            </a>
+          </li>
+        {% endif %}
+
         {% admin_get_menu as app_list %}
         {% if app_list %}
           {% for app in app_list %}
@@ -78,7 +90,6 @@
           <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-bar-chart-2"></i></span><span
               class="pcoded-mtext">Informes</span></a>
               <ul class="pcoded-submenu">
-                <li class=""><a href="{% url 'syh:visualizar_movimientos' %}" class="nav-link">Hallazgos</a></li>
                 <li class=""><a href="{% url 'syh:excesos_plantilla' %}" class="nav-link">Excesos de velocidad</a></li>
                 <li class=""><a href="{% url 'syh:generar_resumen_mensual' %}" class="nav-link">Resumen mensual</a></li>
                 <li class=""><a href="{% url 'moviles:consumo_combustible_por_mes' %}" class="nav-link">Consumo de combustible</a></li>
