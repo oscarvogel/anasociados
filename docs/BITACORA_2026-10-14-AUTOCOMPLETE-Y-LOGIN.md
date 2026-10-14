@@ -10,7 +10,7 @@ Cuatro cosas, tres pedidas y una que apareció en el camino:
 4. Las **nueve pantallas de acceso**, todas con el tema viejo.
 
 Commits: `adfaf1a` (autocomplete), `070646e` (login), `87edc1d` (diálogos),
-`52b1158` (pantallas de acceso).
+`52b1158` (pantallas de acceso), `bc422da` y `ab53d64` (Tablero).
 
 ## Los combos
 
@@ -242,6 +242,43 @@ vio renderizada y el POST lo probó el usuario: anda.
 > `{% csrf_token %}` sin contexto de request renderiza vacío—. Un test que
 > falla por lo que busca, no por lo que mide, es peor que no tener test.
 
+## El gráfico de Tareas por Estado
+
+### Lo que pasaba
+
+El `backgroundColor` estaba comentado en el template, así que el doughnut
+caía en la paleta por defecto de Chart.js: azul, rosa y naranja. Además el
+anillo era enorme, la leyenda iba arriba apretada contra el título, con los
+textos en negro del tema de Chart.js, y los porcentajes en dos decimales
+(57.51%).
+
+Era **el único** de los cuatro gráficos del Tablero sin paleta propia:
+emisiones, excesos y porcentaje por área ya usaban tonos de AN.
+
+### El arreglo
+
+Los tres estados de `Movimientos.ESTADO_LISTADO` llevan color semántico —
+Cumplido verde, Gestión en Curso ámbar, Incumplido rojo — leídos de las
+variables CSS con `getComputedStyle`, **no escritos en el template**. Si el
+design system cambia un tono, el gráfico sigue sin que nadie toque el
+archivo. Si aparece un estado nuevo, cae en una paleta categórica de AN en
+vez de volver al color de la librería.
+
+Leyenda abajo con puntos circulares, anillo al 66%, sectores separados con
+el color de la card en vez de una línea oscura, y porcentajes a un decimal
+sin el `,0`.
+
+Valores que lee del design system, confirmados en producción:
+`success #287044`, `warning #805b12`, `danger #a33e36`, `surface #fff`.
+
+### De paso: ids duplicados
+
+`id="morris-tareas"` estaba en **dos** cards (Tareas por Estado y Emisión
+kg CO2), que es HTML inválido. Renombrados a `marco-*`. El prefijo
+`morris-` era residuo: el proyecto dibuja con Chart.js, no con Morris.js.
+Ningún JS referenciaba esos ids —los gráficos se conectan por el id del
+canvas—, así que el cambio no toca comportamiento.
+
 ## El autocomplete en producción
 
 Con sesión real (`oscar`), en `/utiles/whatsapp/hallazgos/`:
@@ -291,11 +328,16 @@ en `INSTALLED_APPS`.)
   archivos para el login. Si se unifican, quedan los del nombre del servidor.
 - `TEMPLATE_DIR_DATATB` apunta a `django_dyn_dt/templates`, que **no existe**.
   Entrada muerta en el `DIRS`.
-- **Los gráficos del Tablero usan la paleta de Bootstrap** (azules y naranjas),
-  que no sigue el design system. `home.index` renderiza `pages/index.html`, así
-  que el tablero del menú es ese archivo. Los dos `--Selecciona un cliente--`
-  no convierten a autocomplete porque el usuario típico solo tiene una empresa
-  asignada, y eso es el umbral, no un error.
+- **Tres gráficos del Tablero se ven vacíos sin filtro.** Emisión kg CO2,
+  Porcentaje de cumplidos por área y Excesos de velocidad dibujan los ejes en
+  0.0–1.0 sin datos cuando no hay empresa ni área elegida, mientras que
+  "Tareas por Estado" sí muestra (su consulta cae a `Todos`). No es un bug de
+  Chart.js: es que esas tres no tienen camino de "todos". **O se les da un
+  equivalente a `contar_tareas_por_estado_vista`, o se les pone un estado
+  vacío con texto**, porque un eje en 0–1 sin nada parece roto.
+- **Solo el card de Tareas por Estado tiene `an-chart-frame`.** Los otros tres
+  se quedan sin alto controlado, y por eso se comportan distinto al
+  redimensionar. Conviene aplicarles el mismo marco.
 - Verificar los combos en las pantallas de **Móviles** y **SYH**, que tienen
   muchos `<select>` y no se probaron una por una. El componente es global y se
   verificó en la pantalla más difícil, así que la cobertura es indirecta.
