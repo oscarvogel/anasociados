@@ -292,7 +292,7 @@
             document.getElementById('modal-foto').hidden = true;
         });
 
-        function decidir(evidencia, accion, motivo, boton) {
+        function decidir(evidencia, accion, motivo, boton, tarjeta) {
             var cuerpo = new URLSearchParams();
             cuerpo.append('evidencia_id', evidencia.id);
             cuerpo.append('accion', accion);
@@ -395,7 +395,7 @@
 
             btnAceptar.addEventListener('click', function () {
                 if (!window.confirm('¿Aceptar esta evidencia?\n\nEl hallazgo va a quedar como Cumplido con la fecha de hoy.')) return;
-                decidir(evidencia, 'aceptar', '', btnAceptar);
+                decidir(evidencia, 'aceptar', '', btnAceptar, tarjeta);
             });
 
             btnRechazar.addEventListener('click', function () {
@@ -420,7 +420,7 @@
                 confirmar.textContent = 'Confirmar rechazo';
                 confirmar.addEventListener('click', function () {
                     if (!area.value.trim()) { mostrarAviso('Escribí el motivo del rechazo.', true); area.focus(); return; }
-                    decidir(evidencia, 'rechazar', area.value.trim(), confirmar);
+                    decidir(evidencia, 'rechazar', area.value.trim(), confirmar, tarjeta);
                 });
                 panelRechazo.append(etiqueta, area, ayuda, confirmar);
             }
