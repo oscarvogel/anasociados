@@ -137,6 +137,55 @@ El sidebar marca el item activo comparando `segment`, y cada vista lo pasa en
 su contexto. La de hallazgos no lo pasaba, así que el link nunca se encendía
 — tampoco cuando estaba en Informes. Agregado, con un test que lo fija.
 
+## Quinta parte: filtros y edición (me había pasado de corrección)
+
+El usuario: "no puedo filtrar por empresa, ni por estado, además no puedo
+modificar nada". Tenía razón. Al quitarle el aire de admin, le había quitado
+también las funciones: se había pedido otra **forma de ver**, no menos
+capacidades.
+
+- **Filtro por empresa** (plegado, con scroll: son 16 y a la vista empujaban
+  los hallazgos fuera de la pantalla) y **por estado** (abiertos / Incumplido /
+  Gestión en Curso / Cumplido / Cerrado).
+- Son links, no un formulario con botón "Aplicar": no hay nada que aplicar.
+- **Los cuatro contadores de arriba son filtros**: click en "Vencidos" y la
+  lista se acota. El contador NO cambia con el filtro, porque si cambiara,
+  filtrar por vencidos dejaría el contador de vencidos en cero.
+- **Botón "Editar" por hallazgo**: estado, responsable, fecha de vencimiento y
+  observación. Al guardar recarga y los contadores se recalculan en el
+  servidor, en vez de reproducir esa aritmética en el navegador.
+- Marcar **Cumplido** pone la `fecha_realizado` si no la tiene: un hallazgo
+  cerrado sin fecha de cuándo se hizo no sirve para el resumen mensual.
+- El update exige CSRF y el mismo corte por cliente que la vista.
+
+### Dos bugs que encontraron los tests al escribirlos
+
+1. **Un POST vacío borraba el responsable y las observaciones.** Ahora solo se
+   toca lo que vino en el POST.
+2. **Filtrar por "vencidos" mostraba el total de abiertos** en vez de los
+   visibles. Agregado `visibles` al grupo, separado de `total`.
+
+## Sexta parte: comentarios que se imprimían en la pantalla
+
+Al mirar la pantalla desplegada apareció el texto de un comentario de Django
+escrito en el medio de la página, y otro en el sidebar.
+
+**Los comentarios `{# ... #}` de Django no pueden ocupar varias líneas.**
+No tiran error: Django los imprime como texto. Todos los templates que trae
+Django usan comentarios de una sola línea, por algo.
+
+Pasó dos veces en esta tanda, en dos archivos distintos, y en ninguno de los
+dos casos hubo excepción ni fallo de test: solo texto en pantalla. Se
+cambiaron por el tag de bloque `{% comment %}` / `{% endcomment %}`, que sí
+acepta varias líneas.
+
+Trampa del tag de bloque: **no puede contener el texto `endcomment` adentro**,
+porque lo cierra antes de tiempo y el que queda después da
+`TemplateSyntaxError: Invalid block tag 'endcomment'`. Pasó.
+
+Hay un test que revisa las cuatro plantillas del flujo y falla si encuentra
+un `{#` sin su `#}` en la misma línea. Se verificó que muerde.
+
 ## Pendientes
 
 - **Decidir qué hacer con los 482 vencidos.** La pantalla los muestra, pero
