@@ -537,9 +537,16 @@ class Evidencia(models.Model):
         return f'{self.movimiento.cliente.nombre} - {self.movimiento.fecha}'
 
     def imagen_thumbnail(self):
-        if self.imagen:
-            return mark_safe(f'<img src="{self.imagen.url}" width="50" height="50" />')
-        return ""
+        # Ojo: el campo se llama 'archivo'. Este metodo no tuvo el nombre
+        # correcto y reventaba con AttributeError en cuanto habia una sola
+        # evidencia con foto, dejando la lista de evidencias en 500.
+        if not self.archivo:
+            return ""
+        try:
+            return mark_safe(f'<img src="{self.archivo.url}" width="50" height="50" />')
+        except ValueError:
+            # El registro del archivo quedo en la base pero el file no esta.
+            return "(archivo faltante)"
     imagen_thumbnail.short_description = 'Imagen'
 
 class EmisionCarbono(models.Model):
