@@ -1,0 +1,18 @@
+{% extends "admin/login.html" %}
+{% comment %}
+El login de la puerta de entrada es /accounts/login/, que lo sirve el paquete
+pip django-admin-datta (admin_datta), NO el login del admin de Django.
+
+El rediseño de AN vivia solo en templates/admin/login.html, asi que se veía
+bien en /admin/login/ y el portal seguia mostrando la pantalla vieja de
+Colorlib: circulos azul/violeta, "Username", "Remember me?", "Create Account".
+
+Este archivo no tiene contenido propio a proposito: extiende el diseno para
+que haya una sola fuente de verdad. Si se toca el diseno, se toca
+templates/admin/login.html y las dos pantallas quedan al dia.
+
+Ojo con el nombre: la version de django-admin-datta instalada en el servidor
+resuelve a accounts/login.html y la de desarrollo a accounts/auth-signin.html.
+Por eso existen los dos overrides. Si en algun momento se unifican las
+versiones, este archivo puede quedar como el unico.
+{% endcomment %}
