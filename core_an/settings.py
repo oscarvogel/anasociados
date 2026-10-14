@@ -301,9 +301,20 @@ WHATSAPP_API_TIMEOUT = int(os.environ.get('WHATSAPP_API_TIMEOUT', '15'))
 WHATSAPP_PUBLIC_BASE_URL = os.environ.get(
     'WHATSAPP_PUBLIC_BASE_URL', 'https://portal.anasociados.com.ar'
 ).rstrip('/')
-# Numeros que reciben las alertas, separados por coma, internacional sin +:
-# ALERTA_WHATSAPP_DESTINATARIOS=5493764000000,5491155555555
+# Numeros que reciben las alertas generales de operacion (sitio caido, backup
+# que no corrio, worker parado). Internacional sin + ni espacios, separados por
+# coma: ALERTA_WHATSAPP_DESTINATARIOS=5493764000000,5491155555555
 ALERTA_WHATSAPP_DESTINATARIOS = os.environ.get('ALERTA_WHATSAPP_DESTINATARIOS', '')
+
+# Numeros que deben VALIDAR las evidencias que suben los responsables.
+# Lista aparte a proposito: "se cayo el sitio" y "hay una foto que revisar"
+# son cosas de distinta urgencia y distinto interlocutor. Si queda vacia se
+# usa la de arriba, asi que no hay nada que configurar para seguir como
+# hasta ahora.
+ALERTA_WHATSAPP_ADMINISTRADORES = (
+    os.environ.get('ALERTA_WHATSAPP_ADMINISTRADORES', '').strip()
+    or ALERTA_WHATSAPP_DESTINATARIOS
+)
 
 if DEBUG:
     CELERY_TASK_ALWAYS_EAGER = True

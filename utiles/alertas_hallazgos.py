@@ -142,9 +142,9 @@ def notificar_admin_evidencia(evidencia, movimiento, cliente_nombre, area_detall
     Nunca levanta excepcion: si el gateway esta caido, la evidencia ya esta
     guardada y el admin la va a ver igual en el panel.
     """
-    from utiles.notificaciones import WhatsAppClient, WhatsAppError, _destinatarios_whatsapp
+    from utiles.notificaciones import WhatsAppClient, WhatsAppError, _destinatarios_admin
 
-    numeros = _destinatarios_whatsapp()
+    numeros = _destinatarios_admin()
     if not numeros:
         return {"ok": False, "detalle": "sin numeros de administracion configurados"}
 

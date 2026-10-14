@@ -151,8 +151,19 @@ class WhatsAppClient:
 
 
 def _destinatarios_whatsapp():
-    """Lista de numeros configurados para las alertas."""
+    """Lista de numeros configurados para las alertas de operacion."""
     crudo = settings.ALERTA_WHATSAPP_DESTINATARIOS or ""
+    return [t.strip() for t in crudo.split(",") if t.strip()]
+
+
+def _destinatarios_admin():
+    """Lista de numeros que validan evidencias.
+
+    Lista separada de la de operacion: "se cayo el sitio" y "hay una foto que
+    revisar" no le importan a la misma persona ni tienen la misma urgencia.
+    Si no se configuro ninguna, cae en la lista general.
+    """
+    crudo = settings.ALERTA_WHATSAPP_ADMINISTRADORES or settings.ALERTA_WHATSAPP_DESTINATARIOS or ""
     return [t.strip() for t in crudo.split(",") if t.strip()]
 
 
