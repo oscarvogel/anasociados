@@ -179,6 +179,9 @@ def visualizar_movimientos(request):
         "pages/syh/visualizar_movimientos.html",
         {
             "grupos": grupos,
+            # El sidebar lo usa para resaltar el item de menu activo. Sin esto
+            # el link "Hallazgos" nunca se marca, que es lo que pasaba antes.
+            "segment": "hallazgos",
             "busqueda": busqueda,
             "total_general": sum(g["total"] for g in grupos),
             "vencidos_general": sum(g["vencidos"] for g in grupos),

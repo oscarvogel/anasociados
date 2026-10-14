@@ -134,6 +134,11 @@ class VistaHallazgosTest(TestCase):
         )
         self.assertIn(respuesta.status_code, (302, 403))
 
+    def test_pasa_el_segmento_para_que_el_menu_se_resalte(self):
+        """Sin 'segment' en el contexto, el item del menu nunca queda activo."""
+        c = self.client.get(self.url)
+        self.assertEqual(c.context["segment"], "hallazgos")
+
     def hallazgo(self, empresa, secuencia, texto, dias=-10, estado="Incumplido"):
         # El id va con contador, corto a proposito: `syh_evidencia.movimiento`
         # queda en varchar(10) cuando la base se construye desde cero, asi que

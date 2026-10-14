@@ -26,7 +26,7 @@
            pantalla de trabajo. Antes solo se llegaba por Informes > Hallazgos y
            la gente terminaba laburando en el admin, que es para cargar datos. #}
         {% if request.user.is_authenticated %}
-          <li data-username="hallazgos" class="nav-item {% if 'visualizar_movimientos' in segment %}active{% endif %}">
+          <li data-username="hallazgos" class="nav-item {% if 'hallazgos' in segment %}active{% endif %}">
             <a href="{% url 'syh:visualizar_movimientos' %}" class="nav-link">
               <span class="pcoded-micon"><i class="feather icon-alert-triangle"></i></span>
               <span class="pcoded-mtext">Hallazgos</span>
