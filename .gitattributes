@@ -1,0 +1,19 @@
+# Normalizar finales de linea a LF.
+#
+# El servidor corre Linux y los archivos llegan con CRLF cuando se despliegan
+# por scp desde una maquina Windows. Git entonces los ve como 40 archivos
+# modificados aunque no haya cambiado ni una palabra, y el pull se frena.
+# Con esto, el repo guarda LF y el checkout escribe LF en todas partes.
+* text=auto eol=lf
+
+# Binarios: git no debe intentar nada con ellos
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.xlsx binary
+*.xls binary
+*.docx binary
+*.gz binary
