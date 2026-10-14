@@ -26,7 +26,13 @@ from usuarios.models import AreasProfile
 
 MAX_ARCHIVOS_POR_ENVIO = 5
 MAX_BYTES_POR_ARCHIVO = 8 * 1024 * 1024  # 8 MB
-TIPOS_IMAGEN = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/gif"}
+# El iPhone manda HEIC/HEIF al sacar foto desde la camara. Si no se aceptan,
+# el usuario saca la foto y el servidor la rechaza.
+TIPOS_IMAGEN = {
+    "image/jpeg", "image/jpg", "image/pjpeg",
+    "image/png", "image/webp", "image/gif",
+    "image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence",
+}
 
 
 PREVIEW_SALT = "utiles.whatsapp_hallazgos.preview"

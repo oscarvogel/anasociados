@@ -165,6 +165,23 @@
             color: var(--ink); font: inherit; font-size: 14px;
         }
         .upload-files input[type="file"] { padding: 8px; background: var(--white); }
+        .picker-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-pick {
+            flex: 1 1 180px; display: inline-flex; align-items: center;
+            justify-content: center; gap: 8px; padding: 12px 14px;
+            border: 1px solid var(--brand); border-radius: 10px;
+            background: var(--white); color: var(--brand-deep);
+            font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+        }
+        .btn-pick:active { background: var(--brand); color: #fff; }
+        .file-list { margin: 12px 0 0; padding: 0; list-style: none; }
+        .file-list li {
+            display: flex; align-items: center; gap: 8px;
+            padding: 7px 0; font-size: 13px; color: var(--muted);
+            border-bottom: 1px solid var(--line);
+        }
+        .file-list li:last-child { border-bottom: 0; }
+        .file-list .file-ok { color: var(--brand-deep); }
         .btn-enviar {
             width: 100%; padding: 12px 16px; background: var(--brand); color: #fff;
             border: 0; border-radius: 10px; font: inherit; font-weight: 600;
@@ -257,7 +274,19 @@
                     </div>
                     <label class="upload-field upload-files">
                         <span>Fotos (hasta 5, 8 MB cada una)</span>
-                        <input type="file" id="upload-archivos" accept="image/*" multiple>
+                        <div class="picker-buttons">
+                            <button type="button" class="btn-pick" data-target="upload-camara">
+                                <span aria-hidden="true">&#128247;</span> Sacar foto
+                            </button>
+                            <button type="button" class="btn-pick" data-target="upload-archivos">
+                                <span aria-hidden="true">&#128193;</span> Elegir de la galer&iacute;a
+                            </button>
+                        </div>
+                        <!-- capture abre la camara directo; sin el, el navegador
+                             ofrece solo "elegir archivo" en varios moviles. -->
+                        <input type="file" id="upload-camara" accept="image/*" capture="environment" hidden>
+                        <input type="file" id="upload-archivos" accept="image/*" multiple hidden>
+                        <ul class="file-list" id="lista-archivos"></ul>
                     </label>
                     <button type="button" id="upload-enviar" class="btn-enviar">Enviar evidencia</button>
                     <p class="upload-status" id="upload-status" role="status" aria-live="polite"></p>
@@ -370,24 +399,80 @@
             });
         }
 
+        // Camara y galeria son dos inputs distintos: con capture el navegador
+        // abre la camara directo; sin el, ofrece la galeria. Recolectamos los
+        // dos en una sola lista porque se pueden combinar.
+        var MAX_FOTOS = 5;
+        var elegidos = [];
+
+        function agregarArchivos(files) {
+            for (var i = 0; i < files.length; i++) {
+                if (elegidos.length >= MAX_FOTOS) break;
+                var yaEsta = false;
+                for (var j = 0; j < elegidos.length; j++) {
+                    if (elegidos[j].name === files[i].name && elegidos[j].size === files[i].size) {
+                        yaEsta = true;
+                        break;
+                    }
+                }
+                if (!yaEsta) elegidos.push(files[i]);
+            }
+            dibujarLista();
+        }
+
+        function dibujarLista() {
+            var lista = document.getElementById('lista-archivos');
+            lista.textContent = '';
+            elegidos.forEach(function (archivo, indice) {
+                var li = document.createElement('li');
+                var nombre = document.createElement('span');
+                nombre.textContent = (indice + 1) + '. ' + archivo.name;
+                nombre.className = 'file-ok';
+                var quitar = document.createElement('button');
+                quitar.type = 'button';
+                quitar.textContent = 'Quitar';
+                quitar.style.marginLeft = 'auto';
+                quitar.addEventListener('click', function () {
+                    elegidos.splice(indice, 1);
+                    dibujarLista();
+                });
+                li.append(nombre, quitar);
+                lista.appendChild(li);
+            });
+        }
+
+        document.querySelectorAll('.btn-pick').forEach(function (boton) {
+            boton.addEventListener('click', function () {
+                document.getElementById(boton.dataset.target).click();
+            });
+        });
+
+        document.getElementById('upload-camara').addEventListener('change', function () {
+            agregarArchivos(this.files);
+            this.value = '';
+        });
+        document.getElementById('upload-archivos').addEventListener('change', function () {
+            agregarArchivos(this.files);
+            this.value = '';
+        });
+
         var subir = document.getElementById('upload-enviar');
         subir.addEventListener('click', function () {
             var estado = document.getElementById('upload-status');
             var movimiento = document.getElementById('upload-movimiento').value;
-            var archivos = document.getElementById('upload-archivos').files;
 
             if (!movimiento) {
                 estado.textContent = 'Elegí el hallazgo al que corresponde la evidencia.';
                 estado.className = 'upload-status is-error';
                 return;
             }
-            if (!archivos.length) {
-                estado.textContent = 'Adjuntá al menos una foto.';
+            if (!elegidos.length) {
+                estado.textContent = 'Adjuntá al menos una foto: sacala con la cámara o elegila de la galería.';
                 estado.className = 'upload-status is-error';
                 return;
             }
-            if (archivos.length > 5) {
-                estado.textContent = 'Se permiten hasta 5 fotos por envío.';
+            if (elegidos.length > MAX_FOTOS) {
+                estado.textContent = 'Se permiten hasta ' + MAX_FOTOS + ' fotos por envío.';
                 estado.className = 'upload-status is-error';
                 return;
             }
@@ -395,9 +480,9 @@
             var form = new FormData();
             form.append('movimiento_id', movimiento);
             form.append('detalle', document.getElementById('upload-detalle').value);
-            for (var i = 0; i < archivos.length; i++) {
-                form.append('archivos', archivos[i]);
-            }
+            elegidos.forEach(function (archivo) {
+                form.append('archivos', archivo);
+            });
 
             subir.disabled = true;
             estado.textContent = 'Enviando...';
@@ -417,7 +502,8 @@
             }).then(function (data) {
                 estado.textContent = data.mensaje;
                 estado.className = 'upload-status is-ok';
-                document.getElementById('upload-archivos').value = '';
+                elegidos = [];
+                dibujarLista();
                 document.getElementById('upload-detalle').value = '';
                 subir.disabled = false;
             }).catch(function (error) {
