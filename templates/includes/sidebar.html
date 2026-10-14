@@ -53,7 +53,16 @@
         {% endif %}
 
         {% if request.user.is_authenticated and not request.user.is_superuser %}
-          <li data-username="Profile Page" class="nav-item {% if 'profile' in segment %}active{% endif %}"><a href="{% url 'profile' %}" class="nav-link"><span
+          {# Antes apuntaba a la url 'profile', que no existe en ningun urls.py:
+             Django levanta NoReverseMatch y la pagina entera da 500 para todo
+             usuario que no sea superusuario. La unica pantalla de perfil del
+             proyecto es la de editar los datos propios.
+
+             OJO al escribir este comentario: los comentarios {# ... #} no
+             aceptan etiquetas de plantilla y su regex no cruza saltos de
+             linea. Un comentario de varias lineas que contenga algo con llaves
+             y % hace que Django lo interprete como una etiqueta real. #}
+          <li data-username="Profile Page" class="nav-item {% if 'update_user' in segment %}active{% endif %}"><a href="{% url 'usuarios:update_user' %}" class="nav-link"><span
                 class="pcoded-micon"><i class="feather icon-user"></i></span><span class="pcoded-mtext">Perfil</span></a>
           </li>
         {% endif %}
