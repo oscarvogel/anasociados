@@ -13,14 +13,20 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
-from syh.models import Area, Cliente
+from syh.models import Area, Cliente, Movimientos
+from syh.models import Evidencia
 from utiles.alertas_hallazgos import (
     SeleccionEmpresaAreaInvalida,
     construir_resumen_hallazgos_whatsapp,
+    notificar_admin_evidencia,
 )
 from utiles.models import EnlacePublicoHallazgos
 from utiles.notificaciones import WhatsAppClient, WhatsAppError
 from usuarios.models import AreasProfile
+
+MAX_ARCHIVOS_POR_ENVIO = 5
+MAX_BYTES_POR_ARCHIVO = 8 * 1024 * 1024  # 8 MB
+TIPOS_IMAGEN = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/gif"}
 
 
 PREVIEW_SALT = "utiles.whatsapp_hallazgos.preview"
@@ -211,12 +217,128 @@ def whatsapp_hallazgos_send(request):
 
 
 @never_cache
+@require_POST
+def hallazgos_publicos_subir(request):
+    """
+    Sube evidencia para un hallazgo, desde el enlace publico del area.
+
+    El token va en el header Authorization, igual que el endpoint de datos:
+    el fragmento (#) de la URL nunca viaja al servidor, asi que tampoco
+    viaja en el cuerpo de este POST.
+
+    Regla que no se negocia: el hallazgo TIENE que pertenecer al area del
+    enlace. Sin esto, un enlace del area A permitiria colgar evidencia falsa
+    de un hallazgo del area B.
+    """
+    authorization = request.headers.get("Authorization", "")
+    esquema, _, token = authorization.partition(" ")
+    if esquema.lower() != "bearer" or not token.strip():
+        return _respuesta_publica(JsonResponse(
+            {"error": "El enlace no es válido o ya venció."}, status=404
+        ))
+
+    enlace = _enlace_valido(token.strip())
+    if enlace is None:
+        return _respuesta_publica(JsonResponse(
+            {"error": "El enlace no es válido o ya venció."}, status=404
+        ))
+
+    movimiento_id = request.POST.get("movimiento_id", "").strip()
+    detalle = request.POST.get("detalle", "").strip()[:500]
+
+    # El hallazgo tiene que ser de esta empresa Y de este area.
+    movimiento = Movimientos.objects.filter(
+        pk=movimiento_id,
+        cliente_id=enlace.cliente_id,
+        area_id=enlace.area_id,
+    ).first()
+    if movimiento is None:
+        return _respuesta_publica(JsonResponse(
+            {"error": "Ese hallazgo no pertenece a esta área."}, status=400
+        ))
+
+    archivos = [f for f in request.FILES.getlist("archivos") if f]
+    if not archivos:
+        return _respuesta_publica(JsonResponse(
+            {"error": "Adjuntá al menos una foto."}, status=400
+        ))
+    if len(archivos) > MAX_ARCHIVOS_POR_ENVIO:
+        return _respuesta_publica(JsonResponse(
+            {"error": f"Se permiten hasta {MAX_ARCHIVOS_POR_ENVIO} fotos por envío."},
+            status=400,
+        ))
+
+    for archivo in archivos:
+        if archivo.size > MAX_BYTES_POR_ARCHIVO:
+            return _respuesta_publica(JsonResponse(
+                {"error": "Cada foto puede pesar hasta 8 MB."}, status=400
+            ))
+        if archivo.content_type not in TIPOS_IMAGEN:
+            return _respuesta_publica(JsonResponse(
+                {"error": "Solo se aceptan imágenes (JPG, PNG, WEBP)."}, status=400
+            ))
+
+    area = Area.objects.filter(pk=enlace.area_id).select_related("cliente").first()
+    cliente_nombre = area.cliente.nombre if area and area.cliente else enlace.cliente_id
+    area_detalle = area.detalle if area else enlace.area_id
+
+    # Telefono del responsable, si se conoce: sirve para saber de quien vino.
+    asignaciones = AreasProfile.objects.filter(
+        area_id=enlace.area_id,
+        area__cliente_id=enlace.cliente_id,
+    ).exclude(telefono_whatsapp="").values_list("telefono_whatsapp", flat=True)
+    telefono_origen = sorted(set(asignaciones))[0] if asignaciones else ""
+
+    guardadas = []
+    for archivo in archivos:
+        evidencia = Evidencia.objects.create(
+            movimiento=movimiento,
+            fecha=timezone.localdate(),
+            detalle=detalle,
+            origen="enlace_publico",
+            subido_por=telefono_origen,
+        )
+        evidencia.archivo.save(archivo.name, archivo, save=True)
+        guardadas.append(evidencia)
+
+    # Avisar a los administradores. Si falla, la evidencia ya quedo guardada
+    # y el admin la ve igual en el panel: el aviso es una comodidad, no un
+    # requisito para que la evidencia exista.
+    aviso = notificar_admin_evidencia(
+        guardadas[0], movimiento, cliente_nombre, area_detalle
+    )
+
+    return _respuesta_publica(JsonResponse({
+        "ok": True,
+        "guardadas": len(guardadas),
+        "mensaje": (
+            "Se recibieron tus fotos. El hallazgo queda pendiente de validación "
+            "por el equipo de AN & Asociados; no se cerró automáticamente."
+        ),
+        "aviso_admin": aviso.get("detalle", ""),
+    }, status=201))
+
+
+def _enlace_valido(token):
+    """Enlace vigente para ese token, o None."""
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return EnlacePublicoHallazgos.objects.filter(
+        token_hash=token_hash,
+        revoked_at__isnull=True,
+        expires_at__gt=timezone.now(),
+    ).first()
+
+
+@never_cache
 @require_GET
 def hallazgos_publicos_page(request):
     response = render(
         request,
         "pages/utiles/hallazgos_publicos.html",
-        {"datos_url": reverse("utiles:hallazgos_publicos_datos")},
+        {
+            "datos_url": reverse("utiles:hallazgos_publicos_datos"),
+            "subir_url": reverse("utiles:hallazgos_publicos_subir"),
+        },
     )
     return _respuesta_publica(response)
 
@@ -246,6 +368,10 @@ def hallazgos_publicos_datos(request):
     def serializar(movimientos):
         return [
             {
+                # El id va en el payload para que el formulario de subida sepa a
+                # que hallazgo pertenece la foto. El pk es un uuid de 20
+                # caracteres, no es enumerable.
+                "id": movimiento.pk,
                 "fecha": movimiento.fecha_cumplimiento.isoformat(),
                 "estado": movimiento.estado,
                 "descripcion": movimiento.hallazgo or "Sin descripción",

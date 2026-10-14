@@ -514,6 +514,24 @@ class Evidencia(models.Model):
     fecha = models.DateField(default=timezone.now, blank=True)
     detalle = models.TextField(blank=True)
     archivo = models.ImageField(upload_to='evidencias/', blank=True)
+    # Como se que arrived la foto y quien la mando. Antes la evidencia se
+    # cargaba a mano desde el admin; ahora tambien puede llegar por el enlace
+    # publico de un area, y el admin necesita distinguir una de otra al
+    # validar el cierre.
+    origen = models.CharField(
+        max_length=40,
+        default='admin',
+        blank=True,
+        verbose_name="Origen",
+        help_text="admin = cargada desde el panel; enlace_publico = subida por el responsable.",
+    )
+    subido_por = models.CharField(
+        max_length=40,
+        default="",
+        blank=True,
+        verbose_name="Subido por",
+        help_text="Telefono de quien subio la evidencia, si se conoce.",
+    )
 
     def __str__(self):
         return f'{self.movimiento.cliente.nombre} - {self.movimiento.fecha}'

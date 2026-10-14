@@ -146,9 +146,38 @@
             .upcoming-group { animation-delay: .06s; }
             @keyframes rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         }
+    .upload {
+            margin-top: 26px; padding: 20px 22px;
+            background: var(--white); border: 1px solid var(--line);
+            border-radius: 14px;
+        }
+        .upload .group-title { margin: 0 0 6px; font-size: 15px; }
+        .upload-help { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+        .upload-grid { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+        .upload-field { display: block; margin-bottom: 14px; }
+        .upload-field > span {
+            display: block; margin-bottom: 5px; font-size: 11px; font-weight: 700;
+            color: var(--muted); text-transform: uppercase; letter-spacing: .05em;
+        }
+        .upload-field select, .upload-field input[type="text"], .upload-field input[type="file"] {
+            width: 100%; padding: 9px 11px; border: 1px solid var(--line);
+            border-radius: 8px; background: var(--paper);
+            color: var(--ink); font: inherit; font-size: 14px;
+        }
+        .upload-files input[type="file"] { padding: 8px; background: var(--white); }
+        .btn-enviar {
+            width: 100%; padding: 12px 16px; background: var(--brand); color: #fff;
+            border: 0; border-radius: 10px; font: inherit; font-weight: 600;
+            font-size: 14px; cursor: pointer;
+        }
+        .btn-enviar:disabled { background: var(--muted); cursor: not-allowed; opacity: .6; }
+        .upload-status { margin: 12px 0 0; min-height: 18px; font-size: 13px; }
+        .upload-status.is-ok { color: var(--brand-deep); }
+        .upload-status.is-error { color: var(--danger); }
+        @media (max-width: 640px) { .upload-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
-<body class="an-public" data-datos-url="{{ datos_url }}">
+<body class="an-public" data-datos-url="{{ datos_url }}" data-subir-url="{{ subir_url }}">
     <div class="shell">
         <header class="masthead">
             <div class="brand">
@@ -206,6 +235,32 @@
                         </header>
                         <div class="finding-list" id="lista-por-vencer"></div>
                     </section>
+                </div>
+
+                <section class="upload" aria-labelledby="upload-heading">
+                    <h2 class="group-title" id="upload-heading"><span class="group-mark" aria-hidden="true"></span>Subir evidencia</h2>
+                    <p class="upload-help">
+                        Adjuntá las fotos de un hallazgo. Queda <strong>pendiente de validación</strong>:
+                        el hallazgo no se cierra solo, lo revisa el equipo de AN &amp; Asociados.
+                    </p>
+                    <div class="upload-grid">
+                        <label class="upload-field">
+                            <span>Hallazgo</span>
+                            <select id="upload-movimiento" class="an-field">
+                                <option value="">Elegí el hallazgo</option>
+                            </select>
+                        </label>
+                        <label class="upload-field">
+                            <span>Comentario (opcional)</span>
+                            <input type="text" id="upload-detalle" maxlength="500" placeholder="Ej: se reparó y se controlizó el poste">
+                        </label>
+                    </div>
+                    <label class="upload-field upload-files">
+                        <span>Fotos (hasta 5, 8 MB cada una)</span>
+                        <input type="file" id="upload-archivos" accept="image/*" multiple>
+                    </label>
+                    <button type="button" id="upload-enviar" class="btn-enviar">Enviar evidencia</button>
+                    <p class="upload-status" id="upload-status" role="status" aria-live="polite"></p>
                 </div>
                 <footer class="footer">
                     <span>La lista refleja el estado actual de los hallazgos al momento de abrir este enlace.</span>
@@ -291,9 +346,85 @@
             document.getElementById('count-por-vencer').textContent = data.total_por_vencer;
             renderFindings('lista-vencidos', data.vencidos, 'No hay hallazgos vencidos actualmente.');
             renderFindings('lista-por-vencer', data.por_vencer, 'No hay hallazgos por vencer dentro de los próximos cinco días.');
+            poblarSelectorSubida(data.vencidos.concat(data.por_vencer));
             content.hidden = false;
         }).catch(function (error) {
             showError(error.message);
+        });
+
+        function poblarSelectorSubida(hallazgos) {
+            var select = document.getElementById('upload-movimiento');
+            if (!hallazgos.length) {
+                var opt = document.createElement('option');
+                opt.textContent = 'No hay hallazgos para documentar';
+                opt.disabled = true;
+                select.appendChild(opt);
+                document.getElementById('upload-enviar').disabled = true;
+                return;
+            }
+            hallazgos.forEach(function (h) {
+                var option = document.createElement('option');
+                option.value = h.id;
+                option.textContent = formatDate(h.fecha) + ' — ' + h.descripcion.slice(0, 70);
+                select.appendChild(option);
+            });
+        }
+
+        var subir = document.getElementById('upload-enviar');
+        subir.addEventListener('click', function () {
+            var estado = document.getElementById('upload-status');
+            var movimiento = document.getElementById('upload-movimiento').value;
+            var archivos = document.getElementById('upload-archivos').files;
+
+            if (!movimiento) {
+                estado.textContent = 'Elegí el hallazgo al que corresponde la evidencia.';
+                estado.className = 'upload-status is-error';
+                return;
+            }
+            if (!archivos.length) {
+                estado.textContent = 'Adjuntá al menos una foto.';
+                estado.className = 'upload-status is-error';
+                return;
+            }
+            if (archivos.length > 5) {
+                estado.textContent = 'Se permiten hasta 5 fotos por envío.';
+                estado.className = 'upload-status is-error';
+                return;
+            }
+
+            var form = new FormData();
+            form.append('movimiento_id', movimiento);
+            form.append('detalle', document.getElementById('upload-detalle').value);
+            for (var i = 0; i < archivos.length; i++) {
+                form.append('archivos', archivos[i]);
+            }
+
+            subir.disabled = true;
+            estado.textContent = 'Enviando...';
+            estado.className = 'upload-status';
+
+            fetch(document.body.dataset.subirUrl, {
+                method: 'POST',
+                cache: 'no-store',
+                referrerPolicy: 'no-referrer',
+                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+                body: form
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok) throw new Error(data.error || 'No se pudo enviar.');
+                    return data;
+                });
+            }).then(function (data) {
+                estado.textContent = data.mensaje;
+                estado.className = 'upload-status is-ok';
+                document.getElementById('upload-archivos').value = '';
+                document.getElementById('upload-detalle').value = '';
+                subir.disabled = false;
+            }).catch(function (error) {
+                estado.textContent = error.message;
+                estado.className = 'upload-status is-error';
+                subir.disabled = false;
+            });
         });
     })();
     </script>

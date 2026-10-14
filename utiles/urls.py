@@ -7,6 +7,7 @@ app_name = "utiles"
 urlpatterns = [
     path("hallazgos-publicos/", views.hallazgos_publicos_page, name="hallazgos_publicos"),
     path("hallazgos-publicos/datos/", views.hallazgos_publicos_datos, name="hallazgos_publicos_datos"),
+    path("hallazgos-publicos/subir/", views.hallazgos_publicos_subir, name="hallazgos_publicos_subir"),
     path("whatsapp/hallazgos/", views.whatsapp_hallazgos_page, name="whatsapp_hallazgos"),
     path("whatsapp/hallazgos/areas/", views.whatsapp_hallazgos_areas, name="whatsapp_hallazgos_areas"),
     path("whatsapp/hallazgos/preview/", views.whatsapp_hallazgos_preview, name="whatsapp_hallazgos_preview"),

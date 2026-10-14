@@ -1,7 +1,7 @@
 import csv
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.admin import DateFieldListFilter, SimpleListFilter
 from reportlab.lib.pagesizes import A4, landscape
 from syh.forms import EmisionCarbonoForm, ExcesosVelocidadAdminForm, IndiceAccidentabilidadAdminForm
@@ -83,8 +83,33 @@ class AreaClienteFilter(SimpleListFilter):
 class EvidenciaAdmin(admin.TabularInline):
     model = Evidencia
     extra = 1
+    fields = ('fecha', 'detalle', 'archivo', 'origen', 'subido_por', 'imagen_thumbnail')
+    readonly_fields = ('imagen_thumbnail', 'origen', 'subido_por')
+
+
+@admin.register(Evidencia)
+class EvidenciaListAdmin(admin.ModelAdmin):
+    """Vista general de las evidencias, para buscar rapido cual esta esperando validacion."""
+    list_display = ('movimiento', 'empresa_area', 'fecha', 'origen', 'subido_por', 'estado_movimiento', 'imagen_thumbnail')
+    list_filter = ('origen', 'fecha')
+    search_fields = ('movimiento__hallazgo', 'movimiento__area__detalle', 'subido_por', 'detalle')
+    list_per_page = 25
     readonly_fields = ('imagen_thumbnail',)
-    fields = ('fecha', 'detalle', 'imagen_thumbnail', 'archivo')
+    date_hierarchy = 'fecha'
+
+    @admin.display(description="Empresa / área", ordering="movimiento__area__cliente__nombre")
+    def empresa_area(self, obj):
+        return f"{obj.movimiento.area.cliente.nombre} / {obj.movimiento.area.detalle}"
+
+    @admin.display(description="Estado del hallazgo")
+    def estado_movimiento(self, obj):
+        return obj.movimiento.estado
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
 
 @admin.register(Movimientos)
 class MovimientosAdmin(admin.ModelAdmin):
@@ -95,6 +120,40 @@ class MovimientosAdmin(admin.ModelAdmin):
     search_fields = ('id', 'area__detalle', 'periodo', 'hallazgo')
     inlines = [EvidenciaAdmin]
     readonly_fields = ['id']  # Asegúrate de que el campo 'id' es solo de lectura
+    actions = ['cerrar_con_evidencia']
+
+    @admin.action(description="Cerrar los hallazgos seleccionados (marca Cumplido con la fecha de hoy)")
+    def cerrar_con_evidencia(self, request, queryset):
+        """
+        Cierra hallazgos que tienen evidencia cargada.
+
+        Solo mueve los que realmente tienen al menos una foto: cerrar un
+        hallazgo sin evidencia seria exactamente el atajo que este flujo
+        viene a evitar.
+        """
+        from django.utils import timezone
+
+        hoy = timezone.localdate()
+        con_evidencia = [m for m in queryset if Evidencia.objects.filter(movimiento=m, archivo__isnull=False).exists()]
+
+        if not con_evidencia:
+            self.message_user(
+                request,
+                "Ninguno de los hallazgos seleccionados tiene evidencia con foto cargada.",
+                messages.WARNING,
+            )
+            return
+
+        for movimiento in con_evidencia:
+            movimiento.estado = "Cumplido"
+            movimiento.fecha_realizado = hoy
+            movimiento.save(update_fields=["estado", "fecha_realizado"])
+
+        self.message_user(
+            request,
+            f"Se cerraron {len(con_evidencia)} hallazgo(s) con evidencia.",
+            messages.SUCCESS,
+        )
     # form = MovimientosForm
 
     def get_queryset(self, request):

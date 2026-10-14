@@ -131,6 +131,74 @@ def _descripcion_breve(hallazgo: str, limite: int = MAX_CARACTERES_HALLAZGO) -> 
     return f"{descripcion[:limite - 3].rstrip()}..."
 
 
+def notificar_admin_evidencia(evidencia, movimiento, cliente_nombre, area_detalle):
+    """
+    Avisa a los administradores que se subio una evidencia.
+
+    Subir una foto NO cierra el hallazgo: el cierre lo hace un administrador
+    revisando la evidencia. Por eso el mensaje lo dice explicitamente, para
+    que nadie asuma que el hallazgo ya quedo resuelto.
+
+    Nunca levanta excepcion: si el gateway esta caido, la evidencia ya esta
+    guardada y el admin la va a ver igual en el panel.
+    """
+    from utiles.notificaciones import WhatsAppClient, WhatsAppError, _destinatarios_whatsapp
+
+    numeros = _destinatarios_whatsapp()
+    if not numeros:
+        return {"ok": False, "detalle": "sin numeros de administracion configurados"}
+
+    cliente = WhatsAppClient()
+    if not cliente.habilitado:
+        return {"ok": False, "detalle": "WhatsApp deshabilitado o sin API key"}
+
+    fecha_vencimiento = getattr(movimiento, "fecha_cumplimiento", None)
+    vencimiento = (
+        fecha_vencimiento.strftime("%d/%m/%Y") if fecha_vencimiento else "sin fecha"
+    )
+
+    lineas = [
+        "*AN & Asociados | Evidencia nueva*",
+        "",
+        f"Empresa: {cliente_nombre}",
+        f"Area: {area_detalle}",
+        f"Hallazgo: {_descripcion_breve(movimiento.hallazgo or '', 120)}",
+        f"Vencia: {vencimiento}",
+        f"Subida por: {evidencia.subido_por or 'no identificado'}",
+    ]
+    if evidencia.detalle:
+        lineas.append(f"Comentario: {_descripcion_breve(evidencia.detalle, 140)}")
+    lineas += [
+        "",
+        "_Queda pendiente de validacion: el hallazgo NO se cerro._",
+    ]
+    mensaje = "\n".join(lineas)
+
+    enviados, errores = [], []
+    for numero in numeros:
+        try:
+            cliente.enviar_texto(
+                numero,
+                mensaje,
+                external_ref=f"an:evidencia:{evidencia.pk}",
+            )
+            enviados.append(numero)
+        except WhatsAppError as exc:
+            errores.append(f"{numero}: {exc}")
+        except Exception as exc:  # noqa: BLE001
+            errores.append(f"{numero}: {exc}")
+
+    return {
+        "ok": not errores,
+        "enviados": enviados,
+        "errores": errores,
+        "detalle": (
+            f"notificado a {len(enviados)}" if not errores
+            else f"{len(enviados)} ok, {len(errores)} con error"
+        ),
+    }
+
+
 def url_hallazgos_publicos(token):
     """URL publica de detalle de hallazgos para un token."""
     ruta = reverse("utiles:hallazgos_publicos")
