@@ -15,6 +15,7 @@ choca con Duplicate entry. Y miden 10 caracteres, que es lo que entra en
 import datetime
 import io
 import tempfile
+from pathlib import Path
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -81,6 +82,40 @@ class TestGetPorcentajeCumplidosPorArea(TestCase):
         )
         self.assertEqual(resultados["Área 2"], 100.0)
         self.assertNotIn("Área 1", resultados)
+
+
+class PlantillaHallazgosTest(TestCase):
+    """
+    Los comentarios {# ... #} de Django son de UNA linea.
+
+    Uno de varias lineas no es un error: Django lo imprime como texto en la
+    pagina. Ya paso dos veces (el sidebar y esta pantalla) y en ningun caso
+    hubo excepcion, solo un bloque de comentario visible en pantalla.
+    Para comentarios largos esta el bloque {% comment %}...{% endcomment %}.
+    """
+
+    PLANTILLAS = [
+        "templates/pages/syh/visualizar_movimientos.html",
+        "templates/includes/sidebar.html",
+        "templates/pages/utiles/evidencias_revision.html",
+        "templates/pages/utiles/hallazgos_publicos.html",
+    ]
+
+    def test_no_quedan_comentarios_de_varias_lineas(self):
+        raiz = Path(__file__).resolve().parent.parent
+        sin_cerrar = []
+        for relativa in self.PLANTILLAS:
+            ruta = raiz / relativa
+            self.assertTrue(ruta.exists(), f"no existe {relativa}")
+            for numero, linea in enumerate(
+                ruta.read_text(encoding="utf-8").splitlines(), start=1
+            ):
+                if "{#" in linea and "#}" not in linea:
+                    sin_cerrar.append(f"{relativa}:{numero}")
+        self.assertEqual(
+            sin_cerrar, [],
+            "comentario {# sin #} en la misma linea: " + ", ".join(sin_cerrar),
+        )
 
 
 class VistaHallazgosTest(TestCase):

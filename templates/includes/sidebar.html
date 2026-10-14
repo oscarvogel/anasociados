@@ -22,9 +22,15 @@
           </a>
         </li>
 
-        {# Hallazgos va al primer nivel, no escondido dentro de Informes: es la
-           pantalla de trabajo. Antes solo se llegaba por Informes > Hallazgos y
-           la gente terminaba laburando en el admin, que es para cargar datos. #}
+        {% comment %}
+          Hallazgos va al primer nivel, no escondido dentro de Informes: es la
+          pantalla de trabajo. Antes solo se llegaba por Informes > Hallazgos y
+          la gente terminaba laburando en el admin, que es para cargar datos.
+
+          OJO: los comentarios de una sola linea de Django se imprimen como
+          texto si abarcan varias lineas. Para comentarios largos esta el tag
+          de bloque "comment", que si las acepta.
+        {% endcomment %}
         {% if request.user.is_authenticated %}
           <li data-username="hallazgos" class="nav-item {% if 'hallazgos' in segment %}active{% endif %}">
             <a href="{% url 'syh:visualizar_movimientos' %}" class="nav-link">
@@ -65,15 +71,12 @@
         {% endif %}
 
         {% if request.user.is_authenticated and not request.user.is_superuser %}
-          {# Antes apuntaba a la url 'profile', que no existe en ningun urls.py:
-             Django levanta NoReverseMatch y la pagina entera da 500 para todo
-             usuario que no sea superusuario. La unica pantalla de perfil del
-             proyecto es la de editar los datos propios.
-
-             OJO al escribir este comentario: los comentarios {# ... #} no
-             aceptan etiquetas de plantilla y su regex no cruza saltos de
-             linea. Un comentario de varias lineas que contenga algo con llaves
-             y % hace que Django lo interprete como una etiqueta real. #}
+          {% comment %}
+            Antes apuntaba a la url 'profile', que no existe en ningun urls.py:
+            Django levanta NoReverseMatch y la pagina entera da 500 para todo
+            usuario que no sea superusuario. La unica pantalla de perfil del
+            proyecto es la de editar los datos propios.
+          {% endcomment %}
           <li data-username="Profile Page" class="nav-item {% if 'update_user' in segment %}active{% endif %}"><a href="{% url 'usuarios:update_user' %}" class="nav-link"><span
                 class="pcoded-micon"><i class="feather icon-user"></i></span><span class="pcoded-mtext">Perfil</span></a>
           </li>

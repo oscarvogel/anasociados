@@ -54,9 +54,11 @@
     </div>
     {% endif %}
 
-    {# Filtros como links, no como un formulario con boton "Aplicar".
-       El de empresa va plegado: con 16 empresas, dejarlas todas a la vista
-       empujaba los hallazgos fuera de la pantalla. #}
+    {% comment %}
+        Filtros como links, no como un formulario con boton "Aplicar": no hay
+        nada que aplicar. El de empresa va plegado porque con 16 empresas las
+        pastillas a la vista empujaban los hallazgos fuera de la pantalla.
+    {% endcomment %}
     <div class="hl-filtros hl-filtros--plegable">
         <details {% if empresa_sel %}open{% endif %}>
             <summary>
