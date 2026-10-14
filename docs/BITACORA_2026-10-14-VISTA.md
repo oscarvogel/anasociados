@@ -96,9 +96,46 @@ Contra producción, con navegador:
 2. El botón de fotos de un hallazgo trae la foto con su estado
    ("Pendiente de revisión"), fecha y quién la subió.
 3. El buscador responde ("sillones" → 1 resultado).
+4. El item de menú "Hallazgos" queda resaltado al estar en la pantalla.
 
-Los tests de JS no existen: los de la bandeja Janvier pasaron en verde con dos
+Los tests de JS no existen: los de la bandeja pasaron en verde con dos
 `ReferenceError`. El chequeo de navegador es parte del trabajo, no un extra.
+
+## Cuarta parte: el menú y un 500 que no se veía
+
+El usuario avisó "no cambiaste nada" mirando `/admin/syh/evidencia/`. Tenía
+razón en el síntoma: la pantalla nueva está en otra URL, y encima esa URL
+**daba 500 sin sesión**. Con sesión andaba, por eso no se había visto.
+
+### El 500
+
+La vista no tenía `@login_required` y hacía
+`Profile.objects.get(user=request.user)`. Con un `AnonymousUser` eso tira
+**TypeError**, no `Profile.DoesNotExist`, así que el `except` no lo agarraba
+y la vista reventaba. Es bug viejo, de la vista original: sin sesión nunca
+funcionó. Ahora hay `login_required` en la vista y en el endpoint de
+evidencias, con dos tests que fijan que sin sesión responda 302/403 y **nunca
+500**.
+
+Corolario: un test que dice "responde bien" no alcanza si nunca probaste el
+camino sin sesión.
+
+### El menú
+
+"Hallazgos" estaba escondido dentro de "Informes", que es un submenú: dos
+clicks para llegar a la pantalla de trabajo. Y la gente terminaba laburando
+en el admin, que es para cargar datos.
+
+- **Hallazgos** va ahora al primer nivel, justo debajo de Tablero.
+- Sale de Informes, que queda solo con reportes.
+- La etiqueta del reporte de accesos se actualizó (decía
+  "Informes - Hallazgos").
+
+### El resaltado nunca funcionó
+
+El sidebar marca el item activo comparando `segment`, y cada vista lo pasa en
+su contexto. La de hallazgos no lo pasaba, así que el link nunca se encendía
+— tampoco cuando estaba en Informes. Agregado, con un test que lo fija.
 
 ## Pendientes
 
