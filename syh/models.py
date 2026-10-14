@@ -540,7 +540,7 @@ class Evidencia(models.Model):
     ESTADO_ACEPTADA = 'aceptada'
     ESTADO_RECHAZADA = 'rechazada'
     ESTADO_REVSION = [
-        (ESTADO_PENDIENTE, 'Pendiente de revision'),
+        (ESTADO_PENDIENTE, 'Pendiente de revisión'),
         (ESTADO_ACEPTADA, 'Aceptada'),
         (ESTADO_RECHAZADA, 'Rechazada'),
     ]

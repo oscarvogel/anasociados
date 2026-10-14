@@ -1,6 +1,6 @@
-"""Tests de los porcentajes de cumplimiento por área.
+"""Tests de `syh`: porcentajes por área y la pantalla de hallazgos.
 
-Este archivo estaba roto y nadie lo había visto: `Area` pasó de `nombre` a
+El primer test estaba roto y nadie lo había visto: `Area` pasó de `nombre` a
 `detalle` y pasó a exigir `cliente`, y los estados que usaba ('No Cumplido')
 no están en los que filtra `get_porcentaje_cumplidos_por_area`. Se reescribió
 con el modelo actual manteniendo las mismas expectativas: 50% para un área con
@@ -9,13 +9,21 @@ un cumplido y uno incumplido, 100% para una con los dos cumplidos.
 Los `id` de Movimientos van explícitos porque el campo está declarado como
 `default=generate_unique_id(20)`, que se evalúa una sola vez al importar el
 módulo: todos los movimientos creados sin id reciben la misma PK y el segundo
-choca con Duplicate entry.
+choca con Duplicate entry. Y miden 10 caracteres, que es lo que entra en
+`syh_evidencia.movimiento` cuando la base se construye desde cero.
 """
 import datetime
+import io
+import tempfile
 
-from django.test import TestCase
+from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
+from django.urls import reverse
+from PIL import Image
 
-from syh.models import Area, Cliente, Movimientos
+from syh.models import Area, Cliente, Evidencia, Movimientos
+from usuarios.models import Profile
 
 
 class TestGetPorcentajeCumplidosPorArea(TestCase):
@@ -73,3 +81,210 @@ class TestGetPorcentajeCumplidosPorArea(TestCase):
         )
         self.assertEqual(resultados["Área 2"], 100.0)
         self.assertNotIn("Área 1", resultados)
+
+
+class VistaHallazgosTest(TestCase):
+    """
+    Hallazgos agrupados por empresa, con lo pendiente arriba.
+
+    No es una tabla con filtros: se comprueba el agrupado, el orden por
+    urgencia y los contadores, que es lo que hace que la pantalla sirva.
+    """
+
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            id="CLIVIS", nombre="Empresa Alfa", email="alfa@example.com"
+        )
+        self.area = Area.objects.create(
+            id="ARVIS1", cliente=self.cliente, detalle="Mantenimiento", responsable="Ana"
+        )
+        self.usuario = User.objects.create_user("visor", password="x")
+        Profile.objects.create(user=self.usuario, cliente=self.cliente)
+        # El agrupado y los contadores son de la vista de AN, que ve todas las
+        # empresas. Con un usuario normal solo se veria la suya y el agrupado
+        # no tendria sentido.
+        self.superusuario = User.objects.create_superuser(
+            "an", "an@example.com", "x"
+        )
+        self.client.force_login(self.usuario)
+        self.url = reverse("syh:visualizar_movimientos")
+        self._seq = 0
+
+    def ver_todo(self):
+        self.client.force_login(self.superusuario)
+        return self.client.get(self.url)
+
+    def hallazgo(self, empresa, secuencia, texto, dias=-10, estado="Incumplido"):
+        # El id va con contador, corto a proposito: `syh_evidencia.movimiento`
+        # queda en varchar(10) cuando la base se construye desde cero, asi que
+        # un id mas largo no deja crear evidencias.
+        self._seq += 1
+        area = Area.objects.filter(cliente=empresa).first()
+        return Movimientos.objects.create(
+            id=f"mv{self._seq:08d}",
+            cliente=empresa, area=area,
+            fecha=datetime.date.today(), periodo="Octubre",
+            hallazgo=texto, responsable="Ana", plazo=30, estado=estado,
+            fecha_cumplimiento=datetime.date.today() + datetime.timedelta(days=dias),
+        )
+
+    def empresa(self, clave, nombre):
+        empresa = Cliente.objects.create(id=clave, nombre=nombre, email=f"{clave}@x.com")
+        Area.objects.create(id=f"AR{clave}", cliente=empresa, detalle="Mantenimiento",
+                            responsable="Ana")
+        return empresa
+
+    # --- agrupado ------------------------------------------------------
+
+    def test_agrupa_por_empresa(self):
+        otra = self.empresa("CLBETA", "Empresa Beta")
+        self.hallazgo(self.cliente, 1, "Alfa vencida")
+        self.hallazgo(otra, 1, "Beta vencida")
+        grupos = self.ver_todo().context["grupos"]
+        self.assertEqual({g["empresa"].nombre for g in grupos},
+                         {"Empresa Alfa", "Empresa Beta"})
+        for grupo in grupos:
+            self.assertEqual(grupo["total"], 1)
+
+    def test_ordena_la_empresa_mas_urgente_arriba(self):
+        tranquila = self.empresa("CLBETA", "Zeta tranquila")
+        urgente = self.empresa("CLALFA", "Alfa urgente")
+        # Zeta tiene 1 que vence en 3 dias (por vencer, no vencido).
+        self.hallazgo(tranquila, 1, "Vence pronto", dias=3)
+        # Alfa tiene 2 vencidos.
+        self.hallazgo(urgente, 1, "Vencido A", dias=-5)
+        self.hallazgo(urgente, 2, "Vencido B", dias=-6)
+        grupos = self.ver_todo().context["grupos"]
+        self.assertEqual(grupos[0]["empresa"].nombre, "Alfa urgente")
+        self.assertEqual(grupos[0]["vencidos"], 2)
+
+    def test_empates_se_ordenan_por_nombre(self):
+        a = self.empresa("CLA", "Zeta")
+        b = self.empresa("CLB", "Alfa")
+        self.hallazgo(a, 1, "Uno", dias=-5)
+        self.hallazgo(b, 1, "Uno", dias=-5)
+        grupos = self.ver_todo().context["grupos"]
+        self.assertEqual([g["empresa"].nombre for g in grupos], ["Alfa", "Zeta"])
+
+    # --- contadores ----------------------------------------------------
+
+    def test_cuenta_vencidos_y_por_vencer(self):
+        self.hallazgo(self.cliente, 1, "Vencido", dias=-1)
+        self.hallazgo(self.cliente, 2, "Por vencer", dias=3)
+        self.hallazgo(self.cliente, 3, "Lejos", dias=90)
+        grupo = self.ver_todo().context["grupos"][0]
+        self.assertEqual(grupo["vencidos"], 1)
+        self.assertEqual(grupo["por_vencer"], 1)
+        self.assertEqual(grupo["total"], 3)
+
+    def test_cuenta_los_que_esperan_revision(self):
+        movimiento = self.hallazgo(self.cliente, 1, "Con foto")
+        Evidencia.objects.create(
+            movimiento=movimiento, fecha=datetime.date.today(), origen="enlace_publico"
+        )
+        grupo = self.ver_todo().context["grupos"][0]
+        self.assertEqual(grupo["por_revisar"], 1)
+
+    def test_una_evidencia_ya_aceptada_no_cuenta_como_pendiente(self):
+        movimiento = self.hallazgo(self.cliente, 1, "Ya revisada")
+        Evidencia.objects.create(
+            movimiento=movimiento, fecha=datetime.date.today(),
+            origen="enlace_publico", estado=Evidencia.ESTADO_ACEPTADA,
+        )
+        grupo = self.ver_todo().context["grupos"][0]
+        self.assertEqual(grupo["por_revisar"], 0)
+
+    def test_los_totales_de_arriba_suman_los_grupos(self):
+        beta = self.empresa("CLBETA", "Beta")
+        self.hallazgo(self.cliente, 1, "Vencido", dias=-2)
+        self.hallazgo(beta, 1, "Otro vencido", dias=-3)
+        c = self.ver_todo().context
+        self.assertEqual(c["vencidos_general"], 2)
+        self.assertEqual(c["total_general"], 2)
+        self.assertEqual(c["empresas_con_pendientes"], 2)
+
+    # --- que no entre lo cerrado ----------------------------------------
+
+    def test_lo_cumplido_no_aparece(self):
+        self.hallazgo(self.cliente, 1, "Viejo cerrado", dias=-900, estado="Cumplido")
+        self.hallazgo(self.cliente, 2, "Abierto", dias=-2)
+        c = self.ver_todo().context
+        self.assertEqual(c["total_general"], 1)
+        self.assertEqual(c["grupos"][0]["hallazgos"][0].hallazgo, "Abierto")
+
+    def test_con_busqueda_si_busca_tambien_los_cerrados(self):
+        self.hallazgo(self.cliente, 1, "Fuga en el tanque", dias=-900, estado="Cumplido")
+        c = self.client.get(self.url, {"q": "Fuga"}).context
+        self.assertEqual(c["total_general"], 1, "si estas buscando algo, lo tenes que encontrar")
+        self.assertEqual(c["incluye_cerrados"], True)
+
+    # --- recorte --------------------------------------------------------
+
+    def test_recorta_la_lista_cada_empresa(self):
+        for i in range(12):
+            self.hallazgo(self.cliente, i, f"Hallazgo {i}", dias=-i)
+        grupo = self.ver_todo().context["grupos"][0]
+        self.assertEqual(len(grupo["hallazgos"]), 8)
+        self.assertEqual(grupo["ocultos"], 4)
+
+    def test_con_todos_no_recorta(self):
+        for i in range(12):
+            self.hallazgo(self.cliente, i, f"Hallazgo {i}", dias=-i)
+        self.client.force_login(self.superusuario)
+        grupo = self.client.get(self.url, {"todos": "1"}).context["grupos"][0]
+        self.assertEqual(len(grupo["hallazgos"]), 12)
+        self.assertEqual(grupo["ocultos"], 0)
+
+    # --- buscador -------------------------------------------------------
+
+    def test_busca_por_texto(self):
+        self.hallazgo(self.cliente, 1, "Falta el matafuego")
+        self.hallazgo(self.cliente, 2, "Luminaria fundida")
+        c = self.client.get(self.url, {"q": "matafuego"}).context
+        self.assertEqual(c["total_general"], 1)
+
+    def test_busqueda_larga_se_recorta(self):
+        c = self.client.get(self.url, {"q": "x" * 500}).context
+        self.assertLessEqual(len(c["busqueda"]), 100)
+
+    def test_sin_resultados_no_rompe(self):
+        self.hallazgo(self.cliente, 1, "Algo")
+        respuesta = self.client.get(self.url, {"q": "no-existe-esto"})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta.context["grupos"], [])
+
+    # --- endpoint de fotos ----------------------------------------------
+
+    def test_el_endpoint_devuelve_las_evidencias(self):
+        movimiento = self.hallazgo(self.cliente, 1, "Con evidencia")
+        with tempfile.TemporaryDirectory() as media:
+            with override_settings(MEDIA_ROOT=media):
+                buffer = io.BytesIO()
+                Image.new("RGB", (16, 16), (10, 120, 60)).save(buffer, format="JPEG")
+                evidencia = Evidencia.objects.create(
+                    movimiento=movimiento, fecha=datetime.date.today(),
+                    origen="enlace_publico", subido_por="5493757677124",
+                    motivo_rechazo="No se ve",
+                )
+                evidencia.archivo.save(
+                    "foto.jpg", SimpleUploadedFile("foto.jpg", buffer.getvalue()),
+                    save=True,
+                )
+                respuesta = self.client.get(
+                    reverse("syh:hallazgo_evidencias", args=[movimiento.pk])
+                )
+        self.assertEqual(respuesta.status_code, 200)
+        datos = respuesta.json()["evidencias"]
+        self.assertEqual(len(datos), 1)
+        self.assertEqual(datos[0]["motivo_rechazo"], "No se ve")
+        self.assertEqual(datos[0]["estado_legible"], "Pendiente de revisión")
+
+    def test_no_se_ven_evidencias_de_otra_empresa(self):
+        otra = self.empresa("CLOTRA", "Otra")
+        ajeno = self.hallazgo(otra, 1, "Ajeno")
+        respuesta = self.client.get(reverse("syh:hallazgo_evidencias", args=[ajeno.pk]))
+        self.assertEqual(respuesta.status_code, 403)
+
+    def test_hallazgo_inexistente_da_404(self):
+        respuesta = self.client.get(reverse("syh:hallazgo_evidencias", args=["noexiste"]))
+        self.assertEqual(respuesta.status_code, 404)

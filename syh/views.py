@@ -1,12 +1,18 @@
 from email import message
+import datetime
 from datetime import date
 from multiprocessing import context
 import os
 from venv import logger
+import django.utils.timezone
 from django.shortcuts import render, redirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db import models
+from django.db.models import Count, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET
 from celery.result import AsyncResult
 from django.core.mail import send_mail
 
@@ -25,73 +31,191 @@ from django_celery_results.models import TaskResult
 from rest_framework import viewsets
 
 # Create your views here.
-from .models import Movimientos, Cliente, Area
+from .models import Movimientos, Cliente, Area, Evidencia
 from rest_framework.pagination import PageNumberPagination
 
-def visualizar_movimientos(request):
+# Hallazgos que siguen abiertos: lo que hay que hacer.
+ESTADOS_ABIERTOS = ("Gestión en Curso", "Incumplido")
+# Dias por delante que cuentan como "por vencer", igual que el resumen de
+# WhatsApp. Si esta pantalla y el mensaje cuentan distinto, se contradicen.
+DIAS_POR_VENCER = 5
+# Tope del buscador. Es un LIKE sobre varios campos, no un indice.
+MAX_TERMINOS_BUSQUEDA = 100
+# Cuantos hallazgos se listan por empresa antes de decir "y N mas".
+HALLAZGOS_POR_EMPRESA = 8
 
+
+def _anotar_evidencias(queryset):
+    """Cuantas evidencias tiene cada hallazgo y cuantas esperan revision.
+
+    Dos Subquery y no traer las evidencias a memoria: son miles de hallazgos y
+    un group-by en Python no escala.
+    """
+    pendientes = Evidencia.objects.filter(
+        movimiento=OuterRef("pk"), estado=Evidencia.ESTADO_PENDIENTE
+    )
+    return queryset.annotate(
+        total_evidencias=Count("evidencia"),
+        evidencias_pendientes=Coalesce(
+            Subquery(
+                pendientes.values("movimiento").annotate(c=Count("pk")).values("c")
+            ),
+            Value(0),
+        ),
+    )
+
+
+def _armar_grupo(empresa, hallazgos, hoy, limite):
+    """Arma el bloque de una empresa: sus contadores y sus hallazgos."""
+    vencidos, por_vencer = [], []
+    limite_vencimiento = hoy + datetime.timedelta(days=DIAS_POR_VENCER)
+
+    for movimiento in hallazgos:
+        fecha = movimiento.fecha_cumplimiento
+        if fecha and fecha < hoy:
+            vencidos.append(movimiento)
+        elif fecha and fecha <= limite_vencimiento:
+            por_vencer.append(movimiento)
+
+    visibles = vencidos + por_vencer
+    return {
+        "empresa": empresa,
+        "vencidos": len(vencidos),
+        "por_vencer": len(por_vencer),
+        "por_revisar": sum(1 for m in hallazgos if m.evidencias_pendientes),
+        "total": len(hallazgos),
+        "hallazgos": visibles[:limite],
+        "ocultos": max(0, len(visibles) - limite),
+    }
+
+
+def visualizar_movimientos(request):
+    """
+    Hallazgos agrupados por empresa, con lo pendiente arriba.
+
+    La pantalla NO es una tabla con filtros del admin. La idea es otra: se
+    abre y se ve, primero, cuanto hay pendiente en total y despues una
+    seccion por empresa ordenada por urgencia, con sus hallazgos abiertos y
+    las fotos a un click. El buscador existe para encontrar algo puntual, no
+    para filtrar la tabla.
+    """
     try:
         profile = Profile.objects.get(user=request.user)
-        cliente = profile.cliente  # Obtener el cliente asociado al perfil
+        cliente = profile.cliente
         areas_profile = AreasProfile.objects.filter(user=request.user)
     except Profile.DoesNotExist:
-        # Si no tiene un perfil, puedes manejar el caso con un mensaje de error o redirección
         cliente = None
         areas_profile = None
-    
+
+    base = Movimientos.objects.select_related("cliente", "area")
     if cliente:
-        clientes = Cliente.objects.filter(id = cliente.id)
-        if not areas_profile:
-            areas = Area.objects.filter(cliente = cliente.id)
-        else:
-            areas = Area.objects.filter(id__in=[area.area.id for area in areas_profile])
-        queryset = Movimientos.objects.filter(cliente = cliente.id)
+        areas_permitidas = None
+        if areas_profile:
+            areas_permitidas = [a.area_id for a in areas_profile]
+        base = base.filter(cliente_id=cliente.pk)
+        if areas_permitidas is not None:
+            base = base.filter(area_id__in=areas_permitidas)
     else:
-        clientes = Cliente.objects.all()
-        areas = Area.objects.all()
-        queryset = Movimientos.objects.all()
+        # Superusuario: puede acotar a una empresa desde la URL.
+        empresa = request.GET.get("empresa")
+        if empresa:
+            base = base.filter(cliente_id=empresa)
+
+    busqueda = (request.GET.get("q") or "").strip()[:MAX_TERMINOS_BUSQUEDA]
+
+    # Con busqueda se mira TODO (incluido lo cumplido), porque si estas
+    # buscando algo puntual lo queras encontrar este o no. Sin busqueda, solo
+    # lo abierto: lo cerrado es historia, no trabajo.
+    if busqueda:
+        base = _anotar_evidencias(base).filter(
+            Q(hallazgo__icontains=busqueda)
+            | Q(responsable__icontains=busqueda)
+            | Q(id__icontains=busqueda)
+        )
+    else:
+        base = _anotar_evidencias(base).filter(estado__in=ESTADOS_ABIERTOS)
+
+    base = base.order_by(
+        models.F("fecha_cumplimiento").asc(nulls_last=True), "pk"
+    )
+
+    hoy = django.utils.timezone.localdate()
+    # Con busqueda o con ?todos=1 no se recorta la lista de cada empresa.
+    mostrar_todos = busqueda or request.GET.get("todos") == "1"
+    limite = 50 if mostrar_todos else HALLAZGOS_POR_EMPRESA
+
+    # Agrupar en memoria es correcto aca: son los hallazgos ABIERTOS los que
+    # llegan (unos pocos cientos), no los 1300 historicos.
+    por_empresa = {}
+    for movimiento in base:
+        por_empresa.setdefault(movimiento.cliente_id, []).append(movimiento)
+
+    empresas = {m.cliente_id: m.cliente for m in base}
+    grupos = [
+        _armar_grupo(empresa, por_empresa[clave], hoy, limite)
+        for clave, empresa in empresas.items()
+    ]
+
+    # Mas urgente arriba: la que tiene vencidos, despues la que tiene algo por
+    # revisar, despues la que mas vence pronto. El nombre desempata.
+    grupos.sort(
+        key=lambda g: (
+            -g["vencidos"],
+            -g["por_revisar"],
+            -g["por_vencer"],
+            g["empresa"].nombre.upper(),
+        )
+    )
+    grupos = [g for g in grupos if g["total"] > 0]
+
+    return render(
+        request,
+        "pages/syh/visualizar_movimientos.html",
+        {
+            "grupos": grupos,
+            "busqueda": busqueda,
+            "total_general": sum(g["total"] for g in grupos),
+            "vencidos_general": sum(g["vencidos"] for g in grupos),
+            "por_vencer_general": sum(g["por_vencer"] for g in grupos),
+            "por_revisar_general": sum(g["por_revisar"] for g in grupos),
+            "empresas_con_pendientes": len(grupos),
+            "incluye_cerrados": bool(busqueda),
+            "mostrar_todos": mostrar_todos,
+            "hoy": hoy,
+        },
+    )
 
 
-    estados = ['Gestión en Curso', 'Cumplido', 'Incumplido', 'Cerrado']
+@require_GET
+def hallazgo_evidencias(request, movimiento_id):
+    """Las evidencias de un hallazgo, para verlas sin entrar al admin."""
+    movimiento = Movimientos.objects.filter(pk=movimiento_id).select_related(
+        "cliente"
+    ).first()
+    if movimiento is None:
+        return JsonResponse({"error": "El hallazgo no existe."}, status=404)
 
-    filtro_cliente = request.GET.get('cliente')
-    filtro_area = request.GET.get('area')
-    filtro_estados = request.GET.getlist('estado')
+    if not request.user.is_superuser:
+        perfil = Profile.objects.filter(user=request.user).first()
+        if perfil is None or movimiento.cliente_id != perfil.cliente_id:
+            return JsonResponse({"error": "No corresponde a tu empresa."}, status=403)
 
-    if filtro_cliente:
-        queryset = queryset.filter(cliente_id=filtro_cliente)
-    
-    if filtro_area:
-        queryset = queryset.filter(area_id=filtro_area)
-
-    if filtro_estados:
-        queryset = queryset.filter(estado__in=filtro_estados)
-
-    paginator = Paginator(queryset, 10)  # 10 elementos por página
-    page = request.GET.get('page', 1)
-    
-    try:
-        movimientos = paginator.page(page)
-    except PageNotAnInteger:
-        movimientos = paginator.page(1)
-    except EmptyPage:
-        movimientos = paginator.page(paginator.num_pages)
-    
-    # Crear el rango de páginas para la paginación
-    index = movimientos.number - 1  # Page index starts from 0
-    max_index = len(paginator.page_range)
-    start_index = index - 2 if index >= 2 else 0
-    end_index = index + 3 if index <= max_index - 3 else max_index
-    page_range = paginator.page_range[start_index:end_index]
-    context = {
-        'clientes': clientes,
-        'areas': areas,
-        'estados': estados,
-        'movimientos': movimientos,
-        'page_range': page_range,  # Añadir el rango de páginas al contexto
-        'filtro_estados': filtro_estados
-    }
-    return render(request, 'pages/syh/visualizar_movimientos.html', context)
+    evidencias = Evidencia.objects.filter(movimiento=movimiento).order_by("fecha", "id")
+    return JsonResponse({
+        "evidencias": [
+            {
+                "estado": e.estado,
+                "estado_legible": e.get_estado_display(),
+                "fecha": e.fecha.strftime("%d/%m/%Y"),
+                "detalle": e.detalle,
+                "subido_por": e.subido_por or "no identificado",
+                "revisado_por": e.revisado_por,
+                "motivo_rechazo": e.motivo_rechazo,
+                "url": e.archivo.url if e.archivo else "",
+            }
+            for e in evidencias
+        ]
+    })
 
 def imprimir_movimientos(request):
     

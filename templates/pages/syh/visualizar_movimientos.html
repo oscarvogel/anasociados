@@ -5,151 +5,317 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h5 class="an-page-title an-page-header__title">Hallazgos</h5>
-    <div class="an-filter-bar">
-    <form method="get">
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <select id="cliente-select" class="form-control an-field" name="cliente">
-                    <option value="">--Selecciona un cliente--</option>
-                    {% for cliente in clientes %}
-                    <option value="{{ cliente.id }}" {% if cliente.id == request.GET.cliente %}selected{% endif %}>{{ cliente.nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-6 mb-3">
-                <select id="area-select" class="form-control an-field" name="area">
-                    <option value="">--Selecciona un área--</option>
-                    {% for area in areas %}
-                    <option value="{{ area.id }}" {% if area.id == request.GET.area %}selected{% endif %}>{{ area.detalle }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-        <div class="row">
-            <div class="form-group col-6">
-                <select multiple class="form-control an-field" id="estado" name="estado">
-                    {% for estado in estados %}
-                        <option value="{{ estado }}" {% if estado in filtro_estados %}selected{% endif %}>{{ estado }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-        <div class="row">
-            <button type="submit" class="btn btn-primary">Aplicar Filtro</button>
-            <button type="button" id="btnImprimir" class="btn btn-outline-secondary ml-2">Imprimir</button>
-        </div>
-    </form>
-    </div>
-    <div class="an-table-wrapper mt-3">
-    <table class="table an-table">
-        <thead>
-        <tr>
-            <th>Cliente</th>
-            <th>Área</th>
-            <th>Fecha</th>
-            <th>Periodo</th>
-            <th>Hallazgo</th>
-            <th>Responsable</th>
-            <th>Plazo</th>
-            <th>Estado</th>
-            <th>Fecha Cumplimiento</th>
-            <th>Ubicación</th>
-            <th>Fecha Realizado</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for mov in movimientos %}
-            <tr>
-                <td>{{ mov.cliente.nombre }}</td>
-                <td>{{ mov.area.detalle }}</td>
-                <td>{{ mov.fecha }}</td>
-                <td>{{ mov.periodo }}</td>
-                <td>
-                    {% if request.user.is_superuser %}
-                        <a href="{% url 'admin:syh_movimientos_change' mov.id %}">{{ mov.hallazgo }}</a>
-                    {% else %}
-                        {{ mov.hallazgo }}
-                    {% endif %}
-                </td>
-                <td>{{ mov.responsable }}</td>
-                <td>{{ mov.plazo }}</td>
-                <td>{{ mov.estado }}</td>
-                <td>{{ mov.fecha_cumplimiento }}</td>
-                <td>{{ mov.ubicacion }}</td>
-                <td>{{ mov.fecha_realizado }}</td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    </div>
-    <nav aria-label="Page navigation example">
-        <ul class="pagination justify-content-center">
-            <li class="page-item {% if not movimientos.has_previous %}disabled{% endif %}">
-                <a class="page-link" href="?page=1&cliente={{ request.GET.cliente }}&area={{ request.GET.area }}&{% for estado in filtro_estados %}estado={{ estado }}&{% endfor %}">Primera</a>
-            </li>
-            {%if movimientos.has_previous %}
-                <li class="page-item {% if not movimientos.has_previous %}disabled{% endif %}">
-                    <a class="page-link" href="?page={{ movimientos.previous_page_number }}&cliente={{ request.GET.cliente }}&area={{ request.GET.area }}&{% for estado in filtro_estados %}estado={{ estado }}&{% endfor %}">Anterior</a>
-                </li>
-            {% endif %}
-            {% if movimientos.number > 3 %}
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-            {% endif %}
-    
-            {% for num in page_range %}
-                {% if movimientos.number == num %}
-                    <li class="page-item active">
-                        <a class="page-link" href="#">{{ num }} <span class="sr-only">(current)</span></a>
-                    </li>
+
+    <div class="hl-cabecera">
+        <div>
+            <h5 class="an-page-title an-page-header__title mb-1">Hallazgos</h5>
+            <p class="hl-sub">
+                {% if busqueda %}
+                    Resultados para <strong>&ldquo;{{ busqueda }}&rdquo;</strong>
+                    — se busca en todo, también en lo ya cumplido.
                 {% else %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ num }}&cliente={{ request.GET.cliente }}&area={{ request.GET.area}}&{% for estado in filtro_estados %}estado={{ estado }}&{% endfor %}">{{ num }}</a>
+                    Lo que sigue abierto, agrupado por empresa y ordenado por urgencia.
+                {% endif %}
+            </p>
+        </div>
+        <form method="get" class="hl-buscador" action="{% url 'syh:visualizar_movimientos' %}">
+            <input type="search" name="q" value="{{ busqueda }}" maxlength="100"
+                   placeholder="Buscar un hallazgo, un responsable&hellip;"
+                   aria-label="Buscar hallazgos">
+            <button type="submit" class="btn btn-primary">Buscar</button>
+            {% if busqueda %}
+                <a class="hl-limpiar" href="{% url 'syh:visualizar_movimientos' %}">Limpiar</a>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if not busqueda %}
+    <div class="hl-tarjetas">
+        <div class="hl-tarjeta hl-tarjeta--roja">
+            <span class="hl-numero">{{ vencidos_general }}</span>
+            <span class="hl-rotulo">Vencidos</span>
+        </div>
+        <div class="hl-tarjeta hl-tarjeta--ambar">
+            <span class="hl-numero">{{ por_vencer_general }}</span>
+            <span class="hl-rotulo">Vencen en 5 días</span>
+        </div>
+        <div class="hl-tarjeta hl-tarjeta--verde">
+            <span class="hl-numero">{{ por_revisar_general }}</span>
+            <span class="hl-rotulo">Con evidencia por revisar</span>
+        </div>
+        <div class="hl-tarjeta">
+            <span class="hl-numero">{{ empresas_con_pendientes }}</span>
+            <span class="hl-rotulo">Empresas con pendientes</span>
+        </div>
+    </div>
+    {% endif %}
+
+    {% for grupo in grupos %}
+        <section class="hl-empresa">
+            <header class="hl-empresa__cabecera">
+                <h6 class="hl-empresa__nombre">{{ grupo.empresa.nombre }}</h6>
+                <div class="hl-empresa__contadores">
+                    {% if grupo.vencidos %}
+                        <span class="hl-chip hl-chip--rojo">{{ grupo.vencidos }} vencidos</span>
+                    {% endif %}
+                    {% if grupo.por_vencer %}
+                        <span class="hl-chip hl-chip--ambar">{{ grupo.por_vencer }} por vencer</span>
+                    {% endif %}
+                    {% if grupo.por_revisar %}
+                        <span class="hl-chip hl-chip--verde">{{ grupo.por_revisar }} por revisar</span>
+                    {% endif %}
+                    <span class="hl-chip hl-chip--gris">{{ grupo.total }} abiertos</span>
+                </div>
+            </header>
+
+            <ul class="hl-hallazgos">
+                {% for mov in grupo.hallazgos %}
+                    <li class="hl-hallazgo" data-mov="{{ mov.id }}">
+                        <div class="hl-hallazgo__fila">
+                            <div class="hl-hallazgo__texto">
+                                <span class="hl-hallazgo__fecha">
+                                    {% if mov.fecha_cumplimiento %}
+                                        {% if mov.fecha_cumplimiento < hoy %}
+                                            <span class="hl-vencido">Venció {{ mov.fecha_cumplimiento|date:"d/m/Y" }}</span>
+                                        {% else %}
+                                            Vence {{ mov.fecha_cumplimiento|date:"d/m/Y" }}
+                                        {% endif %}
+                                    {% else %}
+                                        Sin fecha
+                                    {% endif %}
+                                </span>
+                                <p class="hl-hallazgo__descripcion">{{ mov.hallazgo|default:"Sin descripción" }}</p>
+                                <span class="hl-hallazgo__meta">
+                                    {{ mov.area.detalle }}
+                                    {% if mov.responsable %} · {{ mov.responsable }}{% endif %}
+                                    {% if mov.estado %} · {{ mov.estado }}{% endif %}
+                                </span>
+                            </div>
+
+                            {% if mov.evidencias_pendientes or mov.total_evidencias %}
+                                <button type="button" class="hl-fotos" data-url="{% url 'syh:hallazgo_evidencias' mov.id %}">
+                                    {% if mov.evidencias_pendientes %}
+                                        <span class="hl-fotos__punto hl-fotos__punto--pendiente"></span>
+                                        {{ mov.evidencias_pendientes }} por revisar
+                                    {% else %}
+                                        <span class="hl-fotos__punto"></span>
+                                        {{ mov.total_evidencias }} {{ mov.total_evidencias|pluralize:"foto, fotos" }}
+                                    {% endif %}
+                                </button>
+                            {% endif %}
+                        </div>
+                        <div class="hl-evidencias" hidden></div>
+                    </li>
+                {% endfor %}
+
+                {% if grupo.ocultos %}
+                    <li class="hl-mas">
+                        <button type="button" class="hl-mas__boton" data-ocultos="{{ grupo.ocultos }}">
+                            y {{ grupo.ocultos }} hallazgo{{ grupo.ocultos|pluralize:" más" }}
+                        </button>
                     </li>
                 {% endif %}
-            {% endfor %}
-    
-            {% if movimientos.number < movimientos.paginator.num_pages %}
-                <li class="page-item disabled"><span class="page-link">...</span></li>
+            </ul>
+        </section>
+    {% empty %}
+        <div class="hl-vacio">
+            {% if busqueda %}
+                <h6>Nada coincide con &ldquo;{{ busqueda }}&rdquo;</h6>
+                <p>Fijate si está escrito distinto, o <a href="{% url 'syh:visualizar_movimientos' %}">volvé a ver los pendientes</a>.</p>
+            {% else %}
+                <h6>No hay hallazgos abiertos</h6>
+                <p>Cuando se carguen, van a aparecer acá agrupados por empresa.</p>
             {% endif %}
-    
-            {%if movimientos.has_next %}
-                <li class="page-item {% if not movimientos.has_next %}disabled{% endif %}">
-                    <a class="page-link" href="?page={{ movimientos.next_page_number }}&cliente={{ request.GET.cliente }}&area={{ request.GET.area}}&{% for estado in filtro_estados %}estado={{ estado }}&{% endfor %}">Siguiente</a>
-                </li>
-            {%endif%}
-            <li class="page-item {% if not movimientos.has_next %}disabled{% endif %}">
-                <a class="page-link" href="?page={{ movimientos.paginator.num_pages }}&cliente={{ request.GET.cliente }}&area={{ request.GET.area }}&{% for estado in filtro_estados %}estado={{ estado }}&{% endfor %}">Última</a>
-            </li>
-        </ul>
-    </nav>    
+        </div>
+    {% endfor %}
+
+    {% if busqueda %}
+        <p class="hl-pie">
+            <a href="{% url 'syh:visualizar_movimientos' %}">← Volver a los pendientes</a>
+        </p>
+    {% endif %}
 </div>
 
-{%endblock%}
+<style>
+    /* Contadores arriba. Lo primero que se ve es cuanto hay pendiente. */
+    .hl-tarjetas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 18px 0 26px; }
+    .hl-tarjeta {
+        padding: 16px 18px; border-radius: 12px; background: #fff;
+        border: 1px solid var(--an-color-border, #dde5e1);
+        border-left: 4px solid #9fb0a9;
+    }
+    .hl-numero { display: block; font-family: Georgia, serif; font-size: 32px; line-height: 1; }
+    .hl-rotulo { display: block; margin-top: 5px; color: #6b7a74; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .hl-tarjeta--roja { border-left-color: var(--an-color-danger, #b5452e); }
+    .hl-tarjeta--roja .hl-numero { color: var(--an-color-danger, #b5452e); }
+    .hl-tarjeta--ambar { border-left-color: var(--an-color-warning, #b8860b); }
+    .hl-tarjeta--ambar .hl-numero { color: var(--an-color-warning, #b8860b); }
+    .hl-tarjeta--verde { border-left-color: #1d6b55; }
+    .hl-tarjeta--verde .hl-numero { color: #1d6b55; }
+
+    .hl-cabecera { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .hl-sub { margin: 0; color: #6b7a74; font-size: 13.5px; line-height: 1.5; }
+    .hl-buscador { display: flex; gap: 8px; align-items: center; }
+    .hl-buscador input[type="search"] {
+        width: 300px; max-width: 100%; padding: 9px 13px; font: inherit; font-size: 14px;
+        border: 1px solid var(--an-color-border, #dde5e1); border-radius: 9px; background: #fff; color: inherit;
+    }
+    .hl-limpiar { font-size: 13px; }
+
+    /* Una seccion por empresa, en orden de urgencia. */
+    .hl-empresa {
+        margin-bottom: 14px; border: 1px solid var(--an-color-border, #dde5e1);
+        border-radius: 14px; background: #fff; overflow: hidden;
+    }
+    .hl-empresa__cabecera {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+        gap: 10px; padding: 14px 18px; background: #f6f8f7; border-bottom: 1px solid var(--an-color-border, #dde5e1);
+    }
+    .hl-empresa__nombre { margin: 0; font-size: 16px; font-weight: 800; }
+    .hl-empresa__contadores { display: flex; flex-wrap: wrap; gap: 6px; }
+    .hl-chip { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; background: #eceff0; color: #4a5a54; }
+    .hl-chip--rojo { background: #fde8e2; color: #9c3720; }
+    .hl-chip--ambar { background: #fdeccd; color: #8a5d12; }
+    .hl-chip--verde { background: #e4f2ec; color: #1d6b55; }
+
+    .hl-hallazgos { margin: 0; padding: 0; list-style: none; }
+    .hl-hallazgo { border-bottom: 1px solid #eef2f0; }
+    .hl-hallazgo:last-child { border-bottom: 0; }
+    .hl-hallazgo__fila { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 14px 18px; }
+    .hl-hallazgo__texto { min-width: 0; }
+    .hl-hallazgo__fecha { display: block; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #6b7a74; }
+    .hl-vencido { color: var(--an-color-danger, #b5452e); }
+    .hl-hallazgo__descripcion { margin: 5px 0 4px; font-size: 14.5px; line-height: 1.5; overflow-wrap: anywhere; }
+    .hl-hallazgo__meta { color: #6b7a74; font-size: 12.5px; }
+
+    .hl-fotos {
+        flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+        padding: 6px 12px; border: 1px solid #d9e3de; border-radius: 20px;
+        background: #fff; color: #1d6b55; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .hl-fotos:hover { background: #f4f8f6; }
+    .hl-fotos__punto { width: 8px; height: 8px; border-radius: 50%; background: #9fb0a9; }
+    .hl-fotos__punto--pendiente { background: var(--an-color-warning, #b8860b); }
+
+    .hl-evidencias { padding: 4px 18px 16px; }
+    .hl-foto-tarjetas { display: flex; flex-wrap: wrap; gap: 14px; }
+    .hl-foto-tarjeta { width: 210px; border: 1px solid #e2e9e5; border-radius: 10px; overflow: hidden; background: #fff; }
+    .hl-foto-tarjeta img { display: block; width: 100%; height: 140px; object-fit: cover; background: #10201e; cursor: zoom-in; }
+    .hl-foto-sin { height: 140px; display: flex; align-items: center; justify-content: center; background: #10201e; color: #cfe3d8; font-size: 12px; }
+    .hl-foto-cuerpo { padding: 9px 11px; }
+    .hl-estado { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .hl-estado--pendiente { background: #fdeccd; color: #8a5d12; }
+    .hl-estado--aceptada { background: #e4f2ec; color: #1d6b55; }
+    .hl-estado--rechazada { background: #ffe6e0; color: #a13b26; }
+    .hl-foto-meta { margin: 7px 0 0; color: #6b7a74; font-size: 12px; line-height: 1.45; }
+    .hl-motivo { margin: 7px 0 0; padding: 7px 9px; border-radius: 6px; background: #fff1ed; color: #8a3521; font-size: 12px; line-height: 1.45; }
+    .hl-nota { color: #6b7a74; font-size: 13px; padding: 6px 0; }
+
+    .hl-mas { border-top: 1px solid #eef2f0; }
+    .hl-mas__boton { width: 100%; padding: 12px; border: 0; background: #fbfcfc; color: #1d6b55; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+    .hl-vacio { padding: 46px 24px; border: 1px dashed #cdd8d2; border-radius: 14px; background: #fff; text-align: center; }
+    .hl-vacio h6 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+    .hl-vacio p { margin: 0; color: #6b7a74; font-size: 14px; }
+    .hl-pie { margin-top: 18px; font-size: 13.5px; }
+
+    .hl-lupa {
+        position: fixed; inset: 0; z-index: 2000; background: rgba(10, 20, 18, .92);
+        display: flex; align-items: center; justify-content: center; padding: 20px; cursor: zoom-out;
+    }
+    .hl-lupa img { max-width: 100%; max-height: 92vh; border-radius: 8px; }
+
+    @media (max-width: 900px) {
+        .hl-tarjetas { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+        .hl-tarjetas { grid-template-columns: repeat(2, 1fr); gap: 9px; }
+        .hl-numero { font-size: 26px; }
+        .hl-cabecera { flex-direction: column; }
+        .hl-buscador { width: 100%; }
+        .hl-buscador input[type="search"] { width: 100%; }
+        .hl-hallazgo__fila { flex-direction: column; }
+        .hl-foto-tarjeta { width: 100%; }
+    }
+</style>
+
+{% endblock %}
 
 {% block extra_js %}
 <script>
-    $(document).ready(function() {
-        $('#cliente-select').change(function() {
-            var clienteId = $(this).val();
-            $.ajax({
-                url: '{% url "syh:obtener_areas" %}',
-                data: {
-                    'cliente': clienteId
-                },
-                success: function(data) {
-                    var $area = $('#area-select');
-                    $area.empty();
-                    $area.append('<option value="">--Selecciona un área--</option>');
-                    $.each(data, function(key, value) {
-                        $area.append('<option value="' + key + '">' + value + '</option>');
-                    });
-                }
-            });
+    // Las fotos se piden cuando se las pide. Las de un celular pesan megabytes
+    // y esta pantalla puede listar cientos de hallazgos: cargarlas todas de
+    // golpe haria lenta la pagina.
+    function urlEvidencias(boton) {
+        return boton.dataset.url;
+    }
+
+    function armarFotos(evidencias) {
+        if (!evidencias.length) {
+            return '<p class="hl-nota">Este hallazgo no tiene evidencias.</p>';
+        }
+        var html = '<div class="hl-foto-tarjetas">';
+        evidencias.forEach(function(e) {
+            html += '<div class="hl-foto-tarjeta">';
+            html += e.url
+                ? '<img src="' + e.url + '" alt="Evidencia del hallazgo" loading="lazy">'
+                : '<div class="hl-foto-sin">sin foto</div>';
+            html += '<div class="hl-foto-cuerpo">';
+            html += '<span class="hl-estado hl-estado--' + e.estado + '">' + e.estado_legible + '</span>';
+            html += '<p class="hl-foto-meta">' + e.fecha + '<br>Subida por: ' + e.subido_por;
+            if (e.revisado_por) html += '<br>Revisada por: ' + e.revisado_por;
+            html += '</p>';
+            if (e.detalle) html += '<p class="hl-foto-meta">' + e.detalle + '</p>';
+            if (e.motivo_rechazo) html += '<p class="hl-motivo">Motivo del rechazo: ' + e.motivo_rechazo + '</p>';
+            html += '</div></div>';
         });
-        $('#btnImprimir').click(function() {
-            window.location.href = '{% url "syh:imprimir_movimientos" %}?' + $('form').serialize();
-        });
+        return html + '</div>';
+    }
+
+    function ampliar(foto) {
+        var lupa = document.getElementById('hl-lupa');
+        if (!lupa) {
+            lupa = document.createElement('div');
+            lupa.id = 'hl-lupa';
+            lupa.className = 'hl-lupa';
+            lupa.innerHTML = '<img alt="Evidencia ampliada">';
+            document.body.appendChild(lupa);
+            lupa.addEventListener('click', function() { lupa.remove(); });
+        }
+        lupa.querySelector('img').src = foto.src;
+    }
+
+    document.addEventListener('click', function(evento) {
+        var boton = evento.target.closest('.hl-fotos');
+        if (boton) {
+            var panel = boton.closest('.hl-hallazgo').querySelector('.hl-evidencias');
+            if (!panel.hidden) { panel.hidden = true; panel.innerHTML = ''; return; }
+            if (!panel.dataset.cargado) {
+                panel.dataset.cargado = '1';
+                panel.innerHTML = '<p class="hl-nota">Buscando evidencias&hellip;</p>';
+                fetch(urlEvidencias(boton), { credentials: 'same-origin' })
+                    .then(function(r) {
+                        if (!r.ok) throw new Error('No se pudieron cargar.');
+                        return r.json();
+                    })
+                    .then(function(datos) { panel.innerHTML = armarFotos(datos.evidencias); })
+                    .catch(function(err) { panel.innerHTML = '<p class="hl-nota">' + err.message + '</p>'; });
+            }
+            panel.hidden = false;
+            return;
+        }
+
+        if (evento.target.matches('.hl-foto-tarjeta img')) {
+            ampliar(evento.target);
+            return;
+        }
+
+        var mas = evento.target.closest('.hl-mas__boton');
+        if (mas) {
+            var url = new URL(window.location.href);
+            url.searchParams.set('todos', '1');
+            window.location.href = url.toString();
+        }
     });
 </script>
 {% endblock extra_js %}
