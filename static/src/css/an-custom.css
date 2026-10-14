@@ -452,3 +452,50 @@
 @media (prefers-reduced-motion: reduce) {
   .an-app *, .an-auth * { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* AN & Asociados — autocomplete de <select> (src/js/an-autocomplete.js)
+   El select nativo queda oculto y el input ocupa su lugar. Los estilos van sin
+   el prefijo .an-app a propósito: la página pública de hallazgos también carga
+   esta hoja y no pasa por layouts/base.html. */
+.an-combo { position: relative; }
+.an-combo__nativo { display: none !important; }
+
+.an-combo__input { width: 100%; padding-right: 2.4rem; cursor: pointer; }
+.an-combo__input:focus { cursor: text; }
+.an-combo__input:disabled { cursor: not-allowed; }
+
+.an-combo__toggle {
+  position: absolute; top: 50%; right: .4rem; transform: translateY(-50%);
+  display: flex; width: 1.8rem; height: 1.8rem; align-items: center; justify-content: center;
+  padding: 0; border: 0; border-radius: 50%;
+  color: var(--an-color-muted); background: transparent; cursor: pointer;
+}
+.an-combo__toggle:hover:not(:disabled) { color: var(--an-color-primary); background: var(--an-color-surface-soft); }
+.an-combo__toggle:disabled { opacity: .45; cursor: not-allowed; }
+.an-combo__chevron {
+  width: .48rem; height: .48rem; margin-top: -.2rem;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(45deg); transition: transform .15s ease;
+}
+.an-combo--abierto .an-combo__chevron { transform: rotate(-135deg); margin-top: .2rem; }
+
+.an-combo__list {
+  position: fixed; z-index: 1080; left: 0; top: 0;
+  max-height: 260px; margin: 0; padding: .3rem 0; overflow-y: auto; list-style: none;
+  border: 1px solid var(--an-color-border); border-radius: var(--an-radius);
+  background: var(--an-color-surface); box-shadow: var(--an-shadow);
+}
+.an-combo__list--arriba { border-bottom-left-radius: 0; border-top-right-radius: 0; }
+.an-combo__item {
+  padding: .5rem .85rem; font-size: .93rem; line-height: 1.35;
+  color: var(--an-color-text); cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.an-combo__item:hover, .an-combo__item--activo { background: var(--an-color-surface-soft); }
+.an-combo__item--activo { box-shadow: inset 3px 0 0 var(--an-color-primary); }
+.an-combo__item--elegido { color: var(--an-color-primary); font-weight: 700; }
+.an-combo__item mark { padding: 0; color: var(--an-color-primary-strong); background: transparent; font-weight: 800; }
+.an-combo__vacio { margin: 0; padding: .65rem .85rem; color: var(--an-color-muted); font-size: .88rem; }
+
+.an-combo--inactivo .an-combo__input { opacity: .7; }
+.an-combo__list[hidden], .an-combo__vacio[hidden] { display: none; }
