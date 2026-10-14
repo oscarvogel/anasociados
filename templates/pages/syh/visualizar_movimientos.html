@@ -54,15 +54,30 @@
     </div>
     {% endif %}
 
-    {# Filtros como links, no como un formulario con boton "Aplicar". #}
-    <div class="hl-filtros">
-        <span class="hl-filtros__rotulo">Empresa</span>
-        <a class="hl-pastilla {% if not empresa_sel %}hl-pastilla--activa{% endif %}"
-           href="?vista={{ vista }}{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">Todas</a>
-        {% for pk, emp in empresas_disponibles.items %}
-            <a class="hl-pastilla {% if empresa_sel == pk %}hl-pastilla--activa{% endif %}"
-               href="?empresa={{ pk|urlencode }}&vista={{ vista }}{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">{{ emp.nombre }}</a>
-        {% endfor %}
+    {# Filtros como links, no como un formulario con boton "Aplicar".
+       El de empresa va plegado: con 16 empresas, dejarlas todas a la vista
+       empujaba los hallazgos fuera de la pantalla. #}
+    <div class="hl-filtros hl-filtros--plegable">
+        <details {% if empresa_sel %}open{% endif %}>
+            <summary>
+                <span class="hl-filtros__rotulo">Empresa</span>
+                <span class="hl-filtros__valor">
+                    {% if empresa_sel %}
+                        {% for pk, emp in empresas_disponibles.items %}{% if pk == empresa_sel %}{{ emp.nombre }}{% endif %}{% endfor %}
+                    {% else %}
+                        Todas
+                    {% endif %}
+                </span>
+            </summary>
+            <div class="hl-filtros__lista">
+                <a class="hl-pastilla {% if not empresa_sel %}hl-pastilla--activa{% endif %}"
+                   href="?vista={{ vista }}{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">Todas</a>
+                {% for pk, emp in empresas_disponibles.items %}
+                    <a class="hl-pastilla {% if empresa_sel == pk %}hl-pastilla--activa{% endif %}"
+                       href="?empresa={{ pk|urlencode }}&vista={{ vista }}{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">{{ emp.nombre }}</a>
+                {% endfor %}
+            </div>
+        </details>
     </div>
 
     <div class="hl-filtros">
@@ -307,6 +322,25 @@
     .hl-pastilla:hover { background: #f2f7f4; }
     .hl-pastilla--activa { background: #23473a; border-color: #23473a; color: #fff; }
     .hl-pastilla--clear { border-style: dashed; color: #8a3521; }
+
+    /* El filtro de empresa va plegado: son 16 y a la vista empujaban los
+       hallazgos fuera de la pantalla. */
+    .hl-filtros--plegado details { margin-bottom: 12px; }
+    .hl-filtros--plegado summary {
+        display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px;
+        border: 1px solid #d9e3de; border-radius: 20px; background: #fff;
+        cursor: pointer; list-style: none; font-size: 12.5px; font-weight: 600;
+    }
+    .hl-filtros--plegado summary::-webkit-details-marker { display: none; }
+    .hl-filtros--plegado summary::after { content: "▾"; color: #6b7a74; font-size: 11px; }
+    .hl-filtros--plegado[open] summary::after { content: "▴"; }
+    .hl-filtros--plegado summary .hl-filtros__rotulo { min-width: 0; }
+    .hl-filtros__valor { color: #1d6b55; font-weight: 700; }
+    .hl-filtros__lista {
+        display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+        padding: 12px; border: 1px solid #e2e9e5; border-radius: 10px; background: #fff;
+        max-height: 190px; overflow-y: auto;
+    }
 
     /* Edicion en linea. */
     .hl-editar { padding: 0 18px 14px; }
