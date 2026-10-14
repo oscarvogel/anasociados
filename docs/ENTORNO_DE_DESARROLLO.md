@@ -115,6 +115,49 @@ MySQL no hace rollback de DDL: si una migracion falla a mitad, la tabla que
 alcanzo a crear queda en la base y la siguiente corrida falla con
 "Table already exists". Hay que dropearla a mano.
 
+### Eso ya no hay que hacerlo a mano para correr tests
+
+El problema de arriba esta resuelto para el runner de tests. El comando
+`migrate` de `utiles/management/commands/migrate.py` crea esas tablas antes de
+migrar y `perfiles` despues (su FK a `auth_user` todavia no existe mientras
+migran). El DDL esta en `core_an/tablas_externas.py`, copiado con
+`SHOW CREATE TABLE` de produccion.
+
+La guarda es explicita: **solo corre si `test` esta en `sys.argv`**. En
+produccion el comando se comporta exactamente como el de Django, porque esas
+tablas las tiene que crear el proceso externo.
+
+Ademas la base de test se crea en **latin1**, igual que produccion
+(`TEST.CHARSET` en `settings.py`). Con el default utf8mb4 del servidor,
+`movimientos.id` (latin1) y `syh_evidencia.movimiento` no coinciden en charset
+y MySQL rechaza la clave foranea.
+
+## Cómo correr los tests
+
+Con el venv que coincide con produccion (`.venv-dj52`, Django 5.2.18):
+
+```powershell
+$env:DB_ENGINE='mysql'; $env:DB_HOST='<ip-wsl>'; $env:DB_PORT='3307'
+$env:DB_NAME='an_test'; $env:DB_USERNAME='anuser'; $env:DB_PASS='<clave>'
+.\.venv-dj52\Scripts\python.exe manage.py test
+```
+
+Tres cosas para no pegarse un tiro:
+
+1. **Fijar las variables antes de correr.** `load_dotenv` en `settings.py` lee
+   el `.env` del repo, que en esta maquina apunta a **produccion**, y no pisa
+   las variables que ya estan en el entorno. Si no se fijan, los tests corren
+   contra la base real.
+2. **`anuser` necesita poder crear la base de test.** El runner crea y borra
+   `test_an_test`. En el MySQL descartable:
+   `GRANT ALL ON test_an_test.* TO 'anuser'@'%'; GRANT CREATE, DROP ON *.* TO 'anuser'@'%';`
+   Los `GRANT` sobreviven aunque la base no exista todavia.
+3. **No dejar la base `test_an_test` precriada.** Si existe, el runner la pide
+   por confirmacion interactiva y sin `--noinput` muere con `EOFError`.
+
+Estado al 14/10/2026: 16 tests en verde (15 de `utiles`, 1 de `syh`). Las otras
+apps (`home`, `moviles`, `usuarios`) siguen con los stubs de Django.
+
 ## Nota sobre versiones de Django
 
 El repo arrastraba migraciones generadas por Django **4.1.2, 5.0.1, 5.1 y
