@@ -223,6 +223,7 @@ def whatsapp_hallazgos_send(request):
 
 
 @never_cache
+@csrf_exempt
 @require_POST
 def hallazgos_publicos_subir(request):
     """
@@ -231,6 +232,12 @@ def hallazgos_publicos_subir(request):
     El token va en el header Authorization, igual que el endpoint de datos:
     el fragmento (#) de la URL nunca viaja al servidor, asi que tampoco
     viaja en el cuerpo de este POST.
+
+    csrf_exempt a proposito: esta vista no usa sesion de Django ni cookies,
+    asi que no hay un usuario autenticado al que un sitio de terceros pueda
+    hacer actuar. La autorizacion la da el token del enlace, que es lo
+    unico que se necesita para esta operacion. Sin el exemption, Django
+    rechazaba el POST con 403 y las fotos nunca se guardaban.
 
     Regla que no se negocia: el hallazgo TIENE que pertenecer al area del
     enlace. Sin esto, un enlace del area A permitiria colgar evidencia falsa

@@ -269,7 +269,7 @@
                         </label>
                         <label class="upload-field">
                             <span>Comentario (opcional)</span>
-                            <input type="text" id="upload-detalle" maxlength="500" placeholder="Ej: se reparó y se controlizó el poste">
+                            <input type="text" id="upload-detalle" maxlength="500" placeholder="Ej: se reparó el poste y se controló">
                         </label>
                     </div>
                     <label class="upload-field upload-files">
@@ -495,7 +495,18 @@
                 headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
                 body: form
             }).then(function (response) {
-                return response.json().then(function (data) {
+                // Django puede devolver HTML (por ejemplo 403 de CSRF o 500).
+                // Si intentamos parsearlo como JSON explota con
+                // "Unexpected token '<'" y no dice nada util.
+                return response.text().then(function (texto) {
+                    var data;
+                    try {
+                        data = JSON.parse(texto);
+                    } catch (e) {
+                        throw new Error(
+                            'El servidor devolvió un error inesperado (HTTP ' + response.status + ').'
+                        );
+                    }
                     if (!response.ok) throw new Error(data.error || 'No se pudo enviar.');
                     return data;
                 });
