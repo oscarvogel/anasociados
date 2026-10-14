@@ -157,13 +157,39 @@ def _destinatarios_whatsapp():
 
 
 def _destinatarios_admin():
-    """Lista de numeros que validan evidencias.
-
-    Lista separada de la de operacion: "se cayo el sitio" y "hay una foto que
-    revisar" no le importan a la misma persona ni tienen la misma urgencia.
-    Si no se configuro ninguna, cae en la lista general.
     """
-    crudo = settings.ALERTA_WHATSAPP_ADMINISTRADORES or settings.ALERTA_WHATSAPP_DESTINATARIOS or ""
+    Numeros que validan evidencias.
+
+    Primero se mira la tabla de contactos del panel: es lo normal, porque se
+    cambia desde el admin sin tocar el servidor.
+
+    Ojo con la distincion entre los dos casos:
+      - la tabla esta VACIA  -> se cae al .env (todavia no se configuro a
+        nadie; perder los avisos seria peor)
+      - hay contactos pero ninguno activo para evidencias -> no se manda a
+        nadie. Respetar que el administrador los apague importa mas que no
+        perder avisos: si los desactivo a proposito, mandar igual seria
+        mandar a alguien que apague explicitamente.
+    """
+    try:
+        from utiles.models import ContactoNotificacion
+
+        if ContactoNotificacion.objects.exists():
+            return [
+                c.telefono for c in ContactoNotificacion.objects.filter(
+                    activo=True, recibe_evidencias=True
+                )
+            ]
+    except Exception:  # noqa: BLE001
+        # La tabla puede no existir todavia (migracion sin aplicar). Caer al
+        # .env es siempre mejor que no poder avisar.
+        logger.exception("No se pudieron leer los contactos del panel; se usa el .env")
+
+    crudo = (
+        settings.ALERTA_WHATSAPP_ADMINISTRADORES
+        or settings.ALERTA_WHATSAPP_DESTINATARIOS
+        or ""
+    )
     return [t.strip() for t in crudo.split(",") if t.strip()]
 
 

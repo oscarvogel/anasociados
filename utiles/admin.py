@@ -1,7 +1,39 @@
+from django import forms
 from django.contrib import admin
 from django.utils import timezone
 
-from utiles.models import EnlacePublicoHallazgos
+from utiles.models import ContactoNotificacion, EnlacePublicoHallazgos
+
+
+@admin.register(ContactoNotificacion)
+class ContactoNotificacionAdmin(admin.ModelAdmin):
+    """
+    A quien le llega cada aviso. Vive acá y no en el .env para que se pueda
+    cambiar desde el panel, sin tocar el servidor ni reiniciar nada.
+    """
+    list_display = ("nombre", "telefono", "recibe_evidencias", "recibe_alertas_operacion", "activo")
+    list_filter = ("activo", "recibe_evidencias", "recibe_alertas_operacion")
+    search_fields = ("nombre", "telefono")
+    list_editable = ("recibe_evidencias", "recibe_alertas_operacion", "activo")
+    list_display_links = ("nombre",)
+    list_per_page = 25
+    ordering = ("nombre",)
+    form = forms.models.ModelForm
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
 
 
 @admin.register(EnlacePublicoHallazgos)
