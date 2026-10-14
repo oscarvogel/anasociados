@@ -1,132 +1,92 @@
-{% load i18n static admin_datta %}
+{% load i18n static %}
 
-<nav class="pcoded-navbar">
+<nav class="pcoded-navbar" aria-label="Navegación principal">
   <div class="navbar-wrapper">
     <div class="navbar-brand header-logo">
       <a href="{% url 'index' %}" class="b-brand">
         <div class="b-bg">
-        <img src="{% static 'assets/images/logo_almada_neri.png' %}" alt="AN &amp; Asociados">
+          <img src="{% static 'assets/images/logo_almada_neri.png' %}" alt="AN &amp; Asociados">
         </div>
-        <span class="b-title">AN & Asociados</span>
+        <span class="b-title">AN &amp; Asociados</span>
       </a>
-      <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span></a>
+      <a class="mobile-menu" id="mobile-collapse" href="javascript:" aria-label="Contraer menú"><span></span></a>
     </div>
+
     <div class="navbar-content scroll-div">
-      <ul class="nav pcoded-inner-navbar">
-        <li class="nav-item pcoded-menu-caption">
-          <label>Menú principal</label>
-        </li>
-        <li data-username="dashboard AN & Asociados" class="nav-item {% if 'index' in segment %}active{% endif %}">
-          <a href="{% url 'index' %}" class="nav-link ">
-            <span class="pcoded-micon"><i class="feather icon-home"></i></span><span class="pcoded-mtext">Tablero</span>
-          </a>
-        </li>
+      {% if navigation_groups %}
+        <div class="an-menu-search">
+          <label class="sr-only" for="an-menu-search-input">Buscar en menú</label>
+          <div class="an-menu-search__field">
+            <i class="feather icon-search" aria-hidden="true"></i>
+            <input
+              id="an-menu-search-input"
+              type="search"
+              placeholder="Buscar en menú"
+              autocomplete="off"
+              aria-controls="an-menu-list"
+              data-menu-search
+            >
+          </div>
+          <p class="an-menu-search__empty" role="status" aria-live="polite" data-menu-empty hidden>
+            No hay opciones que coincidan.
+          </p>
+        </div>
 
-        {% comment %}
-          Hallazgos va al primer nivel, no escondido dentro de Informes: es la
-          pantalla de trabajo. Antes solo se llegaba por Informes > Hallazgos y
-          la gente terminaba laburando en el admin, que es para cargar datos.
-
-          OJO: los comentarios de una sola linea de Django se imprimen como
-          texto si abarcan varias lineas. Para comentarios largos esta el tag
-          de bloque "comment", que si las acepta.
-        {% endcomment %}
-        {% if request.user.is_authenticated %}
-          <li data-username="hallazgos" class="nav-item {% if 'hallazgos' in segment %}active{% endif %}">
-            <a href="{% url 'syh:visualizar_movimientos' %}" class="nav-link">
-              <span class="pcoded-micon"><i class="feather icon-alert-triangle"></i></span>
-              <span class="pcoded-mtext">Hallazgos</span>
-            </a>
-          </li>
-        {% endif %}
-
-        {% admin_get_menu as app_list %}
-        {% if app_list %}
-          {% for app in app_list %}
-            {% if app.has_perms and not app.pinned %}
-              <li 
-                data-username="basic components Button Alert Badges breadcrumb Paggination progress Tooltip popovers Carousel Cards Collapse Tabs pills Modal Grid System Typography Extra Shadows Embeds"
-                class="nav-item pcoded-hasmenu"
+        <ul id="an-menu-list" class="nav pcoded-inner-navbar" data-menu-list>
+          <li class="nav-item pcoded-menu-caption"><label>Menú principal</label></li>
+          {% for group in navigation_groups %}
+            {% if group.standalone %}
+              {% for item in group.items %}
+                <li
+                  class="nav-item{% if item.is_active %} active{% endif %}"
+                  data-menu-group
+                  data-menu-group-label="{{ group.label }}"
+                  data-menu-standalone
+                >
+                  <a
+                    href="{{ item.url }}"
+                    class="nav-link"
+                    data-menu-item
+                    data-menu-search-text="{{ item.search_text }}"
+                    {% if item.is_active %}aria-current="page"{% endif %}
+                  >
+                    <span class="pcoded-micon"><i class="feather {{ item.icon }}" aria-hidden="true"></i></span>
+                    <span class="pcoded-mtext">{{ item.label }}</span>
+                  </a>
+                </li>
+              {% endfor %}
+            {% else %}
+              <li
+                class="nav-item pcoded-hasmenu{% if group.is_active %} active pcoded-trigger{% endif %}"
+                data-menu-group
+                data-menu-group-label="{{ group.label }}"
               >
-                <a href="javascript:" class="nav-link ">
-                  <span class="pcoded-micon"><i class=" {% if app.icon %}{{ app.icon }} {% else %} feather icon-box {% endif %}"></i></span>
-                  <span class="pcoded-mtext">{{ app.label|slice:10 }}{% if app.label|length > 10 %}..{% endif %}</span>
+                <a
+                  href="javascript:"
+                  class="nav-link"
+                  aria-expanded="{% if group.is_active %}true{% else %}false{% endif %}"
+                >
+                  <span class="pcoded-micon"><i class="feather {{ group.icon }}" aria-hidden="true"></i></span>
+                  <span class="pcoded-mtext">{{ group.label }}</span>
                 </a>
-                {% if app.models %}
-                  <ul class="pcoded-submenu">
-                    {% for model in app.models %}
-                      {% if model.url %}
-                        <li class="nav-item {% if 'bootstrap-tables' in segment or model.url in request.path|urlencode %} active {% endif %}">
-                          <a class="nav-link" href="{{ model.url }}">{{ model.label }}</a>
-                        </li>
-                      {% else %}
-                        <li class="nav-item">{{ model.label }}</li>
-                      {% endif %}
-                    {% endfor %}
-                  </ul>
-                {% endif %}
+                <ul class="pcoded-submenu">
+                  {% for item in group.items %}
+                    <li class="nav-item{% if item.is_active %} active{% endif %}" data-menu-item data-menu-search-text="{{ item.search_text }}">
+                      <a
+                        class="nav-link"
+                        href="{{ item.url }}"
+                        {% if item.is_active %}aria-current="page"{% endif %}
+                      >
+                        <span class="pcoded-mtext">{{ item.label }}</span>
+                      </a>
+                    </li>
+                  {% endfor %}
+                </ul>
               </li>
             {% endif %}
           {% endfor %}
-        {% endif %}
-
-        {% if request.user.is_authenticated and not request.user.is_superuser %}
-          {% comment %}
-            Antes apuntaba a la url 'profile', que no existe en ningun urls.py:
-            Django levanta NoReverseMatch y la pagina entera da 500 para todo
-            usuario que no sea superusuario. La unica pantalla de perfil del
-            proyecto es la de editar los datos propios.
-          {% endcomment %}
-          <li data-username="Profile Page" class="nav-item {% if 'update_user' in segment %}active{% endif %}"><a href="{% url 'usuarios:update_user' %}" class="nav-link"><span
-                class="pcoded-micon"><i class="feather icon-user"></i></span><span class="pcoded-mtext">Perfil</span></a>
-          </li>
-        {% endif %}
-        {% if request.user.is_superuser %}
-          <li class="nav-item">
-            <a href="{% url 'utiles:whatsapp_hallazgos' %}" class="nav-link">
-              <span class="pcoded-micon"><i class="feather icon-message-circle"></i></span>
-              <span class="pcoded-mtext">Alertas WhatsApp</span>
-            </a>
-          </li>
-        {% endif %}
-          <li class="nav-item pcoded-hasmenu" data-username="informes">
-          <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-bar-chart-2"></i></span><span
-              class="pcoded-mtext">Informes</span></a>
-              <ul class="pcoded-submenu">
-                <li class=""><a href="{% url 'syh:excesos_plantilla' %}" class="nav-link">Excesos de velocidad</a></li>
-                <li class=""><a href="{% url 'syh:generar_resumen_mensual' %}" class="nav-link">Resumen mensual</a></li>
-                <li class=""><a href="{% url 'moviles:consumo_combustible_por_mes' %}" class="nav-link">Consumo de combustible</a></li>
-                {% if request.user.is_superuser %}
-                  <li class=""><a href="{% url 'moviles:reporte_gastos_movil' %}" class="nav-link">Reporte de gastos</a></li>
-                  <li class=""><a href="{% url 'usuarios:reporte_accesos' %}" class="nav-link">Reporte de accesos</a></li>
-                {% endif %}
-              </ul>
-        </li>
-        {%if request.user.is_authenticated%}
-          <li class="nav-item pcoded-hasmenu" data-username="Móviles">
-            <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-settings"></i></span><span
-                class="pcoded-mtext">Moviles</span></a>
-                <ul class="pcoded-submenu">
-                  <li class=""><a href="{% url 'moviles:tipo_vencimientos_list' %}">Tipos de vencimiento</a></li>
-                  <li class=""><a href="{% url 'moviles:moviles_list' %}">Listado de móviles</a></li>
-                  {%if request.user.is_superuser%}
-                    <li class=""><a href="{% url 'moviles:personal_list' %}" >Personal</a></li>
-                  {%endif%}
-                  <li class=""><a href="{% url 'moviles:vencimientos_list' %}">Vencimientos de móviles</a></li>
-                  <li class=""><a href="{% url 'moviles:gastos_movil_list' %}">Gastos de móviles</a></li>
-                  <li class=""><a href="{% url 'moviles:viajes_list' %}">Viajes</a></li>
-                </ul>
-          </li>
-
-          <li class="nav-item pcoded-hasmenu" data-username="Matafuegos">
-            <a href="javascript:" class="nav-link"><span class="pcoded-micon"><i class="feather icon-settings"></i></span><span
-                class="pcoded-mtext">Matafuegos</span></a>
-                <ul class="pcoded-submenu">
-                <li class=""><a href="{% url 'moviles:matafuegos_list' %}">Listado de matafuegos</a></li>
-                </ul>
-          </li>
-        {%endif%}
-      </ul>
+        </ul>
+      {% endif %}
     </div>
   </div>
 </nav>

@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 import json
 from collections import defaultdict
 from datetime import datetime
@@ -6,14 +6,19 @@ from datetime import datetime
 # Create your views here.
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django.http import HttpResponseForbidden
-from django.db.models import Count
+from django.db import transaction
+from django.db.models import Count, Prefetch, Q
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.contrib import messages
+from django.urls import reverse
 
 from .forms import UserUpdateForm
-from .models import UsuarioIngreso, UsuarioMenuAcceso
+from .management_forms import AreaAssignmentFormSet, UserManagementForm
+from .models import AreasProfile, Profile, UsuarioIngreso, UsuarioMenuAcceso
+from syh.models import Area, Cliente
 
 @login_required(login_url='/admin/login/')
 def user_logout(request):
@@ -184,5 +189,168 @@ def reporte_accesos(request):
             'chart_menus_totales': json.dumps(chart_menus_totales),
             'chart_top_usuarios_labels': json.dumps(chart_top_usuarios_labels),
             'chart_top_usuarios_totales': json.dumps(chart_top_usuarios_totales),
+        },
+    )
+
+
+@login_required(login_url='/admin/login/')
+def management_users(request):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Solo un superusuario puede gestionar usuarios.")
+
+    query = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("estado", "")
+    client_filter = request.GET.get("cliente", "")
+
+    users = (
+        User.objects.filter(is_superuser=False)
+        .select_related("profile__cliente")
+        .prefetch_related(
+            Prefetch(
+                "areasprofile_set",
+                queryset=AreasProfile.objects.select_related("area").order_by("area__detalle"),
+            )
+        )
+        .order_by("username")
+    )
+
+    if query:
+        users = users.filter(
+            Q(username__icontains=query)
+            | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(email__icontains=query)
+            | Q(profile__cliente__nombre__icontains=query)
+            | Q(areasprofile__area__detalle__icontains=query)
+        ).distinct()
+    if status_filter == "active":
+        users = users.filter(is_active=True)
+    elif status_filter == "inactive":
+        users = users.filter(is_active=False)
+    if client_filter:
+        users = users.filter(profile__cliente_id=client_filter)
+
+    return render(
+        request,
+        "pages/usuarios/management_users.html",
+        {
+            "users": users,
+            "query": query,
+            "status_filter": status_filter,
+            "client_filter": client_filter,
+            "clients": Cliente.objects.order_by("nombre"),
+        },
+    )
+
+
+@login_required(login_url='/admin/login/')
+def management_user_edit(request, user_id=None):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Solo un superusuario puede gestionar usuarios.")
+
+    target_user = None
+    if user_id is not None:
+        target_user = get_object_or_404(User, pk=user_id)
+        if target_user.is_superuser:
+            return HttpResponseForbidden("Las cuentas superusuario no se editan desde esta pantalla.")
+
+    user_form = UserManagementForm(
+        data=request.POST if request.method == "POST" else None,
+        instance=target_user,
+    )
+    selected_client_id = (
+        request.POST.get("cliente") if request.method == "POST" else user_form["cliente"].value()
+    )
+    selected_client = Cliente.objects.filter(pk=selected_client_id).first() if selected_client_id else None
+
+    initial_assignments = []
+    if request.method != "POST" and target_user is not None:
+        initial_assignments = list(
+            AreasProfile.objects.filter(user=target_user)
+            .select_related("area")
+            .order_by("area__detalle")
+            .values("area_id", "telefono_whatsapp")
+        )
+        initial_assignments = [
+            {"area": item["area_id"], "telefono_whatsapp": item["telefono_whatsapp"]}
+            for item in initial_assignments
+        ]
+
+    area_formset = AreaAssignmentFormSet(
+        data=request.POST if request.method == "POST" else None,
+        initial=initial_assignments,
+        prefix="areas",
+        form_kwargs={"cliente": selected_client},
+    )
+
+    if request.method == "POST" and user_form.is_valid() and area_formset.is_valid():
+        client = user_form.cleaned_data["cliente"]
+        assignments = []
+        for form in area_formset.forms:
+            cleaned_data = form.cleaned_data
+            if cleaned_data.get("DELETE"):
+                continue
+            area = cleaned_data.get("area")
+            if area is None:
+                continue
+            if area.cliente_id != client.pk:
+                form.add_error("area", "El área debe pertenecer a la empresa seleccionada.")
+                break
+            assignments.append((area, cleaned_data.get("telefono_whatsapp", "")))
+
+        if not any(form.errors for form in area_formset.forms):
+            with transaction.atomic():
+                user = user_form.save(commit=False)
+                password = user_form.cleaned_data.get("password1")
+                if password:
+                    user.set_password(password)
+                user.save()
+
+                Profile.objects.update_or_create(
+                    user=user,
+                    defaults={"cliente": client},
+                )
+
+                existing_by_area = {}
+                existing_assignments = AreasProfile.objects.filter(user=user).order_by("pk")
+                for existing in existing_assignments:
+                    if existing.area_id in existing_by_area:
+                        existing.delete()
+                    else:
+                        existing_by_area[existing.area_id] = existing
+
+                retained_ids = []
+                for area, telefono in assignments:
+                    existing = existing_by_area.pop(area.pk, None)
+                    if existing:
+                        existing.telefono_whatsapp = telefono
+                        existing.save(update_fields=("telefono_whatsapp",))
+                        retained_ids.append(existing.pk)
+                    else:
+                        created = AreasProfile.objects.create(
+                            user=user,
+                            area=area,
+                            telefono_whatsapp=telefono,
+                        )
+                        retained_ids.append(created.pk)
+
+                AreasProfile.objects.filter(user=user).exclude(pk__in=retained_ids).delete()
+
+            messages.success(request, "El usuario se guardó correctamente.")
+            return redirect("usuarios:management_users")
+
+    client_areas = defaultdict(list)
+    for area in Area.objects.order_by("cliente_id", "detalle"):
+        client_areas[str(area.cliente_id)].append({"id": str(area.pk), "label": area.detalle})
+
+    return render(
+        request,
+        "pages/usuarios/management_user_form.html",
+        {
+            "user_form": user_form,
+            "area_formset": area_formset,
+            "client_areas": dict(client_areas),
+            "editing_user": target_user,
+            "list_url": reverse("usuarios:management_users"),
         },
     )

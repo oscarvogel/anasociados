@@ -1,0 +1,110 @@
+{% extends 'layouts/base.html' %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+{% block content %}
+<section class="an-user-management">
+  <header class="an-page-header">
+    <div>
+      <h1 class="an-page-header__title">Usuarios</h1>
+      <p class="an-user-management__intro">Administrá cuentas, empresas y áreas desde una sola pantalla.</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'usuarios:management_user_create' %}">
+      <i class="feather icon-user-plus" aria-hidden="true"></i> Nuevo usuario
+    </a>
+  </header>
+
+  {% if messages %}
+    <div class="an-user-management__messages" aria-live="polite">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}" role="status">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form class="an-filter-bar an-user-management__filters" method="get" role="search">
+    <div class="form-group an-user-management__search-field">
+      <label for="users-search">Buscar</label>
+      <input id="users-search" type="search" name="q" value="{{ query }}" class="form-control" placeholder="Usuario, nombre, correo, empresa o área">
+    </div>
+    <div class="form-group">
+      <label for="users-status">Estado</label>
+      <select id="users-status" name="estado" class="form-control">
+        <option value="">Todos</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Habilitados</option>
+        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Deshabilitados</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="users-client">Empresa</label>
+      <select id="users-client" name="cliente" class="form-control">
+        <option value="">Todas</option>
+        {% for client in clients %}
+          <option value="{{ client.pk }}" {% if client_filter == client.pk|stringformat:'s' %}selected{% endif %}>{{ client.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="an-user-management__filter-actions">
+      <button class="btn btn-primary" type="submit">Filtrar</button>
+      <a class="btn btn-outline-secondary" href="{% url 'usuarios:management_users' %}">Limpiar</a>
+    </div>
+  </form>
+
+  <div class="card an-card">
+    <div class="card-body an-card-body">
+      {% if users %}
+        <div class="an-table-wrapper">
+          <table class="an-table an-user-management__table">
+            <thead>
+              <tr>
+                <th scope="col">Usuario</th>
+                <th scope="col">Empresa y áreas</th>
+                <th scope="col">Correo</th>
+                <th scope="col">Estado</th>
+                <th scope="col"><span class="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in users %}
+                <tr>
+                  <td>
+                    <strong>{{ user.get_full_name|default:user.username }}</strong>
+                    <small class="an-user-management__username">{{ user.username }}</small>
+                  </td>
+                  <td>
+                    {% if user.profile %}<strong>{{ user.profile.cliente.nombre }}</strong>{% else %}<span class="text-muted">Sin empresa asignada</span>{% endif %}
+                    <div class="an-user-management__areas">
+                      {% for assignment in user.areasprofile_set.all %}
+                        <span>{{ assignment.area.detalle }}</span>{% if not forloop.last %}<span aria-hidden="true"> · </span>{% endif %}
+                      {% empty %}
+                        <span class="text-muted">Sin áreas</span>
+                      {% endfor %}
+                    </div>
+                  </td>
+                  <td>{{ user.email|default:'—' }}</td>
+                  <td>
+                    {% if user.is_active %}
+                      <span class="an-user-management__status an-user-management__status--active">Habilitado</span>
+                    {% else %}
+                      <span class="an-user-management__status an-user-management__status--inactive">Deshabilitado</span>
+                    {% endif %}
+                  </td>
+                  <td class="an-user-management__row-action">
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'usuarios:management_user_edit' user_id=user.pk %}">Editar</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="an-user-management__empty">
+          <i class="feather icon-users" aria-hidden="true"></i>
+          <h2>No hay usuarios para mostrar</h2>
+          <p>Probá con otra búsqueda o creá un usuario nuevo.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock content %}

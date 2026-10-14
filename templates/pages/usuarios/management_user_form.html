@@ -1,0 +1,155 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+{% block content %}
+<section class="an-user-management an-user-management--editor">
+  <header class="an-page-header">
+    <div>
+      <h1 class="an-page-header__title">{% if editing_user %}Editar usuario{% else %}Nuevo usuario{% endif %}</h1>
+      <p class="an-user-management__intro">Configurá la cuenta y todas sus relaciones en el mismo lugar.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{{ list_url }}">Volver a usuarios</a>
+  </header>
+
+  {% if user_form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">{{ user_form.non_field_errors }}</div>
+  {% endif %}
+  {% if area_formset.non_form_errors %}
+    <div class="alert alert-danger" role="alert">{{ area_formset.non_form_errors }}</div>
+  {% endif %}
+
+  <form id="user-management-form" method="post" novalidate>
+    {% csrf_token %}
+    <div class="card an-card an-user-management__section">
+      <div class="card-header"><h2>Datos de la cuenta</h2></div>
+      <div class="card-body an-card-body">
+        <div class="an-user-management__grid">
+          <div class="form-group">
+            {{ user_form.username.label_tag }}
+            {{ user_form.username }}
+            {% for error in user_form.username.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="form-group">
+            {{ user_form.first_name.label_tag }}
+            {{ user_form.first_name }}
+            {% for error in user_form.first_name.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="form-group">
+            {{ user_form.last_name.label_tag }}
+            {{ user_form.last_name }}
+            {% for error in user_form.last_name.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="form-group">
+            {{ user_form.email.label_tag }}
+            {{ user_form.email }}
+            {% for error in user_form.email.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card an-card an-user-management__section">
+      <div class="card-header"><h2>Acceso y empresa</h2></div>
+      <div class="card-body an-card-body">
+        <div class="form-group">
+          <label class="an-user-management__toggle">
+            {{ user_form.is_active }}
+            <span><strong>Cuenta habilitada</strong><small>Deshabilitar impide que el usuario inicie sesión; conserva sus datos y asignaciones.</small></span>
+          </label>
+          {% for error in user_form.is_active.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="form-group">
+          {{ user_form.cliente.label_tag }}
+          {{ user_form.cliente }}
+          {% for error in user_form.cliente.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        <div class="an-user-management__grid">
+          <div class="form-group">
+            {{ user_form.password1.label_tag }}
+            {{ user_form.password1 }}
+            {% if user_form.password1.help_text %}<small class="form-text text-muted">{{ user_form.password1.help_text }}</small>{% endif %}
+            {% for error in user_form.password1.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="form-group">
+            {{ user_form.password2.label_tag }}
+            {{ user_form.password2 }}
+            {% for error in user_form.password2.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card an-card an-user-management__section">
+      <div class="card-header an-user-management__section-heading">
+        <div><h2>Áreas y WhatsApp</h2><p>Las áreas disponibles corresponden a la empresa seleccionada.</p></div>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-add-area>
+          <i class="feather icon-plus" aria-hidden="true"></i> Agregar área
+        </button>
+      </div>
+      <div class="card-body an-card-body">
+        {{ area_formset.management_form }}
+        <div class="an-user-management__assignments" data-area-list>
+          {% for form in area_formset %}
+            <div class="an-user-management__assignment" data-area-row>
+              {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+              <div class="form-group">
+                {{ form.area.label_tag }}
+                {{ form.area }}
+                {% for error in form.area.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+              <div class="form-group">
+                {{ form.telefono_whatsapp.label_tag }}
+                {{ form.telefono_whatsapp }}
+                {% if form.telefono_whatsapp.help_text %}<small class="form-text text-muted">{{ form.telefono_whatsapp.help_text }}</small>{% endif %}
+                {% for error in form.telefono_whatsapp.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              </div>
+              {% if form.DELETE %}
+                <div class="form-group an-user-management__remove">
+                  <label for="{{ form.DELETE.id_for_label }}">Quitar área</label>
+                  {{ form.DELETE }}
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        <p class="an-user-management__hint">Podés guardar el usuario sin áreas asignadas y agregarlas después.</p>
+      </div>
+    </div>
+
+    <div class="an-user-management__actions">
+      <a class="btn btn-outline-secondary" href="{{ list_url }}">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Guardar usuario</button>
+    </div>
+  </form>
+
+  {{ client_areas|json_script:"client-area-options" }}
+  <template id="empty-area-assignment-template">
+    {% with form=area_formset.empty_form %}
+      <div class="an-user-management__assignment" data-area-row>
+        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+        <div class="form-group">
+          {{ form.area.label_tag }}
+          {{ form.area }}
+        </div>
+        <div class="form-group">
+          {{ form.telefono_whatsapp.label_tag }}
+          {{ form.telefono_whatsapp }}
+          {% if form.telefono_whatsapp.help_text %}<small class="form-text text-muted">{{ form.telefono_whatsapp.help_text }}</small>{% endif %}
+        </div>
+        {% if form.DELETE %}
+          <div class="form-group an-user-management__remove">
+            <label for="{{ form.DELETE.id_for_label }}">Quitar área</label>
+            {{ form.DELETE }}
+          </div>
+        {% endif %}
+      </div>
+    {% endwith %}
+  </template>
+</section>
+{% endblock content %}
+
+{% block extra_js %}
+<script src="{% static 'src/js/user-management.js' %}"></script>
+{% endblock extra_js %}
