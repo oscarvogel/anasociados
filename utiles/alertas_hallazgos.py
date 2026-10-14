@@ -1,15 +1,21 @@
+import hashlib
+import secrets
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+from django.conf import settings
+from django.urls import reverse
 from django.utils import timezone
 
 from syh.models import Area, Cliente, Movimientos
+from utiles.models import EnlacePublicoHallazgos
 
 
 ESTADOS_ABIERTOS = ("Gestión en Curso", "Incumplido")
 DIAS_POR_VENCER = 5
 MAX_EJEMPLOS = 3
 MAX_CARACTERES_HALLAZGO = 100
+DIAS_ENLACE_PUBLICO = 14
 
 
 class SeleccionEmpresaAreaInvalida(ValueError):
@@ -123,3 +129,34 @@ def _descripcion_breve(hallazgo: str, limite: int = MAX_CARACTERES_HALLAZGO) -> 
     if len(descripcion) <= limite:
         return descripcion
     return f"{descripcion[:limite - 3].rstrip()}..."
+
+
+def url_hallazgos_publicos(token):
+    """URL publica de detalle de hallazgos para un token."""
+    ruta = reverse("utiles:hallazgos_publicos")
+    base = settings.WHATSAPP_PUBLIC_BASE_URL.rstrip("/")
+    return f"{base}{ruta}#{token}"
+
+
+def crear_enlace_hallazgos(cliente_id, area_id, token=None, dias=DIAS_ENLACE_PUBLICO):
+    """
+    Registra el enlace publico de una empresa+area y devuelve (token, url).
+
+    El token viaja en el fragmento (#) de la URL y la pagina lo pasa como
+    Bearer al endpoint de datos; en la base solo queda su hash.
+
+    Se reutiliza si el token ya existe: asi, si el comando corre dos veces con
+    el mismo token, no se crea un enlace duplicado.
+    """
+    token = token or secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    enlace, _creado = EnlacePublicoHallazgos.objects.get_or_create(
+        token_hash=token_hash,
+        defaults={
+            "area_id": str(area_id),
+            "cliente_id": str(cliente_id),
+            "expires_at": timezone.now() + timedelta(days=dias),
+        },
+    )
+    return enlace, token, url_hallazgos_publicos(token)
