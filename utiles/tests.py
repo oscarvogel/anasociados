@@ -17,7 +17,8 @@ from django.utils import timezone
 from PIL import Image
 
 from syh.models import Area, Cliente, Evidencia, Movimientos
-from utiles.models import EnlacePublicoHallazgos
+from utiles.alertas_hallazgos import crear_enlaces_revision_admin
+from utiles.models import ContactoNotificacion, EnlacePublicoHallazgos
 
 TOKEN = "token-de-prueba-para-el-link-publico"
 
@@ -480,3 +481,86 @@ class BandejaRevisionTest(BaseEnlacePublico):
     def test_accion_desconocida_se_rechaza(self):
         evidencia = self.evidencia(self.movimiento())
         self.assertEqual(self.responder(evidencia, "borrar").status_code, 400)
+
+
+class EnlacePorContactoTest(BaseEnlacePublico):
+    """
+    El enlace de revision es POR ADMINISTRADOR, no uno solo por area.
+
+    Con un link compartido no hay forma de saber quien aprobo: `revisado_por`
+    quedaba siempre en "sin identificar".
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.contacto = ContactoNotificacion.objects.create(
+            nombre="Oscar Vogel", telefono="5493743667526",
+            recibe_evidencias=True, activo=True,
+        )
+        ContactoNotificacion.objects.create(
+            nombre="Otro admin", telefono="5493743667527",
+            recibe_evidencias=True, activo=True,
+        )
+        ContactoNotificacion.objects.create(
+            nombre="Admin apagado", telefono="5493743667528",
+            recibe_evidencias=True, activo=False,
+        )
+        ContactoNotificacion.objects.create(
+            nombre="Solo operacion", telefono="5493743667529",
+            recibe_evidencias=False, recibe_alertas_operacion=True, activo=True,
+        )
+
+    def enlaces_de(self):
+        return crear_enlaces_revision_admin(self.cliente.pk, self.area.pk)
+
+    def test_cada_contacto_recibe_su_propio_enlace(self):
+        enlaces = self.enlaces_de()
+        self.assertEqual(len(enlaces), 2, "solo los dos activos con el rol")
+        contactos = [contacto for contacto, _url in enlaces]
+        self.assertEqual(
+            len(set(contactos)), 2, "cada administrador recibe el suyo"
+        )
+        self.assertNotEqual(
+            enlaces[0][1], enlaces[1][1], "los dos deben recibir links distintos"
+        )
+
+        # Y los enlaces existen de verdad, con su dueno y con permiso de revisar.
+        duenos = set(
+            EnlacePublicoHallazgos.objects.filter(puede_revisar=True)
+            .values_list("contacto_id", flat=True)
+        )
+        self.assertEqual(duenos, {c.pk for c in contactos})
+
+    def test_los_apagados_y_sin_rol_no_entran(self):
+        nombres = {contacto.nombre for contacto, _url in self.enlaces_de()}
+        self.assertEqual(nombres, {"Oscar Vogel", "Otro admin"})
+
+    def test_la_decision_queda_firmada_con_el_contacto(self):
+        contacto, url = self.enlaces_de()[0]
+        token = url.split("#")[1]
+        evidencia = Evidencia.objects.create(
+            movimiento=self.movimiento(), fecha=datetime.date.today(),
+            origen="enlace_publico",
+        )
+
+        respuesta = self.client.post(
+            reverse("utiles:evidencias_revision_responder"),
+            # "revisor" con un nombre falso: el que manda es el del link.
+            {"evidencia_id": evidencia.pk, "accion": "aceptar", "revisor": "MENTIRA"},
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        evidencia.refresh_from_db()
+        self.assertEqual(evidencia.revisado_por, contacto.nombre)
+
+    def test_el_nombre_va_tambien_en_la_bandeja(self):
+        _contacto, url = self.enlaces_de()[0]
+        datos = self.client.get(
+            reverse("utiles:evidencias_revision_datos"),
+            HTTP_AUTHORIZATION=f"Bearer {url.split('#')[1]}",
+        ).json()
+        self.assertEqual(datos["revisor"], "Oscar Vogel")
+
+    def test_sin_contactos_no_hay_enlaces_pero_no_rompe(self):
+        ContactoNotificacion.objects.all().delete()
+        self.assertEqual(self.enlaces_de(), [])

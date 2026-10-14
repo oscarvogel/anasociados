@@ -102,6 +102,7 @@
         .rechazo .btn-confirmar { width: 100%; background: var(--danger); color: #fff; }
 
         .quien { margin: 0 0 4px; text-align: right; }
+        .quien strong { color: var(--ink); font-weight: 700; }
         .quien label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
         .quien input {
             width: 190px; margin-left: 8px; padding: 7px 10px;
@@ -174,6 +175,10 @@
                 </div>
             </section>
 
+            <p class="quien" id="quien-revisor" hidden>
+                Revisando: <strong id="revisor-etiqueta"></strong>
+            </p>
+
             <p class="quien">
                 <label for="revisor">Revisando</label>
                 <input id="revisor" type="text" maxlength="150" placeholder="tu nombre (opcional)">
@@ -242,16 +247,16 @@
             return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
         }
 
-        // El nombre del revisor se recuerda en este dispositivo para no
-        // cargarlo en cada foto. Es opcional: si no se carga, queda
-        // "sin identificar" en la evidencia.
-        var campoRevisor = document.getElementById('revisor');
-        try {
-            campoRevisor.value = window.localStorage.getItem('an_revisor') || '';
-        } catch (e) { /* modo privado: se pierde, no es problema */ }
-        campoRevisor.addEventListener('change', function () {
-            try { window.localStorage.setItem('an_revisor', campoRevisor.value); } catch (e) {}
-        });
+        // El nombre del revisor lo pone el link con el que entro cada administrador,
+// asi que no hay que escribirlo. El campo queda para los enlaces viejos, que
+// no tienen contacto dueno, y se recuerda en el dispositivo.
+var campoRevisor = document.getElementById('revisor');
+try {
+    campoRevisor.value = window.localStorage.getItem('an_revisor') || '';
+} catch (e) { /* modo privado: se pierde, no es problema */ }
+campoRevisor.addEventListener('change', function () {
+    try { window.localStorage.setItem('an_revisor', campoRevisor.value); } catch (e) {}
+});
 
         if (!token) {
             mostrarError('El enlace está incompleto. Pedí al equipo de AN & Asociados que te envíe un nuevo enlace.');
@@ -448,6 +453,15 @@
             document.getElementById('empresa').textContent = datos.empresa;
             document.getElementById('area').textContent = datos.area;
             document.getElementById('hero-meta').hidden = false;
+
+            // El link ya trae el nombre del administrador: se lo muestra y se
+            // deja el campo solo para los enlaces sin contacto dueno.
+            var bloqueRevisor = document.getElementById('quien-revisor');
+            if (datos.revisor) {
+                document.getElementById('revisor-etiqueta').textContent = datos.revisor;
+                campoRevisor.parentElement.hidden = true;
+                bloqueRevisor.hidden = false;
+            }
 
             if (!datos.pendientes.length) {
                 document.getElementById('vacio').hidden = false;

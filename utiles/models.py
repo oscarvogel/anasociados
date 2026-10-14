@@ -85,6 +85,22 @@ class EnlacePublicoHallazgos(models.Model):
         verbose_name="Puede revisar evidencias",
         help_text="Solo para el enlace del administrador.",
     )
+    # El enlace de revision es POR CONTACTO, no uno solo por area: cada
+    # administrador recibe el suyo y queda registrado quien aprobo o rechazo.
+    # Con un link compartido por area no hay forma de saber quien decidio, y
+    # `Evidencia.revisado_por` quedaba siempre en "sin identificar".
+    # Nullable: los enlaces del responsable, y los de revision anteriores a
+    # esto, no tienen contacto.
+    contacto = models.ForeignKey(
+        ContactoNotificacion,
+        null=True,
+        blank=True,
+        on_delete=models.DO_NOTHING,
+        db_constraint=False,
+        related_name="enlaces_revision",
+        verbose_name="Contacto administrador",
+        help_text="Dueño del enlace de revisión.",
+    )
 
     class Meta:
         verbose_name = "Enlace público de hallazgos"
@@ -93,7 +109,8 @@ class EnlacePublicoHallazgos(models.Model):
 
     def __str__(self):
         tipo = "revisión" if self.puede_revisar else "consulta"
+        dueno = f" / {self.contacto.nombre}" if self.contacto_id else ""
         return (
-            f"{self.cliente_id} / {self.area_id} ({tipo})"
+            f"{self.cliente_id} / {self.area_id} ({tipo}){dueno}"
             f" — vence {self.expires_at:%d/%m/%Y}"
         )

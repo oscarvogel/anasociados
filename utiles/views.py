@@ -19,7 +19,7 @@ from syh.models import Evidencia
 from utiles.alertas_hallazgos import (
     SeleccionEmpresaAreaInvalida,
     construir_resumen_hallazgos_whatsapp,
-    crear_enlace_revision,
+    crear_enlaces_revision_admin,
     notificar_admin_evidencia,
     notificar_responsable_rechazo,
 )
@@ -321,19 +321,23 @@ def hallazgos_publicos_subir(request):
     # y el admin la ve igual en el panel: el aviso es una comodidad, no un
     # requisito para que la evidencia exista.
     #
-    # El link va con el aviso para que el administrador pueda mirar la foto y
-    # decidir desde el celular, sin entrar al panel. Si algo falla en crear el
-    # enlace, el aviso sale igual: es preferible un link de menos a no avisar.
+    # Un enlace de revision POR ADMINISTRADOR, cada uno con el suyo. Asi queda
+    # registrado quien aprobo o rechazo cada evidencia, sin pedir nada.
+    # Si algo falla en crear los enlaces, el aviso sale igual sin link: es
+    # preferible un link de menos a no avisar.
     try:
-        _enlace_rev, _token_rev, url_revision = crear_enlace_revision(
-            enlace.cliente_id, enlace.area_id
-        )
+        enlaces = [
+            (contacto.telefono, url)
+            for contacto, url in crear_enlaces_revision_admin(
+                enlace.cliente_id, enlace.area_id
+            )
+        ]
     except Exception:  # noqa: BLE001
-        url_revision = None
+        enlaces = []
 
     aviso = notificar_admin_evidencia(
         guardadas[0], movimiento, cliente_nombre, area_detalle,
-        url_revision=url_revision,
+        enlaces=enlaces or None,
     )
 
     return _respuesta_publica(JsonResponse({
@@ -493,6 +497,8 @@ def evidencias_revision_datos(request):
     return _respuesta_publica(JsonResponse({
         "empresa": area.cliente.nombre if area and area.cliente else enlace.cliente_id,
         "area": area.detalle if area else enlace.area_id,
+        # El administrador ve con que nombre queda firmada su decision.
+        "revisor": enlace.contacto.nombre if enlace.contacto_id else "",
         "pendientes": [
             {
                 "id": e.pk,
@@ -579,7 +585,14 @@ def evidencias_revision_responder(request):
     evidencia_id = request.POST.get("evidencia_id", "").strip()
     accion = request.POST.get("accion", "").strip().lower()
     motivo = request.POST.get("motivo", "").strip()[:500]
-    revisor = request.POST.get("revisor", "").strip()[:150] or "sin identificar"
+
+    # Quien aprueba queda registrado por el link con el que entro, no por lo
+    # que escribe en el formulario. El campo de nombre es solo el respaldo
+    # para los enlaces viejos, que no tienen contacto.
+    if enlace.contacto_id:
+        revisor = enlace.contacto.nombre
+    else:
+        revisor = request.POST.get("revisor", "").strip()[:150] or "sin identificar"
 
     if accion not in ("aceptar", "rechazar"):
         return _respuesta_publica(JsonResponse(

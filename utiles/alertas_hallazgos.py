@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import secrets
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -9,6 +10,8 @@ from django.utils import timezone
 
 from syh.models import Area, Cliente, Movimientos
 from utiles.models import EnlacePublicoHallazgos
+
+logger = logging.getLogger(__name__)
 
 
 ESTADOS_ABIERTOS = ("Gestión en Curso", "Incumplido")
@@ -132,7 +135,7 @@ def _descripcion_breve(hallazgo: str, limite: int = MAX_CARACTERES_HALLAZGO) -> 
 
 
 def notificar_admin_evidencia(evidencia, movimiento, cliente_nombre, area_detalle,
-                              url_revision=None):
+                              enlaces=None):
     """
     Avisa a los administradores que se subio una evidencia.
 
@@ -140,16 +143,21 @@ def notificar_admin_evidencia(evidencia, movimiento, cliente_nombre, area_detall
     revisando la evidencia. Por eso el mensaje lo dice explicitamente, para
     que nadie asuma que el hallazgo ya quedo resuelto.
 
-    Si viene `url_revision`, se manda el link de la bandeja para que el
-    administrador pueda ver la foto y decidir sin entrar al panel.
+    `enlaces` es una lista de (telefono, url). Cada administrador recibe SU
+    link, asi que queda registrado quien aprobo o rechazo. Sin `enlaces` se
+    cae a la lista del .env y el aviso sale sin link de revision.
 
     Nunca levanta excepcion: si el gateway esta caido, la evidencia ya esta
     guardada y el admin la va a ver igual en el panel.
     """
     from utiles.notificaciones import WhatsAppClient, WhatsAppError, _destinatarios_admin
 
-    numeros = _destinatarios_admin()
-    if not numeros:
+    if enlaces:
+        destinos = list(dict(enlaces).items())
+    else:
+        destinos = [(numero, "") for numero in _destinatarios_admin()]
+
+    if not destinos:
         return {"ok": False, "detalle": "sin numeros de administracion configurados"}
 
     cliente = WhatsAppClient()
@@ -161,7 +169,7 @@ def notificar_admin_evidencia(evidencia, movimiento, cliente_nombre, area_detall
         fecha_vencimiento.strftime("%d/%m/%Y") if fecha_vencimiento else "sin fecha"
     )
 
-    lineas = [
+    base = [
         "*AN & Asociados | Evidencia nueva*",
         "",
         f"Empresa: {cliente_nombre}",
@@ -171,23 +179,19 @@ def notificar_admin_evidencia(evidencia, movimiento, cliente_nombre, area_detall
         f"Subida por: {evidencia.subido_por or 'no identificado'}",
     ]
     if evidencia.detalle:
-        lineas.append(f"Comentario: {_descripcion_breve(evidencia.detalle, 140)}")
-
-    if url_revision:
-        lineas += ["", f"Ver la foto y decidir: {url_revision}"]
-
-    lineas += [
-        "",
-        "_Queda pendiente de validacion: el hallazgo NO se cerro._",
-    ]
-    mensaje = "\n".join(lineas)
+        base.append(f"Comentario: {_descripcion_breve(evidencia.detalle, 140)}")
 
     enviados, errores = [], []
-    for numero in numeros:
+    for numero, url in destinos:
+        lineas = list(base)
+        if url:
+            lineas += ["", f"Ver la foto y decidir: {url}"]
+        lineas += ["", "_Queda pendiente de validacion: el hallazgo NO se cerro._"]
+
         try:
             cliente.enviar_texto(
                 numero,
-                mensaje,
+                "\n".join(lineas),
                 external_ref=f"an:evidencia:{evidencia.pk}",
             )
             enviados.append(numero)
@@ -246,13 +250,18 @@ def crear_enlace_hallazgos(cliente_id, area_id, token=None, dias=DIAS_ENLACE_PUB
     return enlace, token, url_hallazgos_publicos(token)
 
 
-def crear_enlace_revision(cliente_id, area_id, token=None, dias=DIAS_ENLACE_PUBLICO):
+def crear_enlace_revision(cliente_id, area_id, contacto=None, token=None,
+                          dias=DIAS_ENLACE_PUBLICO):
     """
     Enlace de la bandeja de revision para una empresa+area.
 
     Mismo modelo y mismo alcance que el del responsable, pero con
     `puede_revisar=True`: ese es el unico permiso que habilita a ver las fotos
-    y a cerrar o reabrir hallazgos. Son tokens distintos a proposito.
+    y a cerrar hallazgos. Son tokens distintos a proposito.
+
+    Se crea POR CONTACTO: cada administrador recibe el suyo y queda registrado
+    quien aprobo o rechazo cada evidencia. Si se llama sin contacto, el enlace
+    queda sin dueno y `revisado_por` cae en "sin identificar".
     """
     token = token or secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -264,9 +273,37 @@ def crear_enlace_revision(cliente_id, area_id, token=None, dias=DIAS_ENLACE_PUBL
             "cliente_id": str(cliente_id),
             "expires_at": timezone.now() + timedelta(days=dias),
             "puede_revisar": True,
+            "contacto_id": getattr(contacto, "pk", None),
         },
     )
     return enlace, token, url_revision_evidencias(token)
+
+
+def crear_enlaces_revision_admin(cliente_id, area_id):
+    """
+    Un enlace de revision por cada administrador que recibe avisos de evidencia.
+
+    Devuelve [(contacto, url), ...]. Los contactos que no tienen el rol
+    `recibe_evidencias` o estan desactivados no entran: si alguien lo desactivo
+    a proposito, mandarle igual seria mandarle a alguien que dijo que no.
+
+    Un contacto que falla (telefono raro, gateway caido) no impide que los
+    demas reciban el suyo: cada uno va en su propio try.
+    """
+    from utiles.models import ContactoNotificacion
+
+    resultado = []
+    for contacto in ContactoNotificacion.objects.filter(
+        activo=True, recibe_evidencias=True
+    ):
+        try:
+            _enlace, _token, url = crear_enlace_revision(
+                cliente_id, area_id, contacto=contacto
+            )
+            resultado.append((contacto, url))
+        except Exception:  # noqa: BLE001
+            logger.exception("No se pudo crear el enlace de revisión para %s", contacto)
+    return resultado
 
 
 def notificar_responsable_rechazo(evidencia, movimiento):
