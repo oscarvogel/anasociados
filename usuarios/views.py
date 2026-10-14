@@ -263,6 +263,14 @@ def management_user_edit(request, user_id=None):
     )
     selected_client = Cliente.objects.filter(pk=selected_client_id).first() if selected_client_id else None
 
+    # La empresa que ya tiene el usuario. Es la que limita las areas cuando el
+    # formulario se abre sin elegir nada en el select.
+    empresa_del_perfil = None
+    if target_user is not None:
+        perfil = Profile.objects.filter(user=target_user).select_related("cliente").first()
+        if perfil is not None:
+            empresa_del_perfil = perfil.cliente
+
     initial_assignments = []
     if request.method != "POST" and target_user is not None:
         initial_assignments = list(
@@ -276,11 +284,17 @@ def management_user_edit(request, user_id=None):
             for item in initial_assignments
         ]
 
+    # La empresa que manda para limitar las areas es la elegida en el POST; si
+    # no se eligio ninguna, la que ya tiene el usuario. Asi el formset nunca
+    # queda con el queryset vacio para un usuario que ya tiene areas, y dejar
+    # "Empresa" vacia no los borra.
+    empresa_para_areas = selected_client or empresa_del_perfil
+
     area_formset = AreaAssignmentFormSet(
         data=request.POST if request.method == "POST" else None,
         initial=initial_assignments,
         prefix="areas",
-        form_kwargs={"cliente": selected_client},
+        form_kwargs={"cliente": empresa_para_areas},
     )
 
     if request.method == "POST" and user_form.is_valid() and area_formset.is_valid():
@@ -293,7 +307,7 @@ def management_user_edit(request, user_id=None):
             area = cleaned_data.get("area")
             if area is None:
                 continue
-            if area.cliente_id != client.pk:
+            if client is not None and area.cliente_id != client.pk:
                 form.add_error("area", "El área debe pertenecer a la empresa seleccionada.")
                 break
             assignments.append((area, cleaned_data.get("telefono_whatsapp", "")))
@@ -306,10 +320,14 @@ def management_user_edit(request, user_id=None):
                     user.set_password(password)
                 user.save()
 
-                Profile.objects.update_or_create(
-                    user=user,
-                    defaults={"cliente": client},
-                )
+                # Empresa vacia = "no la quiero cambiar", no "borrala". El perfil
+                # preexistente se conserva y el usuario sin empresa sigue sin
+                # empresa: asi el estado de la cuenta se puede cambiar solo.
+                if client is not None:
+                    Profile.objects.update_or_create(
+                        user=user,
+                        defaults={"cliente": client},
+                    )
 
                 existing_by_area = {}
                 existing_assignments = AreasProfile.objects.filter(user=user).order_by("pk")
@@ -334,7 +352,8 @@ def management_user_edit(request, user_id=None):
                         )
                         retained_ids.append(created.pk)
 
-                AreasProfile.objects.filter(user=user).exclude(pk__in=retained_ids).delete()
+                if empresa_para_areas is not None:
+                    AreasProfile.objects.filter(user=user).exclude(pk__in=retained_ids).delete()
 
             messages.success(request, "El usuario se guardó correctamente.")
             return redirect("usuarios:management_users")

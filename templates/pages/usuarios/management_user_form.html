@@ -63,6 +63,7 @@
         <div class="form-group">
           {{ user_form.cliente.label_tag }}
           {{ user_form.cliente }}
+          {% if user_form.cliente.help_text %}<small class="form-text text-muted">{{ user_form.cliente.help_text }}</small>{% endif %}
           {% for error in user_form.cliente.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
         </div>
         <div class="an-user-management__grid">

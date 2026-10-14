@@ -14,6 +14,11 @@ class UserManagementForm(forms.ModelForm):
         queryset=Cliente.objects.order_by("nombre"),
         label="Empresa",
         empty_label="Seleccioná una empresa",
+        required=False,
+        help_text=(
+            "Opcional. Si la dejas vacía se conserva la empresa actual; "
+            "si el usuario no tenía ninguna, se guarda sin perfil."
+        ),
     )
     password1 = forms.CharField(
         label="Contraseña inicial o nueva contraseña",
