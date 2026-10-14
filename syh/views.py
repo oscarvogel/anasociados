@@ -5,11 +5,8 @@ import os
 from venv import logger
 from django.shortcuts import render, redirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db import models
-from django.db.models import Count, OuterRef, Q, Subquery
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET
 from celery.result import AsyncResult
 from django.core.mail import send_mail
 
@@ -29,34 +26,7 @@ from rest_framework import viewsets
 
 # Create your views here.
 from .models import Movimientos, Cliente, Area
-from .models import Evidencia
 from rest_framework.pagination import PageNumberPagination
-
-# Cuantos hallazgos entran por pagina. Antes eran 10: con mas de mil hallazgos
-# por cliente eso eran 130 paginas para llegar al final.
-CANTIDAD_POR_PAGINA = 25
-# Tope del buscador. Es un LIKE sobre varios campos, no un indice: un limite
-# evita que alguien pegue una novela y frene la consulta.
-MAX_TERMINOS_BUSQUEDA = 100
-
-
-def _anotar_evidencias(queryset):
-    """
-    Agrega, por hallazgo, cuantas evidencias tiene y cuantas esperan revisión.
-
-    Dos Subquery en vez de traer las evidencias y agrupar en Python: son miles
-    de hallazgos y un group-by en memoria no escala.
-    """
-    pendientes = Evidencia.objects.filter(
-        movimiento=OuterRef("pk"), estado=Evidencia.ESTADO_PENDIENTE
-    )
-    return queryset.annotate(
-        total_evidencias=Count("evidencia"),
-        evidencias_pendientes=Subquery(
-            pendientes.values("movimiento").annotate(c=Count("pk")).values("c")
-        ),
-    )
-
 
 def visualizar_movimientos(request):
 
@@ -68,7 +38,7 @@ def visualizar_movimientos(request):
         # Si no tiene un perfil, puedes manejar el caso con un mensaje de error o redirección
         cliente = None
         areas_profile = None
-
+    
     if cliente:
         clientes = Cliente.objects.filter(id = cliente.id)
         if not areas_profile:
@@ -87,104 +57,41 @@ def visualizar_movimientos(request):
     filtro_cliente = request.GET.get('cliente')
     filtro_area = request.GET.get('area')
     filtro_estados = request.GET.getlist('estado')
-    busqueda = (request.GET.get('q') or '').strip()[:MAX_TERMINOS_BUSQUEDA]
-    solo_pendientes = request.GET.get('pendientes') == '1'
 
     if filtro_cliente:
         queryset = queryset.filter(cliente_id=filtro_cliente)
-
+    
     if filtro_area:
         queryset = queryset.filter(area_id=filtro_area)
 
     if filtro_estados:
         queryset = queryset.filter(estado__in=filtro_estados)
 
-    # Buscar por texto era lo que faltaba. Se busca en el hallazgo, el
-    # responsable y el id.
-    # Ojo: `ubicacion` NO entra, aunque exista en la tabla, porque el campo esta
-    # comentado en el modelo. Filtrar por ahi levanta FieldError.
-    if busqueda:
-        queryset = queryset.filter(
-            Q(hallazgo__icontains=busqueda)
-            | Q(responsable__icontains=busqueda)
-            | Q(id__icontains=busqueda)
-        )
-
-    # Primero lo que vence antes: es lo que hay que mirar.
-    queryset = _anotar_evidencias(queryset).order_by(
-        models.F("fecha_cumplimiento").asc(nulls_last=True), "pk"
-    )
-
-    if solo_pendientes:
-        queryset = queryset.filter(evidencias_pendientes__gt=0)
-
-    total_resultados = queryset.count()
-    paginator = Paginator(queryset, CANTIDAD_POR_PAGINA)
+    paginator = Paginator(queryset, 10)  # 10 elementos por página
     page = request.GET.get('page', 1)
-
+    
     try:
         movimientos = paginator.page(page)
     except PageNotAnInteger:
         movimientos = paginator.page(1)
     except EmptyPage:
         movimientos = paginator.page(paginator.num_pages)
-
+    
+    # Crear el rango de páginas para la paginación
+    index = movimientos.number - 1  # Page index starts from 0
+    max_index = len(paginator.page_range)
+    start_index = index - 2 if index >= 2 else 0
+    end_index = index + 3 if index <= max_index - 3 else max_index
+    page_range = paginator.page_range[start_index:end_index]
     context = {
         'clientes': clientes,
         'areas': areas,
         'estados': estados,
         'movimientos': movimientos,
-        'page_range': movimientos.paginator.get_elided_page_range(
-            movimientos.number, on_each_side=2, on_ends=1
-        ),
-        'filtro_estados': filtro_estados,
-        'busqueda': busqueda,
-        'solo_pendientes': solo_pendientes,
-        'total_resultados': total_resultados,
+        'page_range': page_range,  # Añadir el rango de páginas al contexto
+        'filtro_estados': filtro_estados
     }
     return render(request, 'pages/syh/visualizar_movimientos.html', context)
-
-
-@require_GET
-def hallazgo_evidencias(request, movimiento_id):
-    """
-    Evidencias de un hallazgo, para verlas sin entrar al admin.
-
-    El listado de evidencias del admin era la unica forma de mirar una foto, y
-    ademas estaba restringido a superusuario. Acá la fila se expande y las
-    muestra con su estado de revision.
-    """
-    movimiento = Movimientos.objects.filter(pk=movimiento_id).first()
-    if movimiento is None:
-        return JsonResponse({"error": "El hallazgo no existe."}, status=404)
-
-    # Mismo corte de cliente que la vista: un usuario de una empresa no puede
-    # abrir hallazgos de otra por URL.
-    if not request.user.is_superuser:
-        perfil = Profile.objects.filter(user=request.user).first()
-        if perfil is None or movimiento.cliente_id != perfil.cliente_id:
-            return JsonResponse({"error": "No corresponde a tu empresa."}, status=403)
-
-    evidencias = Evidencia.objects.filter(movimiento=movimiento).order_by("fecha", "id")
-    return JsonResponse({
-        "hallazgo": movimiento.hallazgo or "Sin descripción",
-        "evidencias": [
-            {
-                "id": e.pk,
-                "estado": e.estado,
-                "estado_legible": e.get_estado_display(),
-                "fecha": e.fecha.isoformat(),
-                "detalle": e.detalle,
-                "origen": e.origen,
-                "subido_por": e.subido_por or "no identificado",
-                "revisado_por": e.revisado_por,
-                "motivo_rechazo": e.motivo_rechazo,
-                "tiene_foto": bool(e.archivo),
-                "url": e.archivo.url if e.archivo else "",
-            }
-            for e in evidencias
-        ],
-    })
 
 def imprimir_movimientos(request):
     
