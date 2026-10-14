@@ -1,0 +1,302 @@
+"""Tests del enlace público de hallazgos (subida de evidencia y marcas de estado).
+
+Las tablas `clientes`, `areas` y `movimientos` son `managed = False`. Las crea
+`core_an.runtests.RunnerConTablasExternas` antes de migrar, asi que aca no hay
+que volver a definirlas.
+"""
+import datetime
+import hashlib
+import io
+import tempfile
+from unittest import mock
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
+from django.urls import reverse
+from django.utils import timezone
+from PIL import Image
+
+from syh.models import Area, Cliente, Evidencia, Movimientos
+from utiles.models import EnlacePublicoHallazgos
+
+TOKEN = "token-de-prueba-para-el-link-publico"
+
+
+def imagen_en_memoria(nombre="foto.jpg"):
+    """Un JPEG real y chico: ImageField valida el contenido, no la extensión."""
+    buffer = io.BytesIO()
+    Image.new("RGB", (32, 32), (10, 120, 60)).save(buffer, format="JPEG")
+    return SimpleUploadedFile(nombre, buffer.getvalue(), content_type="image/jpeg")
+
+
+def cuerpo_multipart(campos, archivos, boundary="BOUNDARY"):
+    """Arma un POST multipart con N archivos bajo el MISMO nombre de campo.
+
+    El test client no lo puede hacer con un dict: dos claves 'archivos' no
+    caben, y la segunda pisa a la primera. Es justo el caso que necesita el
+    endpoint, que lee `request.FILES.getlist('archivos')`.
+    """
+    partes = []
+    for nombre, valor in campos:
+        partes.append(
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{nombre}"\r\n\r\n'
+            f"{valor}\r\n".encode("utf-8")
+        )
+    for indice, contenido in enumerate(archivos, start=1):
+        partes.append(
+            f'--{boundary}\r\nContent-Disposition: form-data; name="archivos"; '
+            f'filename="foto{indice}.jpg"\r\nContent-Type: image/jpeg\r\n\r\n'
+            .encode("utf-8")
+            + contenido
+            + b"\r\n"
+        )
+    partes.append(f"--{boundary}--\r\n".encode("utf-8"))
+    return b"".join(partes)
+
+
+class BaseEnlacePublico(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            id="CLI01", nombre="Cliente de prueba", email="prueba@example.com"
+        )
+        self.area = Area.objects.create(
+            id="ARE01", cliente=self.cliente, detalle="Sistemas", responsable="Ana"
+        )
+        self.otra_area = Area.objects.create(
+            id="ARE02", cliente=self.cliente, detalle="Seguridad", responsable="Beto"
+        )
+        EnlacePublicoHallazgos.objects.create(
+            area=self.area,
+            cliente_id=self.cliente.pk,
+            token_hash=hashlib.sha256(TOKEN.encode()).hexdigest(),
+            expires_at=timezone.now() + datetime.timedelta(days=14),
+        )
+        self.url_datos = reverse("utiles:hallazgos_publicos_datos")
+        self.url_subir = reverse("utiles:hallazgos_publicos_subir")
+        self._secuencia = 0
+
+    def movimiento(self, descripcion="Falta el matafuego", **kwargs):
+        self._secuencia += 1
+        valores = {
+            # El id va explicito y de 10 caracteres, que es lo que produce
+            # `Movimientos.save()` -> generate_unique_id(). Además coincide con
+            # el ancho de la columna en una base migrada desde cero
+            # (`syh_evidencia.movimiento` varchar(10)); ver la nota sobre
+            # Movimientos.id en el informe de esta tanda.
+            "id": f"mov{self._secuencia:07d}",
+            "cliente": self.cliente,
+            "area": self.area,
+            "fecha": datetime.date.today(),
+            "periodo": "Octubre",
+            "hallazgo": descripcion,
+            "responsable": "Ana",
+            "plazo": 30,
+            "estado": "Incumplido",
+            # Vencido de verdad: el resumen solo mete en "vencidos" lo que tiene
+            # fecha_cumplimiento anterior a hoy. Con la fecha de hoy caeria en
+            # "por_vencer" y las listas que se chequean saldrian vacias.
+            "fecha_cumplimiento": datetime.date.today() - datetime.timedelta(days=10),
+        }
+        valores.update(kwargs)
+        return Movimientos.objects.create(**valores)
+
+    def marcar(self, movimiento):
+        return Evidencia.objects.create(
+            movimiento=movimiento, fecha=datetime.date.today(), origen="enlace_publico"
+        )
+
+    def obtener_datos(self, token=TOKEN):
+        respuesta = self.client.get(
+            self.url_datos, HTTP_AUTHORIZATION=f"Bearer {token}"
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        return respuesta.json()
+
+    def subir(self, movimiento, archivos, token=TOKEN, detalle="Recién hecho"):
+        """POST multipart con N archivos bajo el mismo nombre de campo."""
+        cuerpo = cuerpo_multipart(
+            campos=[("movimiento_id", movimiento.pk), ("detalle", detalle)],
+            archivos=[a.read() for a in archivos],
+        )
+        with mock.patch(
+            "utiles.views.notificar_admin_evidencia", return_value={"detalle": "sin envío"}
+        ):
+            return self.client.post(
+                self.url_subir,
+                data=cuerpo,
+                content_type="multipart/form-data; boundary=BOUNDARY",
+                HTTP_AUTHORIZATION=f"Bearer {token}",
+            )
+
+
+class MarcasDeEvidenciaTest(BaseEnlacePublico):
+    """El campo `evidencia` es lo que dibuja el badge y el sufijo del selector."""
+
+    def vencidos(self):
+        """Los vencidos, con la precondition de que no vengan vacios.
+
+        Sin este assert el test pasa en falso: si el filtro por fecha deja la
+        lista vacia, el for no recorre nada y todo 'ok'.
+        """
+        datos = self.obtener_datos()
+        self.assertTrue(
+            datos["vencidos"],
+            "la lista de vencidos vino vacia: el test pasaria sin comprobar nada",
+        )
+        return datos["vencidos"]
+
+    def test_sin_evidencia_todas_vienen_en_false(self):
+        self.movimiento("Sin foto")
+        self.movimiento("Otro sin foto")
+        self.assertEqual(len(self.vencidos()), 2)
+        for hallazgo in self.vencidos():
+            self.assertIs(hallazgo["evidencia"], False)
+
+    def test_solo_el_hallazgo_con_evidencia_va_marcado(self):
+        self.marcar(self.movimiento("Con foto"))
+        self.movimiento("Sin foto")
+        marcados = [h["evidencia"] for h in self.vencidos()]
+        self.assertEqual(sorted(marcados), [False, True])
+
+    def test_una_evidencia_no_contamina_a_los_demas(self):
+        self.marcar(self.movimiento("Con foto"))
+        for descripcion in ("Dos", "Tres", "Cuatro"):
+            self.movimiento(descripcion)
+        vencidos = self.vencidos()
+        self.assertEqual(len(vencidos), 4)
+        self.assertEqual(sum(1 for h in vencidos if h["evidencia"]), 1)
+
+    def test_hallazgo_de_otra_empresa_no_se_marca(self):
+        otro = Cliente.objects.create(
+            id="CLI02", nombre="Otra empresa", email="otra@example.com"
+        )
+        area_ajena = Area.objects.create(
+            id="ARE03", cliente=otro, detalle="Mantenimiento", responsable="Caro"
+        )
+        self.marcar(
+            Movimientos.objects.create(
+                id="mov9999999",
+                cliente=otro,
+                area=area_ajena,
+                fecha=datetime.date.today(),
+                periodo="Octubre",
+                hallazgo="Ajeno",
+                responsable="Caro",
+                plazo=10,
+                estado="Incumplido",
+                fecha_cumplimiento=datetime.date.today(),
+            )
+        )
+        self.movimiento("Nuestro")
+        vencidos = self.vencidos()
+        self.assertEqual(len(vencidos), 1)
+        for hallazgo in vencidos:
+            self.assertIs(hallazgo["evidencia"], False)
+
+    def test_sin_token_no_devuelve_hallazgos(self):
+        self.movimiento("Sin foto")
+        self.assertEqual(self.client.get(self.url_datos).status_code, 404)
+
+
+class PaginaPublicaTest(BaseEnlacePublico):
+    """La pagina se renderiza siempre: el token va en el fragmento (#)."""
+
+    def test_la_pagina_renderiza(self):
+        respuesta = self.client.get(reverse("utiles:hallazgos_publicos"))
+        self.assertEqual(respuesta.status_code, 200)
+
+    def test_tra_el_modal_de_confirmacion(self):
+        """Sin este markup el JS no tiene donde mostrar que llego la foto."""
+        contenido = self.client.get(reverse("utiles:hallazgos_publicos")).content.decode()
+        self.assertIn('id="modal-evidencia"', contenido)
+        self.assertIn('id="modal-cerrar"', contenido)
+        self.assertIn("Evidencia recibida", contenido)
+
+    def test_tra_el_css_del_modal(self):
+        contenido = self.client.get(reverse("utiles:hallazgos_publicos")).content.decode()
+        self.assertIn(".modal-card", contenido)
+        self.assertIn(".finding-evidencia", contenido)
+
+
+class SubidaDeEvidenciaTest(BaseEnlacePublico):
+    """La subida: conteo de `guardadas` (lo que muestra el modal), origen y archivo."""
+
+    def test_una_foto_devuelve_guardadas_1(self):
+        movimiento = self.movimiento()
+        with tempfile.TemporaryDirectory() as media:
+            with override_settings(MEDIA_ROOT=media):
+                respuesta = self.subir(movimiento, [imagen_en_memoria()])
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(respuesta.json()["guardadas"], 1)
+
+    def test_varias_fotos_devuelve_el_conteo_del_modal(self):
+        movimiento = self.movimiento()
+        with tempfile.TemporaryDirectory() as media:
+            with override_settings(MEDIA_ROOT=media):
+                respuesta = self.subir(
+                    movimiento, [imagen_en_memoria("a.jpg"), imagen_en_memoria("b.jpg")]
+                )
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(respuesta.json()["guardadas"], 2)
+        self.assertEqual(Evidencia.objects.count(), 2)
+
+    def test_la_evidencia_queda_con_origen_enlace_publico(self):
+        movimiento = self.movimiento()
+        with tempfile.TemporaryDirectory() as media:
+            with override_settings(MEDIA_ROOT=media):
+                self.subir(movimiento, [imagen_en_memoria()])
+        evidencia = Evidencia.objects.get(movimiento=movimiento)
+        self.assertEqual(evidencia.origen, "enlace_publico")
+        self.assertTrue(evidencia.archivo.name.startswith("evidencias/"))
+
+    def test_subir_la_foto_no_cierra_el_hallazgo(self):
+        movimiento = self.movimiento()
+        with tempfile.TemporaryDirectory() as media:
+            with override_settings(MEDIA_ROOT=media):
+                self.subir(movimiento, [imagen_en_memoria()])
+        movimiento.refresh_from_db()
+        self.assertEqual(
+            movimiento.estado, "Incumplido", "subir la foto no debe cerrar el hallazgo"
+        )
+
+    def test_tras_subir_el_hallazgo_ya_aparece_marcado(self):
+        """Cierra el circuito: lo que sube el responsable vuelve marcado."""
+        movimiento = self.movimiento()
+        with tempfile.TemporaryDirectory() as media:
+            with override_settings(MEDIA_ROOT=media):
+                self.subir(movimiento, [imagen_en_memoria()])
+        vencidos = self.obtener_datos()["vencidos"]
+        self.assertEqual(
+            len(vencidos), 1, "el hallazgo deberia seguir abierto y vencido"
+        )
+        self.assertIs(
+            vencidos[0]["evidencia"],
+            True,
+            "despues de subir la foto el hallazgo tiene que salir marcado",
+        )
+
+    def test_hallazgo_de_otra_area_se_rechaza(self):
+        ajeno = Movimientos.objects.create(
+            cliente=self.cliente,
+            area=self.otra_area,
+            fecha=datetime.date.today(),
+            periodo="Octubre",
+            hallazgo="De seguridad",
+            responsable="Beto",
+            plazo=10,
+            estado="Incumplido",
+            fecha_cumplimiento=datetime.date.today(),
+        )
+        with tempfile.TemporaryDirectory() as media:
+            with override_settings(MEDIA_ROOT=media):
+                respuesta = self.subir(ajeno, [imagen_en_memoria()])
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertEqual(Evidencia.objects.count(), 0)
+
+    def test_token_invalido_no_guarda_nada(self):
+        movimiento = self.movimiento()
+        with tempfile.TemporaryDirectory() as media:
+            with override_settings(MEDIA_ROOT=media):
+                respuesta = self.subir(movimiento, [imagen_en_memoria()], token="no-es")
+        self.assertEqual(respuesta.status_code, 404)
+        self.assertEqual(Evidencia.objects.count(), 0)

@@ -191,7 +191,42 @@
         .upload-status { margin: 12px 0 0; min-height: 18px; font-size: 13px; }
         .upload-status.is-ok { color: var(--brand-deep); }
         .upload-status.is-error { color: var(--danger); }
+        .finding-evidencia {
+            display: inline-block; margin: 10px 0 0; padding: 5px 10px;
+            border-radius: 6px; background: #e4f2ec; color: #1d6b55;
+            font-size: 12px; font-weight: 700;
+        }
+        .opt-ya-enviada { color: var(--muted); font-style: italic; }
         @media (max-width: 640px) { .upload-grid { grid-template-columns: 1fr; } }
+
+        /* Confirmación de la subida. Overlay opaco y tarjeta centrada: el
+           celular queda en vertical y el botón único evita que se mande dos
+           veces el mismo hallazgo. */
+        .modal {
+            position: fixed; inset: 0; z-index: 90;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px; background: rgba(16, 32, 30, .55);
+        }
+        .modal-card {
+            width: min(400px, 100%); padding: 28px 24px 24px; text-align: center;
+            border-radius: 16px; background: var(--white);
+            box-shadow: 0 24px 60px rgba(16, 32, 30, .3);
+        }
+        .modal-icono {
+            width: 54px; height: 54px; margin: 0 auto 14px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: #e4f2ec; color: #1d6b55; font-size: 28px; font-weight: 800;
+        }
+        .modal-card h3 {
+            margin: 0 0 8px; font-family: Georgia, "Times New Roman", serif;
+            font-size: 23px; font-weight: 500;
+        }
+        .modal-card p { margin: 0 0 12px; font-size: 14px; line-height: 1.55; color: var(--ink); }
+        .modal-nota {
+            padding: 11px 13px; border-radius: 9px; background: var(--mint);
+            font-size: 12.5px; color: var(--muted); line-height: 1.5;
+        }
+        .modal-card .btn-enviar { margin-top: 18px; }
     </style>
 </head>
 <body class="an-public" data-datos-url="{{ datos_url }}" data-subir-url="{{ subir_url }}">
@@ -343,6 +378,12 @@
                 description.textContent = finding.descripcion;
                 top.append(date, status);
                 article.append(top, description);
+                if (finding.evidencia) {
+                    var aviso = document.createElement('p');
+                    aviso.className = 'finding-evidencia';
+                    aviso.textContent = '✓ Evidencia enviada — pendiente de validación';
+                    article.appendChild(aviso);
+                }
                 target.appendChild(article);
             });
         }
@@ -383,20 +424,23 @@
 
         function poblarSelectorSubida(hallazgos) {
             var select = document.getElementById('upload-movimiento');
+            // Los que ya tienen evidencia van igual pero marcados, para que el
+            // responsable vea que ya la mandó en vez de demandarla dos veces.
+            hallazgos.forEach(function (h) {
+                var option = document.createElement('option');
+                option.value = h.id;
+                option.textContent = formatDate(h.fecha) + ' — ' + h.descripcion.slice(0, 70)
+                    + (h.evidencia ? '  ✓ ya enviada' : '');
+                if (h.evidencia) option.className = 'opt-ya-enviada';
+                select.appendChild(option);
+            });
             if (!hallazgos.length) {
                 var opt = document.createElement('option');
                 opt.textContent = 'No hay hallazgos para documentar';
                 opt.disabled = true;
                 select.appendChild(opt);
                 document.getElementById('upload-enviar').disabled = true;
-                return;
             }
-            hallazgos.forEach(function (h) {
-                var option = document.createElement('option');
-                option.value = h.id;
-                option.textContent = formatDate(h.fecha) + ' — ' + h.descripcion.slice(0, 70);
-                select.appendChild(option);
-            });
         }
 
         // Camara y galeria son dos inputs distintos: con capture el navegador
@@ -517,13 +561,42 @@
                 dibujarLista();
                 document.getElementById('upload-detalle').value = '';
                 subir.disabled = false;
+                mostrarModalEvidencia(data.guardadas || 1);
             }).catch(function (error) {
                 estado.textContent = error.message;
                 estado.className = 'upload-status is-error';
                 subir.disabled = false;
             });
         });
+
+        // Al cerrar recargamos: el token vive en el fragmento (#), así que
+        // sobrevive al refresh, y la lista vuelve a pedir los hallazgos para
+        // mostrar los que ya tienen evidencia.
+        function mostrarModalEvidencia(cantidad) {
+            var modal = document.getElementById('modal-evidencia');
+            document.getElementById('modal-texto').textContent = cantidad === 1
+                ? 'Se recibió 1 foto.'
+                : 'Se recibieron ' + cantidad + ' fotos.';
+            modal.hidden = false;
+            document.getElementById('modal-cerrar').focus();
+            document.getElementById('modal-cerrar').addEventListener('click', function () {
+                window.location.reload();
+            });
+        }
     })();
     </script>
+
+    <!-- Confirmación de evidencia recibida. Al cerrar recarga la página: el
+         token vive en el fragmento (#), así que sobrevive, y la lista vuelve
+         a pedir datos frescos con las marcas de "ya enviada". -->
+    <div class="modal" id="modal-evidencia" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+            <div class="modal-icono" aria-hidden="true">&#10003;</div>
+            <h3 id="modal-titulo">Evidencia recibida</h3>
+            <p id="modal-texto">Tus fotos ya están cargadas.</p>
+            <p class="modal-nota">El hallazgo queda <strong>pendiente de validación</strong> por el equipo de AN &amp; Asociados: no se cerró automáticamente.</p>
+            <button type="button" class="btn-enviar" id="modal-cerrar">Cerrar y actualizar la lista</button>
+        </div>
+    </div>
 </body>
 </html>

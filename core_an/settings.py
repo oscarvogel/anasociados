@@ -156,6 +156,14 @@ if DB_ENGINE and DB_NAME and DB_USERNAME:
         'PASSWORD': DB_PASS,
         'HOST'    : DB_HOST,
         'PORT'    : DB_PORT,
+        # La base de test se crea en latin1, igual que produccion. No es
+        # capricho: `movimientos.id` (latin1) y la FK `syh_evidencia.movimiento`
+        # tienen que coincidir en charset y collation, o MySQL rechaza la
+        # clave foranea. Con el default utf8mb4 del servidor, la FK no entra.
+        'TEST': {
+            'CHARSET': 'latin1',
+            'COLLATION': 'latin1_swedish_ci',
+        },
         }, 
     }
 else:

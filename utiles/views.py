@@ -380,6 +380,13 @@ def hallazgos_publicos_datos(request):
         return _respuesta_publica(JsonResponse({"error": "El enlace no es válido o ya venció."}, status=404))
 
     def serializar(movimientos):
+        # Marca cuáles ya tienen evidencia subida: el hallazgo sigue abierto
+        # hasta que un administrador lo valida, así que sin esto el
+        # responsable lo ve otra vez en la lista y lo vuelve a mandar.
+        con_evidencia = set(
+            Evidencia.objects.filter(movimiento__in=movimientos)
+            .values_list("movimiento_id", flat=True)
+        )
         return [
             {
                 # El id va en el payload para que el formulario de subida sepa a
@@ -389,6 +396,7 @@ def hallazgos_publicos_datos(request):
                 "fecha": movimiento.fecha_cumplimiento.isoformat(),
                 "estado": movimiento.estado,
                 "descripcion": movimiento.hallazgo or "Sin descripción",
+                "evidencia": movimiento.pk in con_evidencia,
             }
             for movimiento in movimientos
         ]
