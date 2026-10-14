@@ -1,14 +1,14 @@
-# Bitácora — 14/10/2026 (quinta tanda): combos con autocomplete y el login del portal
+# Bitácora — 14/10/2026 (quinta tanda): combos con autocomplete, el login del portal y los diálogos
 
 ## Qué se hizo
 
-Dos cosas, una pedido y una que apareció en el medio:
+Tres cosas, dos pedidas y una que apareció en el camino:
 
 1. Todos los `<select>` de la app pasaron a ser **autocomplete con filtro**.
-2. El **login del portal** seguía mostrando el tema viejo de Colorlib. Se
-   arregló en el camino.
+2. El **login del portal** seguía mostrando el tema viejo de Colorlib.
+3. Los **diálogos de confirmación** eran los nativos del navegador.
 
-Commits: `adfaf1a` (autocomplete) y `070646e` (login).
+Commits: `adfaf1a` (autocomplete), `070646e` (login), `87edc1d` (diálogos).
 
 ## Los combos
 
@@ -114,6 +114,60 @@ En producción, por HTTP: `/accounts/login/` 200, `an-login__brand` presente,
 `name="next" value="/utiles/whatsapp/hallazgos/"` — o sea, el redirect a la
 pantalla pedida sigue funcionando.
 
+## Los diálogos de confirmación
+
+### Lo que pasaba
+
+El botón *Aceptar y cerrar el hallazgo* de la bandeja de revisión abría un
+`window.confirm()`: el recuadro gris del sistema operativo, con el título del
+navegador arriba ("portal.anasociados.com.ar dice"). En una página con el
+diseño de AN, eso rompe el conjunto.
+
+Y no era solo ese. Al buscar `confirm(`/`alert(` en los templates había **tres
+vivos**, no uno:
+
+| Dónde | Qué era |
+|---|---|
+| `pages/utiles/evidencias_revision.html:402` | `window.confirm` al aceptar evidencia |
+| `pages/index.html:348` | `alert` "selecciona un cliente" del botón Filtrar |
+| `pages/index.html:360` | `alert` "selecciona un cliente" del botón de resumen |
+
+`pages/index.html` parecía una demo del vendor, pero no: `home.index` la
+renderiza y es el **Tablero**, la primera pantalla del menú.
+
+El cuarto, `pages/syh/resumen_mensual.html:56`, está dentro de un
+`{% comment %}`: código muerto, nunca se renderiza.
+
+### El arreglo
+
+`static/src/js/an-dialog.js`, con la misma idea que el autocomplete: componente
+propio, una sola fuente de verdad, sin librería nueva.
+
+```js
+ANDialog.confirm({titulo, mensaje, confirmar, cancelar, tono})  // -> Promise<boolean>
+ANDialog.alert({titulo, mensaje, confirmar, tono})              // -> Promise<boolean>
+```
+
+Devuelven una Promise, así que el flujo encadena igual que antes. Tonos `info`,
+`aviso`, `peligro` y `exito`, con los colores del design system.
+
+Detalles que no son cosméticos:
+
+- **El overlay va en `position: fixed` sobre `<body>`**, por el mismo motivo que
+  la lista de los combos: las cards del proyecto tienen `overflow: hidden`.
+- **El foco vuelve al botón que abrió el diálogo.** Con el nativo se perdía, y
+  un usuario de teclado quedaba sin saber dónde estaba.
+- Escape cierra, el click en el fondo cierra, y `alert` muestra un solo botón.
+
+### Cómo se verificó
+
+En banco de pruebas: los cuatro tonos, Escape resolviendo `false` con el foco
+devuelto, el `alert` con un botón visible y el otro `hidden`, click en el fondo
+cerrando, consola limpia.
+
+En producción, con sesión real: *Filtrar* sin empresa elegida abre "Falta elegir
+la empresa" con el ícono ámbar y un solo botón *Entendido*.
+
 ## El autocomplete en producción
 
 Con sesión real (`oscar`), en `/utiles/whatsapp/hallazgos/`:
@@ -155,6 +209,11 @@ en `INSTALLED_APPS`.)
   paquete trae: registro, recuperación de contraseña (4 pantallas), cambio de
   contraseña (2) y logout. El patrón ya está probado con el login; falta
   aplicarlo.
+- **`home.index` apunta a `pages/index.html`**, que es el Tablero y no una demo
+  del vendor. Cuando se buscan restos del tema viejo conviene mirarla: tiene
+  gráficos con la paleta de Bootstrap (azules y naranjas) que no siguen el
+  design system, y los `<select>` "--Selecciona un cliente--" que hoy no
+  convierten a autocomplete porque el usuario solo tiene una empresa asignada.
 - **Unificar la versión de `django-admin-datta` entre local y servidor.** Hoy
   son distintas y por eso hacen falta dos overrides para la misma pantalla. Si
   se unifican, `templates/accounts/login.html` queda como el único.
