@@ -70,6 +70,7 @@ class BaseEnlacePublico(TestCase):
             cliente_id=self.cliente.pk,
             token_hash=hashlib.sha256(TOKEN.encode()).hexdigest(),
             expires_at=timezone.now() + datetime.timedelta(days=14),
+            puede_revisar=False,
         )
         self.url_datos = reverse("utiles:hallazgos_publicos_datos")
         self.url_subir = reverse("utiles:hallazgos_publicos_subir")
@@ -300,3 +301,182 @@ class SubidaDeEvidenciaTest(BaseEnlacePublico):
                 respuesta = self.subir(movimiento, [imagen_en_memoria()], token="no-es")
         self.assertEqual(respuesta.status_code, 404)
         self.assertEqual(Evidencia.objects.count(), 0)
+
+
+TOKEN_REVISION = "token-de-prueba-para-la-bandeja"
+
+
+class BandejaRevisionTest(BaseEnlacePublico):
+    """
+    La bandeja del administrador: ver la foto, aceptar o rechazar.
+
+    El enlace del responsable y el del administrador son del mismo modelo y
+    mismo alcance, pero `puede_revisar` los separa. Si no, un link filtrado
+    permitiria subir evidencia Y cerrar hallazgos.
+    """
+
+    def setUp(self):
+        super().setUp()
+        EnlacePublicoHallazgos.objects.create(
+            area=self.area,
+            cliente_id=self.cliente.pk,
+            token_hash=hashlib.sha256(TOKEN_REVISION.encode()).hexdigest(),
+            expires_at=timezone.now() + datetime.timedelta(days=14),
+            puede_revisar=True,
+        )
+        self.url_cola = reverse("utiles:evidencias_revision_datos")
+        self.url_responder = reverse("utiles:evidencias_revision_responder")
+        self.url_pagina = reverse("utiles:evidencias_revision_page")
+
+    def evidencia(self, movimiento, con_foto=True):
+        evidencia = Evidencia.objects.create(
+            movimiento=movimiento,
+            fecha=datetime.date.today(),
+            origen="enlace_publico",
+            subido_por="5493757677124",
+        )
+        if con_foto:
+            with tempfile.TemporaryDirectory() as media:
+                with override_settings(MEDIA_ROOT=media):
+                    evidencia.archivo.save("foto.jpg", imagen_en_memoria(), save=True)
+        return evidencia
+
+    def cola(self, token=TOKEN_REVISION):
+        respuesta = self.client.get(
+            self.url_cola, HTTP_AUTHORIZATION=f"Bearer {token}"
+        )
+        return respuesta
+
+    def responder(self, evidencia, accion, motivo="", token=TOKEN_REVISION):
+        datos = {"evidencia_id": evidencia.pk, "accion": accion,
+                 "revisor": "Oscar"}
+        if motivo:
+            datos["motivo"] = motivo
+        return self.client.post(
+            self.url_responder, datos,
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+
+    # --- la cola -------------------------------------------------------
+
+    def test_la_cola_muestra_las_pendientes(self):
+        movimiento = self.movimiento()
+        evidencia = self.evidencia(movimiento)
+        respuesta = self.cola()
+        self.assertEqual(respuesta.status_code, 200)
+        datos = respuesta.json()
+        self.assertEqual(datos["empresa"], "Cliente de prueba")
+        self.assertEqual(datos["area"], "Sistemas")
+        self.assertEqual(len(datos["pendientes"]), 1)
+        self.assertEqual(datos["pendientes"][0]["id"], evidencia.pk)
+
+    def test_lo_ya_revisado_sale_de_la_cola(self):
+        movimiento = self.movimiento()
+        evidencia = self.evidencia(movimiento)
+        self.responder(evidencia, "aceptar")
+        self.assertEqual(self.cola().json()["pendientes"], [])
+
+    def test_la_cola_no_muestra_lo_que_no_tiene_foto(self):
+        self.evidencia(self.movimiento(), con_foto=False)
+        self.assertEqual(self.cola().json()["pendientes"], [])
+
+    def test_la_pagina_de_revision_se_renderiza(self):
+        respuesta = self.client.get(self.url_pagina)
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertIn("Evidencias por validar", respuesta.content.decode())
+
+    # --- seguridad -----------------------------------------------------
+
+    def test_el_enlace_del_responsable_no_abre_la_bandeja(self):
+        """Si el link de subir sirviera para revisar, alcanza para cerrar hallazgos."""
+        self.evidencia(self.movimiento())
+        self.assertEqual(self.cola(token=TOKEN).status_code, 404)
+
+    def test_sin_token_no_hay_cola(self):
+        self.evidencia(self.movimiento())
+        self.assertEqual(self.client.get(self.url_cola).status_code, 404)
+
+    def test_no_se_ve_la_foto_de_otra_area(self):
+        ajeno = Movimientos.objects.create(
+            id="mov9999999", cliente=self.cliente, area=self.otra_area,
+            fecha=datetime.date.today(), periodo="Octubre",
+            hallazgo="De seguridad", responsable="Beto", plazo=10,
+            estado="Incumplido",
+            fecha_cumplimiento=datetime.date.today() - datetime.timedelta(days=10),
+        )
+        evidencia = self.evidencia(ajeno)
+        url = reverse("utiles:evidencias_revision_imagen", args=[evidencia.pk])
+        respuesta = self.client.get(url, HTTP_AUTHORIZATION=f"Bearer {TOKEN_REVISION}")
+        self.assertEqual(respuesta.status_code, 403)
+
+    def test_no_se_responde_sobre_evidencia_de_otra_area(self):
+        ajeno = Movimientos.objects.create(
+            id="mov9999999", cliente=self.cliente, area=self.otra_area,
+            fecha=datetime.date.today(), periodo="Octubre",
+            hallazgo="De seguridad", responsable="Beto", plazo=10,
+            estado="Incumplido",
+            fecha_cumplimiento=datetime.date.today() - datetime.timedelta(days=10),
+        )
+        evidencia = self.evidencia(ajeno)
+        self.assertEqual(self.responder(evidencia, "aceptar").status_code, 400)
+        evidencia.refresh_from_db()
+        self.assertEqual(evidencia.estado, Evidencia.ESTADO_PENDIENTE)
+        ajeno.refresh_from_db()
+        self.assertEqual(ajeno.estado, "Incumplido")
+
+    # --- aceptar -------------------------------------------------------
+
+    def test_aceptar_cierra_el_hallazgo(self):
+        movimiento = self.movimiento()
+        evidencia = self.evidencia(movimiento)
+        with mock.patch("utiles.views.notificar_responsable_rechazo"):
+            respuesta = self.responder(evidencia, "aceptar")
+        self.assertEqual(respuesta.status_code, 200)
+        movimiento.refresh_from_db()
+        evidencia.refresh_from_db()
+        self.assertEqual(movimiento.estado, "Cumplido")
+        self.assertEqual(movimiento.fecha_realizado, timezone.localdate())
+        self.assertEqual(evidencia.estado, Evidencia.ESTADO_ACEPTADA)
+        self.assertEqual(evidencia.revisado_por, "Oscar")
+        self.assertIsNotNone(evidencia.revisado_at)
+
+    # --- rechazar ------------------------------------------------------
+
+    def test_rechazar_exige_motivo(self):
+        movimiento = self.movimiento()
+        evidencia = self.evidencia(movimiento)
+        respuesta = self.responder(evidencia, "rechazar", motivo="")
+        self.assertEqual(respuesta.status_code, 400)
+        movimiento.refresh_from_db()
+        evidencia.refresh_from_db()
+        self.assertEqual(evidencia.estado, Evidencia.ESTADO_PENDIENTE)
+        self.assertEqual(movimiento.estado, "Incumplido", "el hallazgo sigue abierto")
+
+    def test_rechazar_avisa_al_responsable_con_el_motivo(self):
+        movimiento = self.movimiento()
+        evidencia = self.evidencia(movimiento)
+        with mock.patch(
+            "utiles.views.notificar_responsable_rechazo",
+            return_value={"ok": True, "detalle": "notificado a 1"},
+        ) as aviso:
+            respuesta = self.responder(
+                evidencia, "rechazar", motivo="No se ve el matafuego"
+            )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(aviso.call_count, 1)
+        movimiento.refresh_from_db()
+        evidencia.refresh_from_db()
+        self.assertEqual(evidencia.estado, Evidencia.ESTADO_RECHAZADA)
+        self.assertEqual(evidencia.motivo_rechazo, "No se ve el matafuego")
+        self.assertEqual(movimiento.estado, "Incumplido", "rechazar no cierra el hallazgo")
+
+    def test_no_se_revisa_dos_veces(self):
+        evidencia = self.evidencia(self.movimiento())
+        with mock.patch("utiles.views.notificar_responsable_rechazo"):
+            self.responder(evidencia, "aceptar")
+        segunda = self.responder(evidencia, "aceptar")
+        self.assertEqual(segunda.status_code, 409)
+
+    def test_accion_desconocida_se_rechaza(self):
+        evidencia = self.evidencia(self.movimiento())
+        self.assertEqual(self.responder(evidencia, "borrar").status_code, 400)

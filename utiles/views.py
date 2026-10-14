@@ -19,7 +19,9 @@ from syh.models import Evidencia
 from utiles.alertas_hallazgos import (
     SeleccionEmpresaAreaInvalida,
     construir_resumen_hallazgos_whatsapp,
+    crear_enlace_revision,
     notificar_admin_evidencia,
+    notificar_responsable_rechazo,
 )
 from utiles.models import EnlacePublicoHallazgos
 from utiles.notificaciones import WhatsAppClient, WhatsAppError
@@ -318,8 +320,20 @@ def hallazgos_publicos_subir(request):
     # Avisar a los administradores. Si falla, la evidencia ya quedo guardada
     # y el admin la ve igual en el panel: el aviso es una comodidad, no un
     # requisito para que la evidencia exista.
+    #
+    # El link va con el aviso para que el administrador pueda mirar la foto y
+    # decidir desde el celular, sin entrar al panel. Si algo falla en crear el
+    # enlace, el aviso sale igual: es preferible un link de menos a no avisar.
+    try:
+        _enlace_rev, _token_rev, url_revision = crear_enlace_revision(
+            enlace.cliente_id, enlace.area_id
+        )
+    except Exception:  # noqa: BLE001
+        url_revision = None
+
     aviso = notificar_admin_evidencia(
-        guardadas[0], movimiento, cliente_nombre, area_detalle
+        guardadas[0], movimiento, cliente_nombre, area_detalle,
+        url_revision=url_revision,
     )
 
     return _respuesta_publica(JsonResponse({
@@ -412,3 +426,206 @@ def hallazgos_publicos_datos(request):
         "por_vencer": serializar(resumen.por_vencer),
     }
     return _respuesta_publica(JsonResponse(payload))
+
+
+# --- Bandeja de revision de evidencias -------------------------------------
+#
+# El link del responsable sube evidencia. Este es el del administrador: mira
+# la foto y acepta o rechaza. Mismo alcance (empresa + area), distinto poder,
+# por eso comparten el modelo pero se distinguen con `puede_revisar`.
+
+
+def _enlace_revision_valido(token):
+    """Enlace vigente Y con permiso de revision, o None."""
+    enlace = _enlace_valido(token)
+    if enlace is None or not enlace.puede_revisar:
+        return None
+    return enlace
+
+
+def _token_de_revision(request):
+    """Token del header Authorization, o None si no viene bien."""
+    authorization = request.headers.get("Authorization", "")
+    esquema, _, token = authorization.partition(" ")
+    if esquema.lower() != "bearer" or not token.strip():
+        return None
+    return token.strip()
+
+
+@never_cache
+def evidencias_revision_page(request):
+    """La pagina en si: el token va en el fragmento (#), nunca en la URL."""
+    return _respuesta_publica(render(request, "pages/utiles/evidencias_revision.html", {
+        "datos_url": reverse("utiles:evidencias_revision_datos"),
+        "responder_url": reverse("utiles:evidencias_revision_responder"),
+        "imagen_url": reverse("utiles:evidencias_revision_imagen", args=[0]),
+    }))
+
+
+@require_GET
+def evidencias_revision_datos(request):
+    """Cola de evidencias pendientes de revision de esa empresa y area."""
+    token = _token_de_revision(request)
+    enlace = _enlace_revision_valido(token) if token else None
+    if enlace is None:
+        return _respuesta_publica(JsonResponse(
+            {"error": "El enlace no es válido o ya venció."}, status=404
+        ))
+
+    pendientes = (
+        Evidencia.objects.filter(
+            movimiento__cliente_id=enlace.cliente_id,
+            movimiento__area_id=enlace.area_id,
+            estado=Evidencia.ESTADO_PENDIENTE,
+        )
+        .exclude(archivo="")
+        .select_related("movimiento", "movimiento__area")
+        .order_by("fecha", "id")
+    )
+
+    revisadas_hoy = Evidencia.objects.filter(
+        movimiento__cliente_id=enlace.cliente_id,
+        movimiento__area_id=enlace.area_id,
+        revisado_at__date=timezone.localdate(),
+    ).exclude(estado=Evidencia.ESTADO_PENDIENTE).count()
+
+    area = Area.objects.filter(pk=enlace.area_id).select_related("cliente").first()
+    return _respuesta_publica(JsonResponse({
+        "empresa": area.cliente.nombre if area and area.cliente else enlace.cliente_id,
+        "area": area.detalle if area else enlace.area_id,
+        "pendientes": [
+            {
+                "id": e.pk,
+                "movimiento_id": e.movimiento_id,
+                "hallazgo": e.movimiento.hallazgo or "Sin descripción",
+                "vencimiento": (
+                    e.movimiento.fecha_cumplimiento.isoformat()
+                    if e.movimiento.fecha_cumplimiento else None
+                ),
+                "fecha": e.fecha.isoformat(),
+                "detalle": e.detalle,
+                "subido_por": e.subido_por,
+                "origen": e.origen,
+            }
+            for e in pendientes
+        ],
+        "revisadas_hoy": revisadas_hoy,
+    }))
+
+
+@never_cache
+def evidencias_revision_imagen(request, evidencia_id):
+    """
+    Devuelve el archivo de la evidencia, siempre con el token del revisor.
+
+    No se sirve desde MEDIA_URL: la foto es la prueba del cierre de un
+    hallazgo de un cliente. Va por fetch con el header Authorization y se pinta
+    con una object URL, asi que el token nunca viaja en la URL de la imagen
+    (no puede: un <img src> no manda headers).
+    """
+    from django.http import FileResponse
+
+    token = _token_de_revision(request)
+    enlace = _enlace_revision_valido(token) if token else None
+    if enlace is None:
+        return HttpResponseForbidden("El enlace no es válido o ya venció.")
+
+    evidencia = Evidencia.objects.filter(
+        pk=evidencia_id,
+        movimiento__cliente_id=enlace.cliente_id,
+        movimiento__area_id=enlace.area_id,
+    ).first()
+
+    if evidencia is None or not evidencia.archivo:
+        return HttpResponseForbidden("No se encontró la evidencia.")
+
+    try:
+        archivo = evidencia.archivo.open("rb")
+    except (FileNotFoundError, OSError, ValueError):
+        return HttpResponseForbidden("El archivo de la evidencia no está disponible.")
+
+    # El content-type va segun la extension real. Hardcodear image/jpeg
+    # dejaba sin render los .png y .webp, que el iPhone tambien manda.
+    import mimetypes
+
+    content_type = (
+        mimetypes.guess_type(evidencia.archivo.name)[0] or "application/octet-stream"
+    )
+    return _respuesta_publica(FileResponse(archivo, content_type=content_type))
+
+
+@csrf_exempt
+@require_POST
+def evidencias_revision_responder(request):
+    """
+    Acepta o rechaza una evidencia pendiente.
+
+    Aceptar  -> la evidencia queda aceptada y el hallazgo pasa a Cumplido con
+                la fecha de hoy. Es el cierre del circuito en un solo paso.
+    Rechazar -> la evidencia queda rechazada con su motivo, el hallazgo NO se
+                toca (sigue abierto) y se le avisa al responsable por WhatsApp
+                con el motivo, para que pueda resubir.
+
+    La evidencia TIENE que ser de la empresa y el area del enlace. Sin esto, un
+    enlace del area A cerraria hallazgos del area B.
+    """
+    token = _token_de_revision(request)
+    enlace = _enlace_revision_valido(token) if token else None
+    if enlace is None:
+        return _respuesta_publica(JsonResponse(
+            {"error": "El enlace no es válido o ya venció."}, status=404
+        ))
+
+    evidencia_id = request.POST.get("evidencia_id", "").strip()
+    accion = request.POST.get("accion", "").strip().lower()
+    motivo = request.POST.get("motivo", "").strip()[:500]
+    revisor = request.POST.get("revisor", "").strip()[:150] or "sin identificar"
+
+    if accion not in ("aceptar", "rechazar"):
+        return _respuesta_publica(JsonResponse(
+            {"error": "Acción desconocida."}, status=400
+        ))
+
+    evidencia = Evidencia.objects.filter(
+        pk=evidencia_id,
+        movimiento__cliente_id=enlace.cliente_id,
+        movimiento__area_id=enlace.area_id,
+    ).select_related("movimiento", "movimiento__area").first()
+
+    if evidencia is None:
+        return _respuesta_publica(JsonResponse(
+            {"error": "Esa evidencia no pertenece a esta empresa o área."}, status=400
+        ))
+    if evidencia.estado != Evidencia.ESTADO_PENDIENTE:
+        return _respuesta_publica(JsonResponse(
+            {"error": "Esa evidencia ya fue revisada."}, status=409
+        ))
+    if accion == "rechazar" and not motivo:
+        return _respuesta_publica(JsonResponse(
+            {"error": "Escribí el motivo del rechazo: es lo que recibe el responsable."},
+            status=400,
+        ))
+
+    movimiento = evidencia.movimiento
+    evidencia.estado = (
+        Evidencia.ESTADO_ACEPTADA if accion == "aceptar" else Evidencia.ESTADO_RECHAZADA
+    )
+    evidencia.revisado_por = revisor
+    evidencia.revisado_at = timezone.now()
+    evidencia.motivo_rechazo = motivo if accion == "rechazar" else ""
+    evidencia.save(update_fields=[
+        "estado", "revisado_por", "revisado_at", "motivo_rechazo",
+    ])
+
+    resultado = {"ok": True, "accion": accion, "hallazgo": movimiento.hallazgo}
+
+    if accion == "aceptar":
+        movimiento.estado = "Cumplido"
+        movimiento.fecha_realizado = timezone.localdate()
+        movimiento.save(update_fields=["estado", "fecha_realizado"])
+        return _respuesta_publica(JsonResponse(resultado))
+
+    # Rechazada: el hallazgo sigue como estaba y se avisa al responsable.
+    aviso = notificar_responsable_rechazo(evidencia, movimiento)
+    resultado["aviso_responsable"] = aviso.get("detalle", "")
+    return _respuesta_publica(JsonResponse(resultado))

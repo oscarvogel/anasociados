@@ -533,6 +533,46 @@ class Evidencia(models.Model):
         help_text="Telefono de quien subio la evidencia, si se conoce.",
     )
 
+    # Revision de la evidencia. Antes la unica forma de resolver un hallazgo era
+    # que un administrador mirara la foto y cerrara el hallazgo a mano desde el
+    # panel; no queda registro de quien loaprobo ni de por que se rechazo.
+    ESTADO_PENDIENTE = 'pendiente'
+    ESTADO_ACEPTADA = 'aceptada'
+    ESTADO_RECHAZADA = 'rechazada'
+    ESTADO_REVSION = [
+        (ESTADO_PENDIENTE, 'Pendiente de revision'),
+        (ESTADO_ACEPTADA, 'Aceptada'),
+        (ESTADO_RECHAZADA, 'Rechazada'),
+    ]
+    estado = models.CharField(
+        max_length=12,
+        choices=ESTADO_REVSION,
+        default=ESTADO_PENDIENTE,
+        db_index=True,
+        verbose_name="Estado de revision",
+        help_text="Si la foto acredita o no el cierre del hallazgo.",
+    )
+    revisado_por = models.CharField(
+        max_length=150,
+        default="",
+        blank=True,
+        verbose_name="Revisado por",
+        help_text="Quien aprobo o rechazo la evidencia.",
+    )
+    revisado_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="Revisado el",
+    )
+    motivo_rechazo = models.TextField(
+        default="",
+        blank=True,
+        verbose_name="Motivo del rechazo",
+        help_text="Se le manda al responsable cuando se rechaza.",
+    )
+
+    @property
+    def pendiente_revision(self):
+        return self.estado == self.ESTADO_PENDIENTE
+
     def __str__(self):
         return f'{self.movimiento.cliente.nombre} - {self.movimiento.fecha}'
 

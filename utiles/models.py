@@ -75,6 +75,16 @@ class EnlacePublicoHallazgos(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(db_index=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
+    # El link del responsable y el del administrador son de la misma empresa y
+    # area, pero NO hacen lo mismo. El del responsable sube evidencia; el del
+    # administrador la aprueba o la rechaza, y eso mueve el hallazgo a Cumplido.
+    # Si fuera el mismo link, que se filtrara uno permitiria forjar evidencia y
+    # cerrar hallazgos con un solo token.
+    puede_revisar = models.BooleanField(
+        default=False,
+        verbose_name="Puede revisar evidencias",
+        help_text="Solo para el enlace del administrador.",
+    )
 
     class Meta:
         verbose_name = "Enlace público de hallazgos"
@@ -82,4 +92,8 @@ class EnlacePublicoHallazgos(models.Model):
         ordering = ("-created_at",)
 
     def __str__(self):
-        return f"{self.cliente_id} / {self.area_id} — vence {self.expires_at:%d/%m/%Y}"
+        tipo = "revisión" if self.puede_revisar else "consulta"
+        return (
+            f"{self.cliente_id} / {self.area_id} ({tipo})"
+            f" — vence {self.expires_at:%d/%m/%Y}"
+        )

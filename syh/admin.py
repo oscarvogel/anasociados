@@ -1,7 +1,7 @@
 import csv
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.contrib.admin import DateFieldListFilter, SimpleListFilter
 from reportlab.lib.pagesizes import A4, landscape
 from syh.forms import EmisionCarbonoForm, ExcesosVelocidadAdminForm, IndiceAccidentabilidadAdminForm
@@ -90,11 +90,11 @@ class EvidenciaAdmin(admin.TabularInline):
 @admin.register(Evidencia)
 class EvidenciaListAdmin(admin.ModelAdmin):
     """Vista general de las evidencias, para buscar rapido cual esta esperando validacion."""
-    list_display = ('movimiento', 'empresa_area', 'fecha', 'origen', 'subido_por', 'estado_movimiento', 'imagen_thumbnail')
-    list_filter = ('origen', 'fecha')
-    search_fields = ('movimiento__hallazgo', 'movimiento__area__detalle', 'subido_por', 'detalle')
+    list_display = ('imagen_thumbnail', 'movimiento', 'empresa_area', 'fecha', 'estado', 'origen', 'subido_por', 'estado_movimiento')
+    list_filter = ('estado', 'origen', 'fecha')
+    search_fields = ('movimiento__hallazgo', 'movimiento__area__detalle', 'movimiento__cliente__nombre', 'movimiento__responsable', 'subido_por', 'detalle', 'motivo_rechazo')
     list_per_page = 25
-    readonly_fields = ('imagen_thumbnail',)
+    readonly_fields = ('imagen_thumbnail', 'estado', 'revisado_por', 'revisado_at', 'motivo_rechazo')
     date_hierarchy = 'fecha'
 
     @admin.display(description="Empresa / área", ordering="movimiento__area__cliente__nombre")
@@ -105,6 +105,12 @@ class EvidenciaListAdmin(admin.ModelAdmin):
     def estado_movimiento(self, obj):
         return obj.movimiento.estado
 
+    def has_add_permission(self, request):
+        # La evidencia se crea desde el enlace del responsable o desde el
+        # enlace de revision. Cargar una foto a mano desde aca permitia
+        # "acreditar" un hallazgo sin que nadie la subiera.
+        return False
+
     def has_module_permission(self, request):
         return request.user.is_superuser
 
@@ -113,47 +119,31 @@ class EvidenciaListAdmin(admin.ModelAdmin):
 
 @admin.register(Movimientos)
 class MovimientosAdmin(admin.ModelAdmin):
+    """
+    El admin queda como carga de datos, no como lugar de trabajo.
+
+    Buscar por empresa es lo primero que se hace y antes no estaba en
+    `search_fields`: `cliente` solo aparecia en `list_display`. Con 16 empresas
+    y mas de mil hallazgos, buscar el nombre de la empresa no encontraba nada
+    y el admin quedaba inutil como pantalla de consulta. La pantalla de
+    trabajo es la vista de hallazgos, no esta.
+    """
     list_display = ('id', 'cliente', 'area', 'periodo', 'hallazgo')
-    list_per_page = 10
-    list_max_show_all = 100
+    list_per_page = 25
+    list_max_show_all = 200
     ordering = ('-fecha', 'cliente', 'estado')
-    search_fields = ('id', 'area__detalle', 'periodo', 'hallazgo')
+    search_fields = ('id', 'cliente__nombre', 'area__detalle', 'responsable', 'periodo', 'hallazgo')
     inlines = [EvidenciaAdmin]
-    readonly_fields = ['id']  # Asegúrate de que el campo 'id' es solo de lectura
-    actions = ['cerrar_con_evidencia']
+    readonly_fields = ['id']
+    actions = []
 
-    @admin.action(description="Cerrar los hallazgos seleccionados (marca Cumplido con la fecha de hoy)")
-    def cerrar_con_evidencia(self, request, queryset):
-        """
-        Cierra hallazgos que tienen evidencia cargada.
-
-        Solo mueve los que realmente tienen al menos una foto: cerrar un
-        hallazgo sin evidencia seria exactamente el atajo que este flujo
-        viene a evitar.
-        """
-        from django.utils import timezone
-
-        hoy = timezone.localdate()
-        con_evidencia = [m for m in queryset if Evidencia.objects.filter(movimiento=m, archivo__isnull=False).exists()]
-
-        if not con_evidencia:
-            self.message_user(
-                request,
-                "Ninguno de los hallazgos seleccionados tiene evidencia con foto cargada.",
-                messages.WARNING,
-            )
-            return
-
-        for movimiento in con_evidencia:
-            movimiento.estado = "Cumplido"
-            movimiento.fecha_realizado = hoy
-            movimiento.save(update_fields=["estado", "fecha_realizado"])
-
-        self.message_user(
-            request,
-            f"Se cerraron {len(con_evidencia)} hallazgo(s) con evidencia.",
-            messages.SUCCESS,
-        )
+    # La accion "Cerrar los hallazgos seleccionados" se saco de acá.
+    #
+    # Cerraba todo hallazgo que tuviera una foto cargada, sin mirar la foto.
+    # Con la bandeja de revision (/utiles/evidencias-revision/, link que llega
+    # por WhatsApp al administrador) el cierre pasa por a mirar la evidencia y
+    # decidir. Dejar el atajo disponible era dejar abierta la puerta a que un
+    # hallazgo quede cerrado sin que nadie haya visto la prueba.
     # form = MovimientosForm
 
     def get_queryset(self, request):

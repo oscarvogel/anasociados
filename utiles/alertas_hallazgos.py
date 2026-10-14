@@ -131,13 +131,17 @@ def _descripcion_breve(hallazgo: str, limite: int = MAX_CARACTERES_HALLAZGO) -> 
     return f"{descripcion[:limite - 3].rstrip()}..."
 
 
-def notificar_admin_evidencia(evidencia, movimiento, cliente_nombre, area_detalle):
+def notificar_admin_evidencia(evidencia, movimiento, cliente_nombre, area_detalle,
+                              url_revision=None):
     """
     Avisa a los administradores que se subio una evidencia.
 
     Subir una foto NO cierra el hallazgo: el cierre lo hace un administrador
     revisando la evidencia. Por eso el mensaje lo dice explicitamente, para
     que nadie asuma que el hallazgo ya quedo resuelto.
+
+    Si viene `url_revision`, se manda el link de la bandeja para que el
+    administrador pueda ver la foto y decidir sin entrar al panel.
 
     Nunca levanta excepcion: si el gateway esta caido, la evidencia ya esta
     guardada y el admin la va a ver igual en el panel.
@@ -168,6 +172,10 @@ def notificar_admin_evidencia(evidencia, movimiento, cliente_nombre, area_detall
     ]
     if evidencia.detalle:
         lineas.append(f"Comentario: {_descripcion_breve(evidencia.detalle, 140)}")
+
+    if url_revision:
+        lineas += ["", f"Ver la foto y decidir: {url_revision}"]
+
     lineas += [
         "",
         "_Queda pendiente de validacion: el hallazgo NO se cerro._",
@@ -206,6 +214,13 @@ def url_hallazgos_publicos(token):
     return f"{base}{ruta}#{token}"
 
 
+def url_revision_evidencias(token):
+    """URL de la bandeja de revision para un token."""
+    ruta = reverse("utiles:evidencias_revision_page")
+    base = settings.WHATSAPP_PUBLIC_BASE_URL.rstrip("/")
+    return f"{base}{ruta}#{token}"
+
+
 def crear_enlace_hallazgos(cliente_id, area_id, token=None, dias=DIAS_ENLACE_PUBLICO):
     """
     Registra el enlace publico de una empresa+area y devuelve (token, url).
@@ -225,6 +240,106 @@ def crear_enlace_hallazgos(cliente_id, area_id, token=None, dias=DIAS_ENLACE_PUB
             "area_id": str(area_id),
             "cliente_id": str(cliente_id),
             "expires_at": timezone.now() + timedelta(days=dias),
+            "puede_revisar": False,
         },
     )
     return enlace, token, url_hallazgos_publicos(token)
+
+
+def crear_enlace_revision(cliente_id, area_id, token=None, dias=DIAS_ENLACE_PUBLICO):
+    """
+    Enlace de la bandeja de revision para una empresa+area.
+
+    Mismo modelo y mismo alcance que el del responsable, pero con
+    `puede_revisar=True`: ese es el unico permiso que habilita a ver las fotos
+    y a cerrar o reabrir hallazgos. Son tokens distintos a proposito.
+    """
+    token = token or secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    enlace, _creado = EnlacePublicoHallazgos.objects.get_or_create(
+        token_hash=token_hash,
+        defaults={
+            "area_id": str(area_id),
+            "cliente_id": str(cliente_id),
+            "expires_at": timezone.now() + timedelta(days=dias),
+            "puede_revisar": True,
+        },
+    )
+    return enlace, token, url_revision_evidencias(token)
+
+
+def notificar_responsable_rechazo(evidencia, movimiento):
+    """
+    Le avisa al responsable del area que la evidencia fue rechazada.
+
+    El motivo es lo importante: sin el, el responsable no sabe que corregir y
+    vuelve a subir la misma foto. Por eso el endpoint de revision exige el
+    motivo antes de rechazar.
+
+    A diferencia de la subida, aca no hay un link de reintento: el responsable
+    ya tiene el enlace de su area, que sigue siendo el mismo. Solo se le dice
+    que resubita.
+
+    Nunca levanta excepcion: si el gateway esta caido, el rechazo ya quedo
+    registrado y el administrador lo ve en la bandeja igual.
+    """
+    from utiles.notificaciones import WhatsAppClient, WhatsAppError
+
+    try:
+        from usuarios.models import AreasProfile
+
+        numeros = sorted(set(
+            AreasProfile.objects.filter(
+                area_id=movimiento.area_id,
+                area__cliente_id=movimiento.cliente_id,
+            ).exclude(telefono_whatsapp="")
+            .values_list("telefono_whatsapp", flat=True)
+        ))
+    except Exception:  # noqa: BLE001
+        numeros = []
+
+    if not numeros:
+        return {"ok": False, "detalle": "el área no tiene teléfono de responsable cargado"}
+
+    cliente = WhatsAppClient()
+    if not cliente.habilitado:
+        return {"ok": False, "detalle": "WhatsApp deshabilitado o sin API key"}
+
+    vencimiento = (
+        movimiento.fecha_cumplimiento.strftime("%d/%m/%Y")
+        if movimiento.fecha_cumplimiento else "sin fecha"
+    )
+
+    lineas = [
+        "*AN & Asociados | Evidencia rechazada*",
+        "",
+        f"Hallazgo: {_descripcion_breve(movimiento.hallazgo or '', 120)}",
+        f"Vencia: {vencimiento}",
+        "",
+        f"Motivo: {evidencia.motivo_rechazo}",
+        "",
+        "El hallazgo sigue pendiente. Volvé al enlace que te enviamos y subí la foto de nuevo.",
+    ]
+
+    enviados, errores = [], []
+    for numero in numeros:
+        try:
+            cliente.enviar_texto(
+                numero,
+                "\n".join(lineas),
+                external_ref=f"an:rechazo:{evidencia.pk}",
+            )
+            enviados.append(numero)
+        except Exception as exc:  # noqa: BLE001
+            errores.append(f"{numero}: {exc}")
+
+    return {
+        "ok": not errores,
+        "enviados": enviados,
+        "errores": errores,
+        "detalle": (
+            f"notificado a {len(enviados)}" if not errores
+            else f"{len(enviados)} ok, {len(errores)} con error"
+        ),
+    }

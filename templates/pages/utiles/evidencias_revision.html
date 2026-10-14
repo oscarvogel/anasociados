@@ -1,0 +1,473 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="referrer" content="no-referrer">
+    <title>Revisión de evidencias | AN &amp; Asociados</title>
+    <link rel="icon" href="{% static 'assets/images/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'src/css/an-custom.css' %}">
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: var(--an-color-text);
+            --muted: var(--an-color-muted);
+            --brand: var(--an-color-primary);
+            --brand-deep: var(--an-color-primary-strong);
+            --mint: var(--an-color-surface-soft);
+            --paper: #f7f9f4;
+            --line: var(--an-color-border);
+            --white: #fff;
+            --danger: var(--an-color-danger);
+            --danger-soft: #fff0ec;
+            --amber: var(--an-color-warning);
+            --shadow: 0 18px 46px rgb(44 74 29 / 9%);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; color: var(--ink);
+            background: var(--paper); font-family: Inter, "Segoe UI", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .shell { width: min(760px, calc(100% - 32px)); margin: 0 auto; }
+        .masthead {
+            display: flex; min-height: 82px; align-items: center;
+            justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line);
+        }
+        .brand { display: flex; align-items: center; gap: 13px; }
+        .brand img { width: 46px; height: 46px; object-fit: contain; }
+        .brand-name { font-size: 14px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
+        .brand-caption { margin-top: 3px; color: var(--muted); font-size: 11px; letter-spacing: .13em; text-transform: uppercase; }
+        main { padding: 26px 0 48px; }
+
+        .hero {
+            position: relative; overflow: hidden; padding: clamp(22px, 4vw, 34px);
+            border-radius: 18px; color: var(--white); background: var(--brand-deep);
+            box-shadow: var(--shadow);
+        }
+        .hero::after {
+            position: absolute; right: -70px; bottom: -120px; width: 280px; height: 280px;
+            border: 1px solid rgba(220, 238, 232, .18); border-radius: 50%; content: "";
+            box-shadow: 0 0 0 28px rgba(220, 238, 232, .035), 0 0 0 58px rgba(220, 238, 232, .025);
+        }
+        .eyebrow { margin: 0 0 10px; color: #a8d5c7; font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+        h1 { position: relative; z-index: 1; margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(26px, 5vw, 36px); font-weight: 500; letter-spacing: -.02em; }
+        .hero-meta { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+        .hero-chip { padding: 7px 11px; border: 1px solid rgba(220, 238, 232, .2); border-radius: 6px; color: #e9f4f0; background: rgba(255,255,255,.045); font-size: 12px; }
+        .hero-chip strong { color: #fff; }
+
+        .pending {
+            display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+            margin: 22px 0 12px;
+        }
+        .pending-title { margin: 0; font-size: 15px; font-weight: 800; }
+        .pending-count { font-family: Georgia, "Times New Roman", serif; font-size: 30px; line-height: 1; }
+
+        .card {
+            margin-bottom: 16px; overflow: hidden; border: 1px solid var(--line);
+            border-radius: 14px; background: var(--white);
+            box-shadow: 0 6px 20px rgba(25, 55, 51, .035);
+        }
+        .card-hallazgo { padding: 16px 18px 14px; }
+        .card-kicker { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+        .card-hallazgo p { margin: 7px 0 0; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+        .card-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 11px; color: var(--muted); font-size: 12px; }
+        .card-meta strong { color: var(--ink); font-weight: 700; }
+
+        /* La foto es la prueba: entra grande y se toca para verla completa. */
+        .foto {
+            display: block; width: 100%; background: #0f201e;
+            border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+            cursor: zoom-in;
+        }
+        .foto-error { padding: 26px 18px; color: var(--danger); background: var(--danger-soft); font-size: 13px; text-align: center; }
+
+        .card-actions { display: flex; gap: 10px; padding: 14px 18px 16px; }
+        .btn {
+            flex: 1; padding: 13px 14px; border: 0; border-radius: 10px;
+            font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+        }
+        .btn-aceptar { background: var(--brand); color: #fff; }
+        .btn-rechazar { background: var(--white); color: var(--danger); box-shadow: inset 0 0 0 1.5px #f0c8bd; }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+
+        .rechazo { padding: 0 18px 16px; }
+        .rechazo textarea {
+            width: 100%; min-height: 84px; padding: 11px 12px; resize: vertical;
+            border: 1px solid var(--line); border-radius: 9px; background: var(--paper);
+            color: var(--ink); font: inherit; font-size: 14px; line-height: 1.5;
+        }
+        .rechazo .ayuda { margin: 7px 0 11px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+        .rechazo .btn-confirmar { width: 100%; background: var(--danger); color: #fff; }
+
+        .quien { margin: 0 0 4px; text-align: right; }
+        .quien label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+        .quien input {
+            width: 190px; margin-left: 8px; padding: 7px 10px;
+            border: 1px solid var(--line); border-radius: 8px;
+            background: var(--white); color: var(--ink); font: inherit; font-size: 13px;
+        }
+
+        .empty {
+            padding: 44px 24px; border: 1px solid var(--line); border-radius: 14px;
+            background: var(--white); text-align: center; box-shadow: var(--shadow);
+        }
+        .empty-icon {
+            width: 58px; height: 58px; margin: 0 auto 16px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: #e4f2ec; color: #1d6b55; font-size: 28px;
+        }
+        .empty h2 { margin: 0 0 8px; font-family: Georgia, "Times New Roman", serif; font-size: 23px; font-weight: 500; }
+        .empty p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+        .panel { margin-top: 18px; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--white); box-shadow: var(--shadow); }
+        .panel.is-error { border-color: #f1d2ca; color: #70392f; background: #fff8f5; }
+        .panel h2 { margin: 0 0 7px; font-family: Georgia, "Times New Roman", serif; font-size: 23px; font-weight: 500; }
+        .panel p { margin: 0; font-size: 14px; line-height: 1.6; }
+
+        .avisos { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 80; width: min(420px, calc(100% - 32px)); }
+        .aviso {
+            padding: 13px 16px; border-radius: 10px; color: #fff;
+            background: #23473a; box-shadow: 0 12px 30px rgba(16, 32, 30, .3);
+            font-size: 13.5px; line-height: 1.45; text-align: center;
+        }
+        .aviso.is-error { background: var(--danger); }
+
+        .modal { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(16, 32, 30, .88); }
+        .modal-card { width: min(920px, 100%); text-align: center; }
+        .modal-card img { max-width: 100%; max-height: 84vh; border-radius: 10px; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+        .modal-cerrar { margin-top: 16px; padding: 10px 20px; border: 0; border-radius: 9px; background: rgba(255,255,255,.16); color: #fff; font: inherit; font-size: 14px; cursor: pointer; }
+
+        [hidden] { display: none !important; }
+        @media (max-width: 560px) {
+            .shell { width: min(100% - 22px, 760px); }
+            .brand img { width: 40px; height: 40px; }
+            .quien { text-align: left; }
+            .quien input { width: 100%; margin: 6px 0 0; }
+            .card-actions { flex-direction: column-reverse; }
+        }
+    </style>
+</head>
+<body class="an-public"
+      data-datos-url="{{ datos_url }}"
+      data-responder-url="{{ responder_url }}"
+      data-imagen-url="{{ imagen_url }}">
+    <div class="shell">
+        <header class="masthead">
+            <div class="brand">
+                <img src="{% static 'assets/images/logo_almada_neri.png' %}" alt="AN &amp; Asociados">
+                <div>
+                    <div class="brand-name">AN &amp; Asociados</div>
+                    <div class="brand-caption">Consultoría y Servicios</div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero">
+                <p class="eyebrow">Bandeja de revisión</p>
+                <h1>Evidencias por validar</h1>
+                <div class="hero-meta" id="hero-meta" hidden>
+                    <span class="hero-chip">Empresa: <strong id="empresa"></strong></span>
+                    <span class="hero-chip">Área: <strong id="area"></strong></span>
+                </div>
+            </section>
+
+            <p class="quien">
+                <label for="revisor">Revisando</label>
+                <input id="revisor" type="text" maxlength="150" placeholder="tu nombre (opcional)">
+            </p>
+
+            <div class="pending" id="pending-head" hidden>
+                <h2 class="pending-title">Esperando tu decisión</h2>
+                <span class="pending-count" id="pending-count">0</span>
+            </div>
+
+            <div id="cola"></div>
+
+            <div class="empty" id="vacio" hidden>
+                <div class="empty-icon">✓</div>
+                <h2>Nada para revisar</h2>
+                <p>No hay evidencias esperando decisión en esta empresa y área.</p>
+            </div>
+
+            <div class="panel" id="loading">
+                <h2>Cargando…</h2>
+                <p>Buscando las evidencias pendientes.</p>
+            </div>
+
+            <div class="panel is-error" id="error-panel" hidden>
+                <h2>No se pudo abrir la bandeja</h2>
+                <p id="error-message"></p>
+            </div>
+        </main>
+    </div>
+
+    <div class="avisos" id="avisos" hidden></div>
+
+    <div class="modal" id="modal-foto" hidden>
+        <div class="modal-card">
+            <img id="modal-foto-img" alt="Evidencia ampliada">
+            <button type="button" class="modal-cerrar" id="modal-foto-cerrar">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        const token = window.location.hash.slice(1);
+        const cola = document.getElementById('cola');
+        const avisos = document.getElementById('avisos');
+
+        function mostrarAviso(texto, esError) {
+            avisos.textContent = '';
+            var div = document.createElement('div');
+            div.className = esError ? 'aviso is-error' : 'aviso';
+            div.textContent = texto;
+            avisos.appendChild(div);
+            avisos.hidden = false;
+            clearTimeout(mostrarAviso.timer);
+            mostrarAviso.timer = setTimeout(function () { avisos.hidden = true; }, 5000);
+        }
+
+        function mostrarError(mensaje) {
+            document.getElementById('loading').hidden = true;
+            document.getElementById('error-message').textContent = mensaje;
+            document.getElementById('error-panel').hidden = false;
+        }
+
+        function formatoFecha(iso) {
+            if (!iso) return 'sin fecha';
+            var p = iso.split('-');
+            return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+        }
+
+        // El nombre del revisor se recuerda en este dispositivo para no
+        // cargarlo en cada foto. Es opcional: si no se carga, queda
+        // "sin identificar" en la evidencia.
+        var campoRevisor = document.getElementById('revisor');
+        try {
+            campoRevisor.value = window.localStorage.getItem('an_revisor') || '';
+        } catch (e) { /* modo privado: se pierde, no es problema */ }
+        campoRevisor.addEventListener('change', function () {
+            try { window.localStorage.setItem('an_revisor', campoRevisor.value); } catch (e) {}
+        });
+
+        if (!token) {
+            mostrarError('El enlace está incompleto. Pedí al equipo de AN & Asociados que te envíe un nuevo enlace.');
+            return;
+        }
+
+        // La foto no puede venir en un <img src>: ese tag no manda headers, y
+        // el token tiene que viajar solo en Authorization. Por eso se pide con
+        // fetch y se pinta con una object URL.
+        var IMAGEN_BASE = document.body.dataset.imagenUrl.replace(/\/0\/$/, '/');
+
+        function pintarFoto(evidencia, destino) {
+            return fetch(IMAGEN_BASE + evidencia.id + '/', {
+                cache: 'no-store',
+                referrerPolicy: 'no-referrer',
+                headers: { 'Authorization': 'Bearer ' + token }
+            }).then(function (r) {
+                if (!r.ok) throw new Error('no se pudo cargar la foto');
+                return r.blob();
+            }).then(function (blob) {
+                destino.src = URL.createObjectURL(blob);
+                return destino;
+            }).catch(function () {
+                var aviso = document.createElement('p');
+                aviso.className = 'foto-error';
+                aviso.textContent = 'No se pudo cargar la foto de esta evidencia.';
+                destino.replaceWith(aviso);
+            });
+        }
+
+        function abrirModal(foto) {
+            var modal = document.getElementById('modal-foto');
+            document.getElementById('modal-foto-img').src = foto.src;
+            modal.hidden = false;
+        }
+
+        document.getElementById('modal-foto-cerrar').addEventListener('click', function () {
+            document.getElementById('modal-foto').hidden = true;
+        });
+
+        function decidir(evidencia, accion, motivo, boton) {
+            var cuerpo = new URLSearchParams();
+            cuerpo.append('evidencia_id', evidencia.id);
+            cuerpo.append('accion', accion);
+            cuerpo.append('revisor', campoRevisor.value.trim());
+            if (motivo) cuerpo.append('motivo', motivo);
+
+            boton.disabled = true;
+            return fetch(document.body.dataset.responderUrl, {
+                method: 'POST',
+                cache: 'no-store',
+                referrerPolicy: 'no-referrer',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: cuerpo.toString()
+            }).then(function (r) {
+                return r.text().then(function (texto) {
+                    var datos;
+                    try { datos = JSON.parse(texto); }
+                    catch (e) { throw new Error('El servidor devolvió una respuesta inesperada (HTTP ' + r.status + ').'); }
+                    if (!r.ok) throw new Error(datos.error || 'No se pudo guardar la decisión.');
+                    return datos;
+                });
+            }).then(function (datos) {
+                tarjeta.remove();
+                actualizarContador();
+                if (accion === 'aceptar') {
+                    mostrarAviso('Evidencia aceptada. El hallazgo quedó como Cumplido.');
+                } else {
+                    mostrarAviso('Evidencia rechazada. Se le avisó al responsable.' +
+                        (datos.aviso_responsable ? ' (' + datos.aviso_responsable + ')' : ''));
+                }
+            }).catch(function (error) {
+                boton.disabled = false;
+                mostrarAviso(error.message, true);
+            });
+        }
+
+        function actualizarContador() {
+            var restantes = cola.querySelectorAll('.card').length;
+            document.getElementById('pending-count').textContent = restantes;
+            if (!restantes) {
+                document.getElementById('pending-head').hidden = true;
+                document.getElementById('vacio').hidden = false;
+            }
+        }
+
+        function construirTarjeta(evidencia) {
+            var tarjeta = document.createElement('article');
+            tarjeta.className = 'card';
+
+            var cabecera = document.createElement('div');
+            cabecera.className = 'card-hallazgo';
+            var kicker = document.createElement('div');
+            kicker.className = 'card-kicker';
+            kicker.textContent = 'Evidencia del ' + formatoFecha(evidencia.fecha);
+            var texto = document.createElement('p');
+            texto.textContent = evidencia.hallazgo;
+            var meta = document.createElement('div');
+            meta.className = 'card-meta';
+            [
+                ['Vencimiento: ', formatoFecha(evidencia.vencimiento)],
+                ['Subida por: ', evidencia.subido_por || 'no identificado'],
+            ].forEach(function (par) {
+                var span = document.createElement('span');
+                var fuerte = document.createElement('strong');
+                fuerte.textContent = par[0];
+                span.appendChild(fuerte);
+                span.appendChild(document.createTextNode(par[1]));
+                meta.appendChild(span);
+            });
+            if (evidencia.detalle) {
+                var comentario = document.createElement('span');
+                comentario.textContent = 'Comentario: ' + evidencia.detalle;
+                meta.appendChild(comentario);
+            }
+            cabecera.append(kicker, texto, meta);
+
+            var img = document.createElement('img');
+            img.className = 'foto';
+            img.alt = 'Evidencia del hallazgo';
+            img.addEventListener('click', function () { abrirModal(img); });
+
+            var acciones = document.createElement('div');
+            acciones.className = 'card-actions';
+            var btnRechazar = document.createElement('button');
+            btnRechazar.type = 'button';
+            btnRechazar.className = 'btn btn-rechazar';
+            btnRechazar.textContent = 'Rechazar';
+            var btnAceptar = document.createElement('button');
+            btnAceptar.type = 'button';
+            btnAceptar.className = 'btn btn-aceptar';
+            btnAceptar.textContent = 'Aceptar y cerrar el hallazgo';
+            acciones.append(btnRechazar, btnAceptar);
+
+            var panelRechazo = document.createElement('div');
+            panelRechazo.className = 'rechazo';
+            panelRechazo.hidden = true;
+
+            btnAceptar.addEventListener('click', function () {
+                if (!window.confirm('¿Aceptar esta evidencia?\n\nEl hallazgo va a quedar como Cumplido con la fecha de hoy.')) return;
+                decidir(evidencia, 'aceptar', '', btnAceptar);
+            });
+
+            btnRechazar.addEventListener('click', function () {
+                if (!panelRechazo.hidden) { panelRechazo.hidden = true; return; }
+                panelRechazo.hidden = false;
+                panelRechazo.querySelector('textarea').focus();
+            });
+
+            function montarPanel() {
+                var etiqueta = document.createElement('label');
+                etiqueta.className = 'card-kicker';
+                etiqueta.textContent = 'Motivo del rechazo';
+                var area = document.createElement('textarea');
+                area.maxLength = 500;
+                area.placeholder = 'Ej: la foto no se ve el matafuego, sacala de cerca';
+                var ayuda = document.createElement('p');
+                ayuda.className = 'ayuda';
+                ayuda.textContent = 'Es lo que recibe el responsable por WhatsApp. Sin motivo no puede resubir.';
+                var confirmar = document.createElement('button');
+                confirmar.type = 'button';
+                confirmar.className = 'btn btn-confirmar';
+                confirmar.textContent = 'Confirmar rechazo';
+                confirmar.addEventListener('click', function () {
+                    if (!area.value.trim()) { mostrarAviso('Escribí el motivo del rechazo.', true); area.focus(); return; }
+                    decidir(evidencia, 'rechazar', area.value.trim(), confirmar);
+                });
+                panelRechazo.append(labela, area, ayuda, confirmar);
+            }
+            montarPanel();
+
+            tarjeta.append(cabecera, img, acciones, panelRechazo);
+            return tarjeta;
+        }
+
+        fetch(document.body.dataset.datosUrl, {
+            method: 'GET',
+            cache: 'no-store',
+            referrerPolicy: 'no-referrer',
+            headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+        }).then(function (r) {
+            return r.text().then(function (texto) {
+                var datos;
+                try { datos = JSON.parse(texto); }
+                catch (e) { throw new Error('El servidor devolvió una respuesta inesperada (HTTP ' + r.status + ').'); }
+                if (!r.ok) throw new Error(datos.error || 'El enlace no es válido o ya venció.');
+                return datos;
+            });
+        }).then(function (datos) {
+            document.getElementById('loading').hidden = true;
+            document.getElementById('empresa').textContent = datos.empresa;
+            document.getElementById('area').textContent = datos.area;
+            document.getElementById('hero-meta').hidden = false;
+
+            if (!datos.pendientes.length) {
+                document.getElementById('vacio').hidden = false;
+                return;
+            }
+
+            document.getElementById('pending-head').hidden = false;
+            document.getElementById('pending-count').textContent = datos.pendientes.length;
+
+            var cargas = datos.pendientes.map(function (evidencia) {
+                var tarjeta = construirTarjeta(evidencia);
+                cola.appendChild(tarjeta);
+                var img = tarjeta.querySelector('.foto');
+                return pintarFoto(evidencia, img);
+            });
+            return Promise.all(cargas);
+        }).catch(function (error) {
+            mostrarError(error.message);
+        });
+    })();
+    </script>
+</body>
+</html>
