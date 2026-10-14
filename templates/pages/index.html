@@ -345,7 +345,12 @@
         // Redirigir a la URL pasando los parámetros mediante GET
         window.location.href = '?cliente=' + clienteId ;
     }else {
-        alert('Por favor, selecciona un cliente.');
+        ANDialog.alert({
+            titulo: 'Falta elegir la empresa',
+            mensaje: 'Elegí una empresa para ver el tablero.',
+            confirmar: 'Entendido',
+            tono: 'aviso'
+        });
     }
   });
 
@@ -357,7 +362,12 @@
       if (clienteId) {
           window.location.href = `{% url 'syh:generar_resumen' %}?cliente=${clienteId}`;
       } else {
-          alert('Por favor selecciona un cliente');
+          ANDialog.alert({
+            titulo: 'Falta elegir la empresa',
+            mensaje: 'No se puede generar el resumen sin una empresa.',
+            confirmar: 'Entendido',
+            tono: 'aviso'
+          });
       }
     });
   }

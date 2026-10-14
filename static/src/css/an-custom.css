@@ -499,3 +499,41 @@
 
 .an-combo--inactivo .an-combo__input { opacity: .7; }
 .an-combo__list[hidden], .an-combo__vacio[hidden] { display: none; }
+
+/* AN & Asociados — diálogos de confirmación y aviso (src/js/an-dialog.js)
+   Reemplazan a window.confirm() y window.alert(), que se dibujan con el
+   estilo del sistema operativo y rompen el conjunto. Sin prefijo de contexto
+   porque la página pública de la bandeja de revisión también los usa. */
+.an-dialog {
+  position: fixed; inset: 0; z-index: 2000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; background: rgb(16 32 30 / 55%);
+}
+.an-dialog[hidden] { display: none !important; }
+.an-dialog__tarjeta {
+  width: min(420px, 100%); padding: 26px 24px 22px; text-align: center;
+  border-radius: var(--an-radius-lg); background: var(--an-color-surface);
+  box-shadow: var(--an-shadow-lg);
+}
+.an-dialog__icono {
+  width: 52px; height: 52px; margin: 0 auto 14px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--an-color-primary); background: var(--an-color-surface-soft);
+  font-size: 26px; font-weight: 800;
+}
+.an-dialog__icono--aviso   { color: var(--an-color-warning); background: var(--an-color-warning-soft); }
+.an-dialog__icono--peligro { color: var(--an-color-danger);  background: var(--an-color-danger-soft); }
+.an-dialog__icono--exito   { color: var(--an-color-success); background: var(--an-color-success-soft); }
+.an-dialog__titulo { margin: 0 0 8px; font-size: 20px; font-weight: 800; }
+.an-dialog__texto { margin: 0 0 20px; color: var(--an-color-muted); font-size: 14px; line-height: 1.6; }
+.an-dialog__acciones { display: flex; gap: 10px; }
+.an-btn {
+  flex: 1; min-height: 44px; padding: 11px 16px;
+  border: 0; border-radius: var(--an-radius-sm);
+  font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
+}
+.an-btn[hidden] { display: none; }
+.an-btn--primario { color: #fff; background: var(--an-color-primary); }
+.an-btn--primario:hover { background: var(--an-color-primary-strong); }
+.an-btn--fantasma { color: var(--an-color-text); background: var(--an-color-surface-soft); }
+.an-btn--fantasma:hover { background: #e4ebdb; }

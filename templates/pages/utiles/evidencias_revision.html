@@ -8,6 +8,7 @@
     <title>Revisión de evidencias | AN &amp; Asociados</title>
     <link rel="icon" href="{% static 'assets/images/favicon.ico' %}">
     <link rel="stylesheet" href="{% static 'src/css/an-custom.css' %}">
+    <script src="{% static 'src/js/an-dialog.js' %}"></script>
     <style>
         :root {
             color-scheme: light;
@@ -399,8 +400,18 @@ campoRevisor.addEventListener('change', function () {
             panelRechazo.hidden = true;
 
             btnAceptar.addEventListener('click', function () {
-                if (!window.confirm('¿Aceptar esta evidencia?\n\nEl hallazgo va a quedar como Cumplido con la fecha de hoy.')) return;
-                decidir(evidencia, 'aceptar', '', btnAceptar, tarjeta);
+                // Antes era un window.confirm: el recuadro del sistema operativo
+                // caia en medio de una pagina con el diseno de AN y, desde el
+                // celular, tapaba la foto que hay que estar mirando.
+                ANDialog.confirm({
+                    titulo: '¿Aceptar esta evidencia?',
+                    mensaje: 'El hallazgo va a quedar como Cumplido con la fecha de hoy.',
+                    confirmar: 'Aceptar y cerrar',
+                    tono: 'exito'
+                }).then(function (ok) {
+                    if (!ok) return;
+                    decidir(evidencia, 'aceptar', '', btnAceptar, tarjeta);
+                });
             });
 
             btnRechazar.addEventListener('click', function () {
