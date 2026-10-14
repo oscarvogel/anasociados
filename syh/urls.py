@@ -13,6 +13,7 @@ urlpatterns = [
     path('movimientos/', views.visualizar_movimientos, name='visualizar_movimientos'),
     # El pk de Movimientos es un string (uuid recortado), no un entero.
     path('movimientos/<str:movimiento_id>/evidencias/', views.hallazgo_evidencias, name='hallazgo_evidencias'),
+    path('movimientos/<str:movimiento_id>/actualizar/', views.hallazgo_actualizar, name='hallazgo_actualizar'),
     path('imprimir_movimientos', views.imprimir_movimientos, name='imprimir_movimientos'),
     path('obtener-areas/', views.obtener_areas, name='obtener_areas'),
     path('api/obtener-areas-vue/', views.obtener_areas_vue, name='obtener_areas_vue'),

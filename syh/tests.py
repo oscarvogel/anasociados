@@ -139,6 +139,147 @@ class VistaHallazgosTest(TestCase):
         c = self.client.get(self.url)
         self.assertEqual(c.context["segment"], "hallazgos")
 
+    # --- filtros -------------------------------------------------------
+
+    def test_filtrar_por_empresa(self):
+        beta = self.empresa("CLBETA", "Empresa Beta")
+        self.hallazgo(self.cliente, 1, "De Alfa")
+        self.hallazgo(beta, 1, "De Beta")
+        self.client.force_login(self.superusuario)
+        c = self.client.get(self.url, {"empresa": beta.pk}).context
+        self.assertEqual(len(c["grupos"]), 1)
+        self.assertEqual(c["grupos"][0]["empresa"].nombre, "Empresa Beta")
+
+    def test_usuario_normal_no_puede_ver_otra_empresa(self):
+        beta = self.empresa("CLBETA", "Empresa Beta")
+        self.hallazgo(beta, 1, "Secreto de Beta")
+        c = self.client.get(self.url, {"empresa": beta.pk}).context
+        self.assertEqual(c["grupos"], [], "no puede acotar a una empresa que no es suya")
+
+    def test_filtrar_por_estado(self):
+        self.hallazgo(self.cliente, 1, "Abierto", dias=-5)
+        self.hallazgo(self.cliente, 2, "Cerrado", dias=-900, estado="Cumplido")
+        self.client.force_login(self.superusuario)
+        c = self.client.get(self.url, {"estado": "Cumplido"}).context
+        self.assertEqual(c["total_general"], 1)
+        self.assertEqual(c["grupos"][0]["hallazgos"][0].hallazgo, "Cerrado")
+
+    def test_estado_inventado_se_ignora(self):
+        self.hallazgo(self.cliente, 1, "Algo", dias=-5)
+        self.client.force_login(self.superusuario)
+        c = self.client.get(self.url, {"estado": "Inventado"}).context
+        # Sin estados validos, cae al default de abiertos.
+        self.assertEqual(c["total_general"], 1)
+
+    def test_vista_por_vencidos(self):
+        self.hallazgo(self.cliente, 1, "Vencido", dias=-3)
+        self.hallazgo(self.cliente, 2, "Por vencer", dias=3)
+        c = self.client.get(self.url, {"vista": "vencidos"}).context
+        self.assertEqual(c["total_general"], 1)
+        self.assertEqual(c["grupos"][0]["hallazgos"][0].hallazgo, "Vencido")
+
+    def test_los_contadores_no_cambian_al_filtrar(self):
+        """Si no, al filtrar por vencidos el contador de vencidos daria 0."""
+        self.hallazgo(self.cliente, 1, "Vencido", dias=-3)
+        self.hallazgo(self.cliente, 2, "Por vencer", dias=3)
+        base = self.client.get(self.url).context
+        filtrado = self.client.get(self.url, {"vista": "vencidos"}).context
+        self.assertEqual(filtrado["vencidos_general"], base["vencidos_general"])
+        self.assertEqual(filtrado["por_vencer_general"], base["por_vencer_general"])
+
+    def test_vista_inventada_cae_a_la_default(self):
+        self.hallazgo(self.cliente, 1, "Algo", dias=-3)
+        c = self.client.get(self.url, {"vista": "inventada"}).context
+        self.assertEqual(c["vista"], "pendientes")
+
+    # --- edicion -------------------------------------------------------
+
+    def test_actualizar_el_estado(self):
+        movimiento = self.hallazgo(self.cliente, 1, "Para cambiar")
+        r = self.client.post(
+            reverse("syh:hallazgo_actualizar", args=[movimiento.pk]),
+            {"estado": "Cumplido"},
+        )
+        self.assertEqual(r.status_code, 200)
+        movimiento.refresh_from_db()
+        self.assertEqual(movimiento.estado, "Cumplido")
+
+    def test_marcar_cumplido_pone_la_fecha_de_realizado(self):
+        """Un hallazgo cerrado sin fecha de cuando se hizo no sirve para el resumen."""
+        import django.utils.timezone
+
+        movimiento = self.hallazgo(self.cliente, 1, "Para cerrar")
+        self.assertIsNone(movimiento.fecha_realizado)
+        self.client.post(
+            reverse("syh:hallazgo_actualizar", args=[movimiento.pk]),
+            {"estado": "Cumplido"},
+        )
+        movimiento.refresh_from_db()
+        self.assertEqual(movimiento.fecha_realizado, django.utils.timezone.localdate())
+
+    def test_actualizar_responsable_observaciones_y_fecha(self):
+        movimiento = self.hallazgo(self.cliente, 1, "Para tocar")
+        self.client.post(
+            reverse("syh:hallazgo_actualizar", args=[movimiento.pk]),
+            {
+                "estado": "Gestión en Curso",
+                "responsable": "Marta",
+                "fecha_cumplimiento": "2026-12-31",
+                "observaciones": "Se hablo con el cliente",
+            },
+        )
+        movimiento.refresh_from_db()
+        self.assertEqual(movimiento.responsable, "Marta")
+        self.assertEqual(movimiento.observaciones, "Se hablo con el cliente")
+        self.assertEqual(movimiento.fecha_cumplimiento, datetime.date(2026, 12, 31))
+
+    def test_estado_inventado_en_la_edicion_se_rechaza(self):
+        movimiento = self.hallazgo(self.cliente, 1, "Algo")
+        r = self.client.post(
+            reverse("syh:hallazgo_actualizar", args=[movimiento.pk]),
+            {"estado": "Inventado"},
+        )
+        self.assertEqual(r.status_code, 400)
+        movimiento.refresh_from_db()
+        self.assertEqual(movimiento.estado, "Incumplido")
+
+    def test_fecha_invalida_se_rechaza(self):
+        movimiento = self.hallazgo(self.cliente, 1, "Algo")
+        r = self.client.post(
+            reverse("syh:hallazgo_actualizar", args=[movimiento.pk]),
+            {"fecha_cumplimiento": "el jueves que viene"},
+        )
+        self.assertEqual(r.status_code, 400)
+
+    def test_no_se_actualiza_sin_nada_que_cambiar(self):
+        movimiento = self.hallazgo(self.cliente, 1, "Algo")
+        r = self.client.post(
+            reverse("syh:hallazgo_actualizar", args=[movimiento.pk]), {}
+        )
+        self.assertEqual(r.status_code, 400)
+
+    def test_no_se_edita_un_hallazgo_de_otra_empresa(self):
+        beta = self.empresa("CLBETA", "Empresa Beta")
+        ajeno = self.hallazgo(beta, 1, "De Beta")
+        r = self.client.post(
+            reverse("syh:hallazgo_actualizar", args=[ajeno.pk]),
+            {"estado": "Cumplido"},
+        )
+        self.assertEqual(r.status_code, 404)
+        ajeno.refresh_from_db()
+        self.assertEqual(ajeno.estado, "Incumplido")
+
+    def test_la_edicion_pide_sesion(self):
+        movimiento = self.hallazgo(self.cliente, 1, "Algo")
+        self.client.logout()
+        r = self.client.post(
+            reverse("syh:hallazgo_actualizar", args=[movimiento.pk]),
+            {"estado": "Cumplido"},
+        )
+        self.assertIn(r.status_code, (302, 403))
+        movimiento.refresh_from_db()
+        self.assertEqual(movimiento.estado, "Incumplido")
+
     def hallazgo(self, empresa, secuencia, texto, dias=-10, estado="Incumplido"):
         # El id va con contador, corto a proposito: `syh_evidencia.movimiento`
         # queda en varchar(10) cuando la base se construye desde cero, asi que
@@ -239,9 +380,15 @@ class VistaHallazgosTest(TestCase):
 
     def test_con_busqueda_si_busca_tambien_los_cerrados(self):
         self.hallazgo(self.cliente, 1, "Fuga en el tanque", dias=-900, estado="Cumplido")
+        self.hallazgo(self.cliente, 2, "Otra cosa abierta", dias=-2)
         c = self.client.get(self.url, {"q": "Fuga"}).context
-        self.assertEqual(c["total_general"], 1, "si estas buscando algo, lo tenes que encontrar")
-        self.assertEqual(c["incluye_cerrados"], True)
+        self.assertEqual(
+            c["total_general"], 1,
+            "si estas buscando algo, lo tenes que encontrar este o no",
+        )
+        # Y el filtro de estado explicito sigue mandando sobre la busqueda.
+        solo_abiertos = self.client.get(self.url, {"q": "Fuga", "estado": "Incumplido"}).context
+        self.assertEqual(solo_abiertos["total_general"], 0)
 
     # --- recorte --------------------------------------------------------
 

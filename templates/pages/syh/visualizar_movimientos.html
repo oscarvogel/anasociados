@@ -31,24 +31,52 @@
 
     {% if not busqueda %}
     <div class="hl-tarjetas">
-        <div class="hl-tarjeta hl-tarjeta--roja">
+        <a class="hl-tarjeta hl-tarjeta--roja {% if vista == 'vencidos' %}hl-tarjeta--activa{% endif %}"
+           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista=vencidos{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}">
             <span class="hl-numero">{{ vencidos_general }}</span>
             <span class="hl-rotulo">Vencidos</span>
-        </div>
-        <div class="hl-tarjeta hl-tarjeta--ambar">
+        </a>
+        <a class="hl-tarjeta hl-tarjeta--ambar {% if vista == 'por_vencer' %}hl-tarjeta--activa{% endif %}"
+           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista=por_vencer{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}">
             <span class="hl-numero">{{ por_vencer_general }}</span>
             <span class="hl-rotulo">Vencen en 5 días</span>
-        </div>
-        <div class="hl-tarjeta hl-tarjeta--verde">
+        </a>
+        <a class="hl-tarjeta hl-tarjeta--verde {% if vista == 'por_revisar' %}hl-tarjeta--activa{% endif %}"
+           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista=por_revisar{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}">
             <span class="hl-numero">{{ por_revisar_general }}</span>
             <span class="hl-rotulo">Con evidencia por revisar</span>
-        </div>
-        <div class="hl-tarjeta">
-            <span class="hl-numero">{{ empresas_con_pendientes }}</span>
-            <span class="hl-rotulo">Empresas con pendientes</span>
-        </div>
+        </a>
+        <a class="hl-tarjeta {% if vista == 'pendientes' %}hl-tarjeta--activa{% endif %}"
+           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista=pendientes{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}">
+            <span class="hl-numero">{{ total_general }}</span>
+            <span class="hl-rotulo">Todos los abiertos</span>
+        </a>
     </div>
     {% endif %}
+
+    {# Filtros como links, no como un formulario con boton "Aplicar". #}
+    <div class="hl-filtros">
+        <span class="hl-filtros__rotulo">Empresa</span>
+        <a class="hl-pastilla {% if not empresa_sel %}hl-pastilla--activa{% endif %}"
+           href="?vista={{ vista }}{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">Todas</a>
+        {% for pk, emp in empresas_disponibles.items %}
+            <a class="hl-pastilla {% if empresa_sel == pk %}hl-pastilla--activa{% endif %}"
+               href="?empresa={{ pk|urlencode }}&vista={{ vista }}{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">{{ emp.nombre }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="hl-filtros">
+        <span class="hl-filtros__rotulo">Estado</span>
+        <a class="hl-pastilla {% if not estados_sel %}hl-pastilla--activa{% endif %}"
+           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}">Abiertos</a>
+        {% for estado in estados_disponibles %}
+            <a class="hl-pastilla {% if estado in estados_sel %}hl-pastilla--activa{% endif %}"
+               href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}&estado={{ estado|urlencode }}">{{ estado }}</a>
+        {% endfor %}
+        {% if estados_sel %}
+            <a class="hl-pastilla hl-pastilla--clear" href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}">Limpiar estado</a>
+        {% endif %}
+    </div>
 
     {% for grupo in grupos %}
         <section class="hl-empresa">
@@ -105,6 +133,39 @@
                             {% endif %}
                         </div>
                         <div class="hl-evidencias" hidden></div>
+
+                        <div class="hl-editar">
+                            <button type="button" class="hl-editar__toggle" data-url="{% url 'syh:hallazgo_actualizar' mov.id %}">
+                                Editar
+                            </button>
+                            <form class="hl-form" hidden>
+                                <label>
+                                    Estado
+                                    <select name="estado">
+                                        {% for estado in estados_disponibles %}
+                                            <option value="{{ estado }}" {% if estado == mov.estado %}selected{% endif %}>{{ estado }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </label>
+                                <label>
+                                    Responsable
+                                    <input type="text" name="responsable" maxlength="80" value="{{ mov.responsable }}">
+                                </label>
+                                <label>
+                                    Vencimiento
+                                    <input type="date" name="fecha_cumplimiento"
+                                           value="{{ mov.fecha_cumplimiento|date:'Y-m-d' }}">
+                                </label>
+                                <label class="hl-form__ancho">
+                                    Observación
+                                    <textarea name="observaciones" rows="2" maxlength="1000">{{ mov.observaciones|default:'' }}</textarea>
+                                </label>
+                                <div class="hl-form__acciones">
+                                    <button type="submit" class="hl-boton hl-boton--principal">Guardar</button>
+                                    <span class="hl-form__estado"></span>
+                                </div>
+                            </form>
+                        </div>
                     </li>
                 {% endfor %}
 
@@ -225,6 +286,54 @@
     }
     .hl-lupa img { max-width: 100%; max-height: 92vh; border-radius: 8px; }
 
+    /* Filtros: links, no un formulario con boton "Aplicar". */
+    .hl-tarjeta { text-decoration: none; color: inherit; }
+    .hl-tarjeta:hover { box-shadow: 0 4px 14px rgba(25, 55, 51, .10); }
+    .hl-tarjeta--activa { outline: 2px solid #2c5f47; outline-offset: -2px; }
+
+    .hl-filtros {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+        margin-bottom: 10px;
+    }
+    .hl-filtros__rotulo {
+        min-width: 58px; color: #6b7a74; font-size: 11px; font-weight: 800;
+        letter-spacing: .05em; text-transform: uppercase;
+    }
+    .hl-pastilla {
+        padding: 5px 12px; border: 1px solid #d9e3de; border-radius: 20px;
+        background: #fff; color: #3f514b; font-size: 12.5px; font-weight: 600;
+        text-decoration: none; white-space: nowrap;
+    }
+    .hl-pastilla:hover { background: #f2f7f4; }
+    .hl-pastilla--activa { background: #23473a; border-color: #23473a; color: #fff; }
+    .hl-pastilla--clear { border-style: dashed; color: #8a3521; }
+
+    /* Edicion en linea. */
+    .hl-editar { padding: 0 18px 14px; }
+    .hl-editar__toggle {
+        padding: 5px 12px; border: 1px solid #d9e3de; border-radius: 20px;
+        background: #fff; color: #4a5a54; font: inherit; font-size: 12px;
+        font-weight: 700; cursor: pointer;
+    }
+    .hl-editar__toggle:hover { background: #f2f7f4; }
+    .hl-form {
+        display: grid; gap: 10px; margin-top: 10px; padding: 14px;
+        border: 1px solid #e2e9e5; border-radius: 10px; background: #f9fbfa;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+    .hl-form label { display: block; color: #6b7a74; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .hl-form input, .hl-form select, .hl-form textarea {
+        width: 100%; margin-top: 4px; padding: 8px 10px; font: inherit; font-size: 14px;
+        font-weight: 400; text-transform: none; letter-spacing: normal;
+        border: 1px solid #d9e3de; border-radius: 8px; background: #fff; color: inherit;
+    }
+    .hl-form__ancho { grid-column: 1 / -1; }
+    .hl-form__acciones { display: flex; align-items: center; gap: 10px; }
+    .hl-boton { padding: 9px 16px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+    .hl-boton--principal { background: #23473a; color: #fff; }
+    .hl-form__estado { color: #1d6b55; font-size: 13px; }
+    .hl-form__estado.is-error { color: #a13b26; }
+
     @media (max-width: 900px) {
         .hl-tarjetas { grid-template-columns: repeat(2, 1fr); }
     }
@@ -305,6 +414,14 @@
             return;
         }
 
+        var editar = evento.target.closest('.hl-editar__toggle');
+        if (editar) {
+            var form = editar.closest('.hl-editar').querySelector('.hl-form');
+            form.hidden = !form.hidden;
+            if (!form.hidden) form.querySelector('select, input').focus();
+            return;
+        }
+
         if (evento.target.matches('.hl-foto-tarjeta img')) {
             ampliar(evento.target);
             return;
@@ -316,6 +433,46 @@
             url.searchParams.set('todos', '1');
             window.location.href = url.toString();
         }
+    });
+
+    // Guardar la edicion. Va con CSRF porque es un usuario en su sesion; el
+    // token lo pasa la plantilla.
+    document.addEventListener('submit', function(evento) {
+        var form = evento.target.closest('.hl-form');
+        if (!form) return;
+        evento.preventDefault();
+
+        var url = form.closest('.hl-editar').querySelector('.hl-editar__toggle').dataset.url;
+        var aviso = form.querySelector('.hl-form__estado');
+        var boton = form.querySelector('button[type=submit]');
+        boton.disabled = true;
+        aviso.className = 'hl-form__estado';
+        aviso.textContent = 'Guardando…';
+
+        fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: new URLSearchParams(new FormData(form)),
+        }).then(function(r) {
+            return r.json().then(function(datos) {
+                if (!r.ok) throw new Error(datos.error || 'No se pudo guardar.');
+                return datos;
+            });
+        }).then(function() {
+            aviso.textContent = 'Guardado. Recargando…';
+            // Recargar es lo simple y lo seguro: los contadores y las
+            // secciones se recalculan en el servidor y no hay que
+            // reproducir esa aritmetica en el navegador.
+            window.location.reload();
+        }).catch(function(err) {
+            aviso.className = 'hl-form__estado is-error';
+            aviso.textContent = err.message;
+            boton.disabled = false;
+        });
     });
 </script>
 {% endblock extra_js %}
