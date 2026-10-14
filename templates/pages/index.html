@@ -261,9 +261,43 @@
 
 <script>
   var datos = {{ datos_grafico|safe }};
-  {% comment %} var colores = ['#28a745', '#ffc107', '#dc3545']; // Verde, rojo, amarillo {% endcomment %}
   var total = datos.reduce((sum, item) => sum + item.value, 0);
-  
+
+  /* Los colores salen de las variables CSS del design system en vez de estar
+     escritos aca: si AN cambia un tono, el gráfico sigue sin que nadie toque
+     este archivo. Antes no tenía palette y caía en la de Chart.js, que es
+     azul, rosa y naranja. */
+  var estilosAN = getComputedStyle(document.documentElement);
+  function tokenAN(nombre, respaldo) {
+      return (estilosAN.getPropertyValue(nombre) || '').trim() || respaldo;
+  }
+
+  /* Los tres estados de Movimientos.ESTADO_LISTADO con color semantico: lo que
+     se cumplio en verde, lo que esta en curso en ambar, lo incumplido en rojo. */
+  var COLOR_POR_ESTADO = {
+      'Cumplido':         tokenAN('--an-color-success'),
+      'Gestión en Curso': tokenAN('--an-color-warning'),
+      'Incumplido':       tokenAN('--an-color-danger')
+  };
+  /* Si alguna vez aparece un estado nuevo, cae en esta paleta en vez de volver
+     al azul/rosa/naranja. */
+  var PALETA_AN = [
+      tokenAN('--an-color-primary'),
+      tokenAN('--an-color-primary-strong'),
+      '#5D8B50', '#D4E7D3', '#E6B759', '#A33E36'
+  ];
+  function colorDe(etiqueta, indice) {
+      return COLOR_POR_ESTADO[etiqueta] || PALETA_AN[indice % PALETA_AN.length];
+  }
+
+  /* 57.51% es ruido: se muestra un decimal y se cae el ,0. */
+  function porcentajeDe(valor) {
+      if (!total) return '0%';
+      var texto = (valor / total * 100).toFixed(1);
+      if (texto.slice(-2) === '.0') texto = texto.slice(0, -2);
+      return texto + '%';
+  }
+
   var ctx_area = document.getElementById('graficoAreas').getContext('2d');
   var chartTareas = new Chart(ctx_area, {
       type: 'doughnut',
@@ -271,42 +305,50 @@
           labels: datos.map(item => item.label),
           datasets: [{
               data: datos.map(item => item.value),
-              {% comment %} backgroundColor: colores {% endcomment %}
+              backgroundColor: datos.map((item, i) => colorDe(item.label, i)),
+              /* Borde del color de la card: separa los sectores sin ponerles
+                 una linea oscura encima. */
+              borderColor: tokenAN('--an-color-surface', '#ffffff'),
+              borderWidth: 3,
+              hoverOffset: 8
           }]
       },
       options: {
           responsive: true,
+          /* El contenedor tiene alto fijo (an-chart-frame--compact), asi que
+             el lienzo se ajusta ahi en vez de impose al alto del bloque. */
+          maintainAspectRatio: false,
+          cutout: '66%',
           plugins: {
               tooltip: {
                   callbacks: {
                       label: function(tooltipItem) {
-                          var value = tooltipItem.raw;
-                          var porcentaje = (value / total * 100).toFixed(2);
-                          return `${tooltipItem.label}: ${porcentaje}%`;
+                          return tooltipItem.label + ': ' + porcentajeDe(tooltipItem.raw);
                       }
                   }
               },
               legend: {
+                  /* Abajo: arriba competia con el anillo y dejaba la leyenda
+                     apretada contra el titulo. */
+                  position: 'bottom',
                   labels: {
+                      usePointStyle: true,
+                      pointStyle: 'circle',
+                      boxWidth: 9,
+                      boxHeight: 9,
+                      padding: 18,
+                      color: tokenAN('--an-color-muted', '#55635a'),
+                      font: { size: 13, weight: '600' },
                       generateLabels: function(chart) {
                           var data = chart.data;
                           return data.labels.map(function(label, index) {
-                              var value = data.datasets[0].data[index];
-                              var porcentaje = (value / total * 100).toFixed(2);
                               return {
-                                  text: `${label}: ${porcentaje}%`,
+                                  text: label + ': ' + porcentajeDe(data.datasets[0].data[index]),
                                   fillStyle: data.datasets[0].backgroundColor[index],
+                                  strokeStyle: data.datasets[0].backgroundColor[index],
                                   hidden: isNaN(data.datasets[0].data[index]),
-                                  lineCap: 'butt',
-                                  lineDash: [],
-                                  lineDashOffset: 0,
-                                  lineJoin: 'miter',
-                                  borderCapStyle: 'butt',
-                                  borderDash: [],
-                                  borderDashOffset: 0,
-                                  borderJoinStyle: 'miter',
                                   pointStyle: 'circle',
-                                  rotation: 0,
+                                  index: index
                               };
                           });
                       }
