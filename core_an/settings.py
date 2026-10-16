@@ -328,6 +328,11 @@ ALERTA_WHATSAPP_ADMINISTRADORES = (
 if DEBUG:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True  # Para que las excepciones se propaguen y no se silencien
+    # En modo eager no hay worker ni backend de resultados, asi que Celery no
+    # guarda el estado de la tarea. Sin esto, el polling de /progreso/ se queda
+    # en PENDING para siempre. Lo guardamos en el backend django-db igual que
+    # en produccion, para que el codigo de la vista sea el mismo en los dos.
+    CELERY_TASK_STORE_EAGER_RESULT = True
 
 # LOGGING = {
 #     'version': 1,

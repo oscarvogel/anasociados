@@ -6,11 +6,13 @@
 {% block content %}
 <div class="container mt-4">
     <h5 class="an-page-title an-page-header__title">Resumen mensual</h5>
+
     <div class="card an-card">
         <div class="card-header an-card-header"><h5>Seleccionar cliente</h5></div>
         <div class="card-body an-card-body">
             <div class="row">
                 <div class="col-md-4 mb-3">
+                    <label for="cliente-select">Cliente</label>
                     <select id="cliente-select" class="form-control an-field">
                         <option value="">--Selecciona un cliente--</option>
                         {% for cliente in clientes %}
@@ -22,24 +24,25 @@
                 </div>
             </div>
             <div class="row">
-                <button type="button" id="resumen-button" class="btn btn-secondary" onclick="iniciarTarea()">Generar</button>
-                <div class="progress mt-3 container" >
-                    <div id="progress-bar" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                    </div>
+                <div class="col-12">
+                    <button type="button" id="resumen-button" class="btn btn-secondary">Generar</button>
                 </div>
+            </div>
+
+            <div class="mt-3" id="task-progress" style="display:none;">
+                <div class="progress">
+                    <div id="progress-bar" class="progress-bar" role="progressbar"
+                         aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%;"></div>
+                </div>
+                <p id="estado-tarea" class="text-muted mt-2 mb-0" role="status" aria-live="polite"></p>
             </div>
         </div>
     </div>
-    <div class="container">
-        <div class="progress mt-3" id="task-progress"> 
-        </div>
-        <hr>
-        <h5 class="text-center">Descargar archivos</h5>
-        <div class="row" id="descarga-archivos">
-            <div class="col-md-6">
-                {% comment %} <a class="btn btn-primary" href="{% url 'syh:download_file' 'resumen_mensual.pdf' %}" download>Descargar archivo</a> {% endcomment %}
-                <a class="btn btn-primary" href="#" id="download-link" download>Descargar archivo</a>
-            </div>
+
+    <div class="card an-card mt-3" id="descarga-archivos" style="display:none;">
+        <div class="card-header an-card-header"><h5>Descargar resumen</h5></div>
+        <div class="card-body an-card-body">
+            <a class="btn btn-primary" href="#" id="download-link" download>Descargar resumen mensual (PDF)</a>
         </div>
     </div>
 </div>
@@ -47,60 +50,90 @@
 
 {% block extra_js %}
 <script>
-    //implementacion del boton de resumen
-    {% comment %} document.getElementById('resumen-button').addEventListener('click', function() {
-        const clienteId = document.getElementById('cliente-select').value;
-        if (clienteId) {
-            window.location.href = `{% url 'syh:generar_resumen' %}?cliente=${clienteId}`;
-        } else {
-            alert('Por favor selecciona un cliente');
+    (function () {
+        var generarUrl = "{% url 'syh:generar_resumen' %}";
+        var progresoUrl = "{% url 'syh:progreso_tarea' 'task_id_placeholder' %}";
+        var downloadUrl = "{% url 'syh:download_file' 'pdf_file_placeholder' %}";
+
+        var boton = document.getElementById('resumen-button');
+        var select = document.getElementById('cliente-select');
+        var contenedorProgreso = document.getElementById('task-progress');
+        var barra = document.getElementById('progress-bar');
+        var estado = document.getElementById('estado-tarea');
+        var descarga = document.getElementById('descarga-archivos');
+        var enlace = document.getElementById('download-link');
+
+        function alerta(titulo, mensaje, tono) {
+            if (window.ANDialog) {
+                ANDialog.alert({titulo: titulo, mensaje: mensaje, confirmar: 'Entendido', tono: tono});
+            } else {
+                window.alert(mensaje);
+            }
         }
-    }); {% endcomment %}
-    function mostrarDivDescarga() { 
-        document.getElementById('descarga-archivos').style.display = 'block';
-    }
 
-    function iniciarTarea() {
-        var clienteId = document.getElementById('cliente-select').value
-        $.ajax({
-            url: "{% url 'syh:generar_resumen'  %}?cliente=" + clienteId,
-            type: "GET",
-            success: function(response) {
-                consultarEstado(response.task_id);
+        function setProgreso(porcentaje) {
+            if (porcentaje < 0 || isNaN(porcentaje)) { porcentaje = 0; }
+            if (porcentaje > 100) { porcentaje = 100; }
+            barra.style.width = porcentaje + '%';
+            barra.setAttribute('aria-valuenow', porcentaje);
+        }
+
+        function iniciarTarea() {
+            var clienteId = select.value;
+            if (!clienteId) {
+                alerta('Falta elegir la empresa', 'Elegí una empresa para generar el resumen.', 'aviso');
+                return;
             }
-        });
-    }
 
-    function consultarEstado(task_id) {
-        $.ajax({
-            url: "{% url 'syh:progreso_tarea' 'task_id_placeholder' %}".replace('task_id_placeholder', task_id),
-            type: "GET",
-            success: function(response) {
-                //console.log(response);
-                if (response.state === 'SUCCESS') {
-                    $('#progress-bar').css('width', '100%').attr('aria-valuenow', 100);
-                    // Mostrar el div de descarga 
-                    mostrarDivDescarga(); 
-                    // Actualizar el enlace de descarga con la URL del PDF generado
-                    var downloadLink = document.getElementById('download-link');
-                    var pdfFilename = response.pdf_file.split('/').pop();
-                    downloadLink.href = "{% url 'syh:download_file' 'pdf_file_placeholder' %}".replace('pdf_file_placeholder', pdfFilename);
-                    downloadLink.download = pdfFilename;
+            boton.disabled = true;
+            descarga.style.display = 'none';
+            contenedorProgreso.style.display = 'block';
+            estado.textContent = 'Iniciando...';
+            setProgreso(0);
 
-                    // Opcional: Descargar el PDF automáticamente
-                    downloadLink.click();
-                } else if (response.state === 'FAILURE') {
-                    //progress-bar.innerHTML += `<p class="danger">Error: ${response.message}</p>`;
-                    console.log(response.message);
-                }else {
-                    var progreso = (response.current / response.total) * 100;
-                    $('#progress-bar').css('width', progreso + '%').attr('aria-valuenow', progreso);
-                    setTimeout(function() {
-                        consultarEstado(task_id);
-                    }, 1000);
+            $.ajax({
+                url: generarUrl + '?cliente=' + encodeURIComponent(clienteId),
+                type: 'GET'
+            }).done(function (respuesta) {
+                consultarEstado(respuesta.task_id);
+            }).fail(function (xhr) {
+                boton.disabled = false;
+                contenedorProgreso.style.display = 'none';
+                var mensaje = (xhr.responseJSON && xhr.responseJSON.error) || 'No se pudo iniciar la generación.';
+                alerta('Error', mensaje, 'peligro');
+            });
+        }
+
+        function consultarEstado(taskId) {
+            $.ajax({
+                url: progresoUrl.replace('task_id_placeholder', taskId),
+                type: 'GET'
+            }).done(function (respuesta) {
+                if (respuesta.state === 'SUCCESS') {
+                    setProgreso(100);
+                    estado.textContent = 'Listo. Podés descargar el resumen.';
+                    var nombre = (respuesta.pdf_file || '').split('/').pop();
+                    enlace.href = downloadUrl.replace('pdf_file_placeholder', nombre);
+                    enlace.setAttribute('download', nombre);
+                    descarga.style.display = 'block';
+                    boton.disabled = false;
+                    enlace.click();
+                } else if (respuesta.state === 'FAILURE') {
+                    boton.disabled = false;
+                    setProgreso(0);
+                    alerta('No se pudo generar el resumen', respuesta.message || 'La tarea falló.', 'peligro');
+                } else {
+                    var total = respuesta.total || 100;
+                    setProgreso(Math.round((respuesta.current / total) * 100));
+                    estado.textContent = respuesta.message || 'Procesando...';
+                    setTimeout(function () { consultarEstado(taskId); }, 1000);
                 }
-            }
-        });
-    }
+            }).fail(function () {
+                setTimeout(function () { consultarEstado(taskId); }, 2000);
+            });
+        }
+
+        boton.addEventListener('click', iniciarTarea);
+    })();
 </script>
 {% endblock extra_js %}

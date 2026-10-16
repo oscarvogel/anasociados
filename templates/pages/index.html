@@ -402,7 +402,10 @@
     resumenButton.addEventListener('click', function() {
       const clienteId = document.getElementById('cliente-select').value;
       if (clienteId) {
-          window.location.href = `{% url 'syh:generar_resumen' %}?cliente=${clienteId}`;
+          // Antes pegaba directo al endpoint que genera la tarea y el navegador
+          // mostraba el JSON. Ahora lleva a la pantalla del resumen (que ya
+          // dispara la tarea y ofrece el PDF para descargar).
+          window.location.href = `{% url 'syh:generar_resumen_mensual' %}?cliente=${clienteId}`;
       } else {
           ANDialog.alert({
             titulo: 'Falta elegir la empresa',

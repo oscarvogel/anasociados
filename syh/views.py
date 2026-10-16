@@ -3,7 +3,6 @@ import datetime
 from datetime import date
 from multiprocessing import context
 import os
-from venv import logger
 import django.utils.timezone
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -11,7 +10,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import models
 from django.db.models import Count, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, FileResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from celery.result import AsyncResult
@@ -26,7 +25,6 @@ import json
 
 from usuarios.models import AreasProfile, Profile
 from utiles.impresiones import ImprimeHallazgos
-from django_celery_results.models import TaskResult
 
 
 from rest_framework import viewsets
@@ -548,126 +546,104 @@ def clientes_list(request):
 def excesos_plantilla(request):
     return render(request, 'pages/syh/excesos_velocidad.html')
 
+@login_required
 def plantilla_resumen_mensual(request):
-    try:
-        profile = Profile.objects.get(user=request.user)
-        cliente = profile.cliente  # Obtener el cliente asociado al perfil
-        cliente_id = cliente.id
-    except Profile.DoesNotExist:
-        # Si no tiene un perfil, puedes manejar el caso con un mensaje de error o redirección
-        cliente = None
-    
+    """Pantalla del resumen mensual: elige el cliente y dispara la tarea."""
     if request.user.is_superuser:
-        cliente = 'Todos'
-        nombre = 'Todos los clientes'
-        cliente_id = request.GET.get('cliente', None)
+        clientes = Cliente.objects.all().order_by('nombre')
+        cliente_id_selected = request.GET.get('cliente') or None
     else:
-        nombre = cliente.nombre
-    if cliente == 'Todos':
-        clientes = Cliente.objects.all()
-    else:
-        clientes = Cliente.objects.filter(id = cliente_id)
+        perfil = Profile.objects.filter(user=request.user).select_related('cliente').first()
+        cliente = perfil.cliente if perfil else None
+        if cliente is None:
+            # Sin perfil no hay cliente que resumir: el combo queda vacio y el
+            # boton avisa. Antes esta rama reventaba con AttributeError.
+            clientes = Cliente.objects.none()
+            cliente_id_selected = None
+        else:
+            clientes = Cliente.objects.filter(pk=cliente.pk)
+            cliente_id_selected = cliente.id
 
     context = {
-        'segment'  : 'resumen_mensual',
-        'cliente': nombre,
+        'segment': 'resumen_mensual',
         'clientes': clientes,
-        'cliente_id_selected': cliente_id,
+        'cliente_id_selected': cliente_id_selected,
     }
-    return render(request, 
-                  'pages/syh/resumen_mensual.html', context=context)
+    return render(request, 'pages/syh/resumen_mensual.html', context=context)
 
-#genera resumen mensual
+
+# Genera el resumen mensual de un cliente en segundo plano (Celery).
+@login_required
 def generar_resumen(request):
-    cliente_id = request.GET.get('cliente', None)
+    cliente_id = request.GET.get('cliente')
+    if not cliente_id:
+        return JsonResponse({'error': 'Selecciona un cliente'}, status=400)
+    if not Cliente.objects.filter(pk=cliente_id).exists():
+        return JsonResponse({'error': 'El cliente no existe'}, status=404)
 
     task = task_resumen_mensual.delay(cliente_id)
     return JsonResponse({'task_id': task.id})
 
+@login_required
 def progreso_tarea(request, task_id):
-    try:
-        # Primero intentar obtener el resultado de la base de datos
-        try:
-            print(f'Tratando de obtener el resultado de la tarea {task_id} desde la base de datos')
-            task_result = TaskResult.objects.get(task_id=task_id)
-            stored_result = json.loads(task_result.result) if task_result.result else {}
-            
-            # Si se obtuvo el resultado, devolverlo
-            response = {
-                'task_id': task_id,
-                'state': task_result.status,
-                'status': 'success'
-            }
-            print(response)
+    """Estado de la tarea, siempre con la misma forma.
 
-            if isinstance(stored_result, dict):
-                response.update({
-                    'current': stored_result.get('current', 0),
-                    'total': stored_result.get('total', 100),
-                    'message': stored_result.get('message', 'Procesando...')
-                })
-            else:
-                response.update({
-                    'pdf_file': stored_result,
-                    'message': 'Tarea finalizada exitosamente'
-                })
-                stored_result = response
-            # return result
-            return JsonResponse(stored_result)
-            
-        except TaskResult.DoesNotExist:
-            # Si no está en la base de datos, usar AsyncResult
-            result = AsyncResult(task_id)
-            
-            response = {
-                'task_id': task_id,
-                'state': result.state,
-                'status': 'success'
-            }
-            
-            if result.state == 'PROGRESS' and result.info:
-                response.update(result.info)
-            elif result.state == 'SUCCESS':
-                response.update({
-                    'current': 100,
-                    'total': 100,
-                    'message': 'Tarea completada'
-                })
-            elif result.state == 'FAILURE':
-                response.update({
-                    'state': 'FAILURE',
-                    'status': 'error',
-                    'message': str(result.info)
-                })
-            else:
-                response.update({
-                    'current': 0,
-                    'total': 100,
-                    'message': 'Tarea en proceso'
-                })
-            
-            return JsonResponse(response)
-            
-    except Exception as e:
-        logger.error(f"Error al verificar progreso: {str(e)}")
-        return JsonResponse({
-            'state': 'ERROR',
-            'status': 'error',
-            'message': str(e)
+    El backend de resultados es ``django-db``, asi que ``AsyncResult`` lee el
+    mismo registro que antes se consultaba a mano. Devolvemos siempre ``state``
+    para que el front no tenga que adivinar (antes faltaba y el polling se
+    quedaba girando para siempre).
+    """
+    result = AsyncResult(task_id)
+    estado = result.state
+
+    payload = {'task_id': task_id, 'state': estado}
+
+    if estado == 'SUCCESS':
+        salida = result.result
+        pdf_file = salida.get('pdf_file') if isinstance(salida, dict) else salida
+        payload.update({
+            'current': 100,
+            'total': 100,
+            'message': 'Tarea completada',
+            'pdf_file': pdf_file,
         })
-    
-def download_file(request, filename):
-    # Construir la ruta completa del archivo en el directorio MEDIA_ROOT
-    # file_path = os.path.join(settings.MEDIA_ROOT, filename)
-    file_path = filename
-    
-    if os.path.exists(file_path):
-        with open(file_path, 'rb') as file:
-            response = HttpResponse(file.read(), content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
+    elif estado == 'FAILURE':
+        payload.update({
+            'status': 'error',
+            'message': str(result.info),
+        })
+    elif estado in ('PROGRESS', 'STARTED') and isinstance(result.info, dict):
+        info = result.info
+        payload.update({
+            'current': info.get('current', 0),
+            'total': info.get('total') or 100,
+            'message': info.get('message', 'Procesando...'),
+        })
     else:
-        return HttpResponse("Archivo no encontrado", status=404)
+        payload.update({
+            'current': 0,
+            'total': 100,
+            'message': 'En espera...',
+        })
+
+    return JsonResponse(payload)
+
+
+@login_required
+def download_file(request, filename):
+    # El navegador manda solo el nombre del archivo: lo resolvemos SIEMPRE
+    # dentro de MEDIA_ROOT/resumenes para que no se pueda pedir otra ruta.
+    nombre = os.path.basename(filename)
+    file_path = os.path.join(settings.MEDIA_ROOT, 'resumenes', nombre)
+
+    if os.path.exists(file_path):
+        return FileResponse(
+            open(file_path, 'rb'),
+            as_attachment=True,
+            filename=nombre,
+            content_type='application/pdf',
+        )
+    return HttpResponse("Archivo no encontrado", status=404)
     
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 50

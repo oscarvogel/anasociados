@@ -98,6 +98,9 @@ class Impresiones:
         self.pdf_path = self.archivo 
         if grabar:
             print(self.pdf_path)
+            carpeta = os.path.dirname(self.pdf_path)
+            if carpeta:
+                os.makedirs(carpeta, exist_ok=True)
             # Guardar el PDF en el disco 
             with open(self.pdf_path, 'wb') as f: 
                 f.write(self.pdf_content) 
@@ -355,7 +358,7 @@ class ResumenMensual(Impresiones):
         self.archivo = "resumen_mensual.pdf"
         # self.generar_pdf()
 
-    def generar_pdf(self, task):
+    def generar_pdf(self, task=None):
         cliente = Cliente.objects.get(id=self.cliente_id)
         titulo = f'Resumen Mensual de {cliente.nombre}'
 
@@ -443,14 +446,15 @@ class ResumenMensual(Impresiones):
         avance = 0
         for movimiento in queryset:
             avance += 1
-            task.update_state(
-                state='PROGRESS',
-                meta={
-                    'current': avance,
-                    'total': len(queryset),
-                    'message': 'Procesando movimientos...'
-                }
-            )
+            if task is not None:
+                task.update_state(
+                    state='PROGRESS',
+                    meta={
+                        'current': avance,
+                        'total': len(queryset),
+                        'message': 'Procesando movimientos...'
+                    }
+                )
             self.fila -=10
             self.check_break_page()
             self.pdf.drawString(x=self.ubicacion['Fecha'], y=self.fila, text=FormatoFecha(movimiento.fecha, formato='dma'))
