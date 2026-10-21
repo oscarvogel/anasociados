@@ -421,6 +421,59 @@ def hallazgo_actualizar(request, movimiento_id):
     return JsonResponse({"ok": True, "estado": movimiento.estado})
 
 
+@require_POST
+@login_required
+def hallazgos_cerrar_masivo(request):
+    """
+    Cierra varios hallazgos de una vez.
+
+    Es lo que hace falta despues de una visita: los que ya se resolvieron se
+    marcan juntos en vez de ir uno por uno, que en el celular es abrir el
+    editor, elegir el estado, guardar y esperar que la pagina se recargue.
+
+    Se marcan como "Cumplido" y, si no tienen fecha de realizado, se les pone
+    la de hoy: un hallazgo cerrado sin fecha de cuando se hizo no sirve para el
+    resumen mensual.
+
+    Solo se cierran los hallazgos que el usuario puede tocar, uno por uno y
+    con el mismo corte que la edicion: un usuario de una empresa no cierra los
+    de otra aunque mande los ids.
+    """
+    ids = [i for i in request.POST.getlist("ids") if i][:200]
+    if not ids:
+        return JsonResponse({"error": "No elegiste ningun hallazgo."}, status=400)
+
+    permitidos = []
+    for movimiento_id in ids:
+        movimiento = _hallazgo_permitido(request, movimiento_id)
+        if movimiento is not None:
+            permitidos.append(movimiento)
+
+    if not permitidos:
+        return JsonResponse(
+            {"error": "Ninguno de los hallazgos elegidos te corresponde."}, status=403
+        )
+
+    hoy = django.utils.timezone.localdate()
+    cerrados = 0
+    for movimiento in permitidos:
+        if movimiento.estado == "Cumplido":
+            continue
+        movimiento.estado = "Cumplido"
+        if not movimiento.fecha_realizado:
+            movimiento.fecha_realizado = hoy
+        movimiento.save(update_fields=["estado", "fecha_realizado"])
+        cerrados += 1
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "cerrados": cerrados,
+            "mensaje": f"Se marcaron {cerrados} como cumplidos.",
+        }
+    )
+
+
 @require_GET
 @login_required
 def hallazgo_evidencias(request, movimiento_id):

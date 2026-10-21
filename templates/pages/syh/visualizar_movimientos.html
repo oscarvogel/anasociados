@@ -128,6 +128,16 @@
                 {% for mov in grupo.hallazgos %}
                     <li class="hl-hallazgo" data-mov="{{ mov.id }}">
                         <div class="hl-hallazgo__fila">
+                            {% if mov.estado in estados_abiertos %}
+                                {% comment %}
+                                    Solo los que siguen abiertos se pueden marcar:
+                                    cerrar un hallazgo ya cerrado no tiene sentido.
+                                {% endcomment %}
+                                <label class="hl-marcar">
+                                    <input type="checkbox" class="hl-marcar__casilla" value="{{ mov.id }}"
+                                           aria-label="Seleccionar este hallazgo para marcarlo como cumplido">
+                                </label>
+                            {% endif %}
                             <div class="hl-hallazgo__texto">
                                 <span class="hl-hallazgo__fecha">
                                     {% if mov.fecha_cumplimiento %}
@@ -223,6 +233,21 @@
             <a href="{% url 'syh:visualizar_movimientos' %}">← Volver a los pendientes</a>
         </p>
     {% endif %}
+
+    {% comment %}
+        Barra de cierre masivo. Aparece sola cuando hay algo marcado: en una
+        pantalla que se mira mucho, una barra siempre visible estorba.
+    {% endcomment %}
+    <div class="hl-acciones" id="hl-acciones" hidden>
+        <div class="hl-acciones__info">
+            <strong id="hl-conteo">0</strong> seleccionados
+            <span class="hl-acciones__aviso" id="hl-aviso" role="status" aria-live="polite"></span>
+        </div>
+        <div class="hl-acciones__botones">
+            <button type="button" class="hl-boton hl-boton--principal" id="hl-cerrar-masivo">Marcar como cumplidos</button>
+            <button type="button" class="hl-acciones__limpiar" id="hl-limpiar">Limpiar</button>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -386,6 +411,23 @@
         text-decoration: none; white-space: nowrap;
     }
     .hl-boton--pdf:hover { background: #2c5f47; color: #fff; }
+
+    /* Cierre masivo: casilla por hallazgo y barra de acciones abajo. */
+    .hl-marcar { flex: 0 0 auto; display: flex; align-items: center; padding-top: 2px; }
+    .hl-marcar__casilla { width: 20px; height: 20px; accent-color: #23473a; cursor: pointer; }
+    .hl-acciones {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 1050;
+        display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+        padding: 12px 18px; background: #fff; border-top: 1px solid #d9e2d4;
+        box-shadow: 0 -6px 18px rgb(35 71 58 / 10%);
+    }
+    .hl-acciones[hidden] { display: none; }
+    .hl-acciones__info { font-size: 13.5px; color: #263326; }
+    .hl-acciones__aviso { margin-left: 8px; color: #a33e36; font-weight: 700; }
+    .hl-acciones__botones { display: flex; gap: 10px; align-items: center; }
+    .hl-acciones__limpiar { border: 0; background: none; color: #5d6d66; font-size: 13.5px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+    /* Con la barra visible el ultimo hallazgo no puede quedar debajo. */
+    .hl-con-seleccion { padding-bottom: 96px; }
     .hl-form__estado { color: #1d6b55; font-size: 13px; }
     .hl-form__estado.is-error { color: #a13b26; }
 
@@ -400,6 +442,10 @@
         .hl-buscador { width: 100%; }
         .hl-buscador input[type="search"] { width: 100%; }
         .hl-boton--pdf { width: 100%; }
+        .hl-acciones { flex-direction: column; align-items: stretch; padding: 10px 14px 14px; }
+        .hl-acciones__botones { justify-content: space-between; }
+        .hl-acciones__botones .hl-boton { flex: 1 1 auto; }
+        .hl-con-seleccion { padding-bottom: 132px; }
         .hl-hallazgo__fila { flex-direction: column; }
         .hl-foto-tarjeta { width: 100%; }
     }
@@ -531,5 +577,77 @@
             boton.disabled = false;
         });
     });
+
+    // Cierre masivo: marcar de una vez los hallazgos que ya se resolvieron.
+    // Marcar de a uno en el celular es abrir el editor, elegir el estado,
+    // guardar y esperar que se recargue la pagina: con diez hallazgos de la
+    // visita es media hora de taps.
+    var acciones = document.getElementById('hl-acciones');
+    var conteo = document.getElementById('hl-conteo');
+    var avisoMasivo = document.getElementById('hl-aviso');
+    var botonMasivo = document.getElementById('hl-cerrar-masivo');
+    var botonLimpiar = document.getElementById('hl-limpiar');
+
+    function casillas() {
+        return document.querySelectorAll('.hl-marcar__casilla');
+    }
+
+    function seleccionadas() {
+        return Array.prototype.filter.call(casillas(), function (c) { return c.checked; });
+    }
+
+    function refrescarSeleccion() {
+        var lista = seleccionadas();
+        conteo.textContent = lista.length;
+        acciones.hidden = lista.length === 0;
+        document.body.classList.toggle('hl-con-seleccion', lista.length > 0);
+    }
+
+    document.addEventListener('change', function (evento) {
+        if (evento.target.classList && evento.target.classList.contains('hl-marcar__casilla')) {
+            refrescarSeleccion();
+        }
+    });
+
+    botonLimpiar.addEventListener('click', function () {
+        casillas().forEach(function (c) { c.checked = false; });
+        avisoMasivo.textContent = '';
+        refrescarSeleccion();
+    });
+
+    botonMasivo.addEventListener('click', function () {
+        var lista = seleccionadas();
+        if (!lista.length) return;
+        botonMasivo.disabled = true;
+        botonMasivo.textContent = 'Marcando…';
+        avisoMasivo.textContent = '';
+        var cuerpo = new URLSearchParams();
+        lista.forEach(function (c) { cuerpo.append('ids', c.value); });
+        fetch('{% url "syh:hallazgos_cerrar_masivo" %}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: cuerpo
+        }).then(function (r) {
+            return r.json().then(function (datos) {
+                if (!r.ok) throw new Error(datos.error || 'No se pudieron marcar.');
+                return datos;
+            });
+        }).then(function (datos) {
+            avisoMasivo.textContent = datos.mensaje + ' Recargando…';
+            // Recargar por lo mismo que en la edicion: los contadores y las
+            // secciones se recalculan en el servidor.
+            window.location.reload();
+        }).catch(function (err) {
+            avisoMasivo.textContent = err.message;
+            botonMasivo.disabled = false;
+            botonMasivo.textContent = 'Marcar como cumplidos';
+        });
+    });
+
+    refrescarSeleccion();
 </script>
 {% endblock extra_js %}

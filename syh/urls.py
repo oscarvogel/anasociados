@@ -18,6 +18,9 @@ urlpatterns = [
     # PDF de los hallazgos pendientes, con los filtros de la pantalla de
     # hallazgos. Es la version descargable de esa pantalla.
     path('imprimir_hallazgos', views.imprimir_hallazgos, name='imprimir_hallazgos'),
+    # Cerrar varios hallazgos de una vez, para cuando se terminan de resolver
+    # varios en la misma visita.
+    path('hallazgos/cerrar-masivo/', views.hallazgos_cerrar_masivo, name='hallazgos_cerrar_masivo'),
     path('obtener-areas/', views.obtener_areas, name='obtener_areas'),
     path('api/obtener-areas-vue/', views.obtener_areas_vue, name='obtener_areas_vue'),
     path('api/estados-mensuales/', views.api_estados_mensuales, name='api_estados_mensuales'),

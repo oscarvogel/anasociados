@@ -18,12 +18,12 @@ había ido con el rediseño de la pantalla de hallazgos.
 | Menú en el celular | Botón invisible | Botón visible, menú con máscara y cierre |
 | PDF de los pendientes | Botón borrado, vista huérfana | Botón en Hallazgos y en el Tablero |
 | Enviar por WhatsApp | funcionando, pero **inalcanzable** | funcionando y a dos toques |
+| Cerrar los pendientes | De a uno, con recarga por cada uno | De a varios, de una |
 
 Archivos tocados: `static/src/css/an-custom.css`, `utiles/impresiones.py`,
 `syh/views.py`, `syh/urls.py`, `syh/tests.py`, `home/views.py`,
 `home/tests.py`, `templates/pages/index.html`,
 `templates/pages/syh/visualizar_movimientos.html`.
-
 ## El botón de menú invisible
 
 ### El problema
@@ -139,6 +139,30 @@ antes no pedía.
   traería los pendientes de las 16 empresas, que no es lo que se está mirando.
   Es el flujo que Oscar usaba antes.
 
+## Cerrar varios hallazgos de una vez
+
+El PDF es la lista para llevar y después cerrar. Pero cerrar era de a uno:
+abrir el editor, elegir el estado, guardar y esperar que la página se recargue.
+En el celular, con diez hallazgos de la visita, es media hora de taps.
+
+Ahora cada hallazgo abierto tiene una **casilla** y, al marcar alguno, aparece
+abajo una **barra fija** con "N seleccionados" y el botón "Marcar como
+cumplidos". Un toque y se cierran todos los marcados.
+
+- Los que quedan marcados se ponen en **Cumplido** y, si no tenían fecha de
+  realizado, se les pone **la de hoy**: un hallazgo cerrado sin fecha de
+  cuándo se hizo no sirve para el resumen mensual.
+- Solo se cierran **los hallazgos que el usuario puede tocar**, con el mismo
+  corte que la edición de a uno: un usuario de una empresa no cierra los de
+  otra aunque mande los ids. El chequeo es id por id, con
+  `_hallazgo_permitido`.
+- Las casillas solo aparecen en los hallazgos **abiertos**: marcar uno ya
+  cerrado no tiene sentido.
+- La barra aparece sola cuando hay algo marcado y desaparece al recargar, así
+  no ocupa lugar en una pantalla que se mira mucho. El cuerpo de la página
+  gana un `padding-bottom` mientras está visible, para que el último hallazgo
+  no quede debajo.
+
 ## El WhatsApp
 
 **No estaba roto.** Se llegó, se eligió empresa y área, se preparó el resumen
@@ -159,9 +183,9 @@ así que el encargado los ve sin entrar al sistema.
 (puerto 3308, datadir en `~/mysql_an`) y se importó `mysql/an.sql`, el dump
 de producción: 1310 movimientos, 16 clientes, 34 áreas, 19 usuarios.
 
-- **Suite completa contra MySQL real**: `85 tests, OK` (con `.venv-dj52`,
-  Django 5.2.18, que es el de producción). 11 tests nuevos: 8 del PDF y 3 del
-  botón de menú.
+- **Suite completa contra MySQL real**: `92 tests, OK` (con `.venv-dj52`,
+  Django 5.2.18, que es el de producción). 18 tests nuevos: 8 del PDF, 7 del
+  cierre masivo y 3 del botón de menú.
 - **Navegador a 429 x 969** (el ancho del celular del cliente): menú que
   abre, botón que se ve, PDF que se descarga, WhatsApp que llega al modal.
 - **El PDF abierto en un visor real** (el visor de PDF del Chrome), no solo
@@ -175,10 +199,48 @@ de producción: 1310 movimientos, 16 clientes, 34 áreas, 19 usuarios.
    **fallaron dos tests que ya estaban en verde** (`"Gestión en Curso"` ya no
    era un estado válido y el view rechazaba el POST entero). Los archivos se
    tocan con Python en UTF-8.
-2. **`task_stop` no mata el proceso de Python**: el `runserver` sigue
-   escuchando el puerto y el servidor nuevo no puede tomar el bind. Queda
-   sirviendo la versión vieja de las plantillas y parece que los cambios no
-   están. Hay que matarlo por PID.
+2. **El `python.exe` del venv es un lanzador**: el proceso que de verdad
+   escucha el puerto es el intérprete base (`C:\Program Files\Python312`).
+   Matar el lanzador deja vivo al otro sirviendo **la version vieja** de las
+   plantillas, y parece que los cambios no se aplican. Para parar el server
+   hay que matar al dueno del puerto:
+   `Get-NetTCPConnection -LocalPort 8123 -State Listen` y despues
+   `Stop-Process` sobre ese PID.
+
+### Un bug del cierre masivo que solo aparecio en el navegador
+
+El POST de "marcar varios" llegaba con `400 No elegiste ningun hallazgo`:
+los ids iban pero Django no los leia. La causa era mandar el cuerpo como
+**texto** (`body: cuerpo.toString()`): el navegador lo manda como
+`text/plain` y Django no lo parsea como formulario. Hay que mandar el
+`URLSearchParams` **como objeto** (`body: cuerpo`), que es lo que hace que el
+navegador ponga el `Content-Type` correcto. Los tests de la vista pasaban
+iguales: el problema estaba en como se armaba la peticion, no en la vista.
+
+## Despliegue
+
+**21/10/2026, 15:36** (menú + PDF) y **15:50** (cierre masivo), contra
+`vps-3177145-x.dattaweb.com:5438`, proyecto en `/var/www/an`.
+
+```
+git pull --ff-only origin main   # c93532d..df16403, fast-forward
+systemctl restart an.service     # gunicorn 23.0.0, 3 workers, sin errores
+```
+
+El servidor tiene cambios locales, pero son **artefactos generados** (los
+PNG de los graficos, un PDF de resumen y dos .sh), no codigo: el pull entra
+limpio. La base no se toca: **no hay migraciones nuevas**.
+
+Verificacion en produccion:
+
+- `https://portal.anasociados.com.ar/` responde 200.
+- El CSS nuevo se sirve: las tres reglas nuevas (rayas, mascara y boton de
+  descarga) estan en el `an-custom.css` que devuelve el servidor.
+- `journalctl -u an.service`: gunicorn levanta 3 workers y no registra
+  errores.
+
+Lo que **no** se pudo verificar desde aca es el recorrido de Oscar en su
+celular: eso hay que probarlo en el telefono.
 
 ## Pendientes
 

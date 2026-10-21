@@ -582,3 +582,99 @@ class ImprimirHallazgosTest(TestCase):
         respuesta = self.client.get(self.url, {"empresa": "CLINEXIS"})
         self.assertEqual(respuesta.status_code, 302)
         self.assertIn(reverse("syh:visualizar_movimientos"), respuesta["Location"])
+
+
+class CerrarHallazgosMasivoTest(TestCase):
+    """
+    Cerrar varios hallazgos de una vez.
+
+    Es lo que se usa al terminar una visita: los que ya se resolvieron se
+    marcan juntos. Marcar de a uno en el celular es abrir el editor, elegir el
+    estado, guardar y esperar que se recargue la pagina.
+    """
+
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            id="CLIMAS", nombre="Empresa Alfa", email="alfa@example.com"
+        )
+        self.area = Area.objects.create(
+            id="ARMAS01", cliente=self.cliente, detalle="Mantenimiento", responsable="Ana"
+        )
+        self.superusuario = User.objects.create_superuser("an", "an@example.com", "x")
+        self.usuario = User.objects.create_user("operador", password="x")
+        Profile.objects.create(user=self.usuario, cliente=self.cliente)
+        self.url = reverse("syh:hallazgos_cerrar_masivo")
+        self._seq = 0
+
+    def hallazgo(self, empresa, texto, estado="Incumplido"):
+        self._seq += 1
+        area = Area.objects.filter(cliente=empresa).first()
+        return Movimientos.objects.create(
+            id=f"ms{self._seq:08d}",
+            cliente=empresa, area=area,
+            fecha=datetime.date.today(), periodo="Octubre",
+            hallazgo=texto, responsable="Ana", plazo=30, estado=estado,
+            fecha_cumplimiento=datetime.date.today() - datetime.timedelta(days=5),
+        )
+
+    def test_cierra_los_elegidos(self):
+        primero = self.hallazgo(self.cliente, "Uno")
+        segundo = self.hallazgo(self.cliente, "Dos")
+        self.client.force_login(self.superusuario)
+        respuesta = self.client.post(self.url, {"ids": [primero.pk, segundo.pk]})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta.json()["cerrados"], 2)
+        primero.refresh_from_db()
+        segundo.refresh_from_db()
+        self.assertEqual(primero.estado, "Cumplido")
+        self.assertEqual(segundo.estado, "Cumplido")
+
+    def test_pone_la_fecha_de_realizado(self):
+        """Un hallazgo cerrado sin fecha de cuando se hizo no sirve para el
+        resumen mensual."""
+        movimiento = self.hallazgo(self.cliente, "Uno")
+        self.client.force_login(self.superusuario)
+        self.client.post(self.url, {"ids": [movimiento.pk]})
+        movimiento.refresh_from_db()
+        self.assertEqual(movimiento.fecha_realizado, datetime.date.today())
+
+    def test_no_cierra_lo_de_otra_empresa(self):
+        otro = Cliente.objects.create(id="CLOTMA", nombre="Empresa Beta")
+        Area.objects.create(id="AROTMA1", cliente=otro, detalle="Taller")
+        ajeno = self.hallazgo(otro, "De Beta")
+        propio = self.hallazgo(self.cliente, "De Alfa")
+        self.client.force_login(self.usuario)
+        respuesta = self.client.post(self.url, {"ids": [ajeno.pk, propio.pk]})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta.json()["cerrados"], 1)
+        ajeno.refresh_from_db()
+        propio.refresh_from_db()
+        self.assertEqual(ajeno.estado, "Incumplido")
+        self.assertEqual(propio.estado, "Cumplido")
+
+    def test_sin_sesion_no_entra(self):
+        movimiento = self.hallazgo(self.cliente, "Uno")
+        self.client.logout()
+        respuesta = self.client.post(self.url, {"ids": [movimiento.pk]})
+        self.assertIn(respuesta.status_code, (302, 403))
+        movimiento.refresh_from_db()
+        self.assertEqual(movimiento.estado, "Incumplido")
+
+    def test_sin_elegir_nada_da_error(self):
+        self.client.force_login(self.superusuario)
+        respuesta = self.client.post(self.url, {"ids": []})
+        self.assertEqual(respuesta.status_code, 400)
+
+    def test_ya_cumplido_no_se_cuenta(self):
+        movimiento = self.hallazgo(self.cliente, "Uno", estado="Cumplido")
+        self.client.force_login(self.superusuario)
+        respuesta = self.client.post(self.url, {"ids": [movimiento.pk]})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta.json()["cerrados"], 0)
+
+    def test_la_pantalla_trae_la_casilla(self):
+        self.hallazgo(self.cliente, "Uno")
+        self.client.force_login(self.superusuario)
+        respuesta = self.client.get(reverse("syh:visualizar_movimientos"))
+        self.assertContains(respuesta, "hl-marcar__casilla")
+        self.assertContains(respuesta, "hl-cerrar-masivo")
