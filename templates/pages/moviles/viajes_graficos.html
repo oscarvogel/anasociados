@@ -1,5 +1,6 @@
 {% extends 'layouts/base.html' %}
 {% load static %}
+{% load estaticos %}
 
 
 
@@ -271,5 +272,5 @@
 {% block extra_js %}
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="{% static 'src/moviles/viajes_graficos.js' %}?v=3"></script>
+<script src="{% estatico 'src/moviles/viajes_graficos.js' %}"></script>
 {% endblock %}

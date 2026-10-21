@@ -1,4 +1,5 @@
 {% load static %}
+{% load estaticos %}
 <!doctype html>
 <html lang="es">
 <head>
@@ -8,7 +9,7 @@
     <meta name="referrer" content="no-referrer">
     <title>Seguimiento de hallazgos | AN &amp; Asociados</title>
     <link rel="icon" href="{% static 'assets/images/favicon.ico' %}">
-    <link rel="stylesheet" href="{% static 'src/css/an-custom.css' %}">
+    <link rel="stylesheet" href="{% estatico 'src/css/an-custom.css' %}">
     <style>
         :root {
             color-scheme: light;
@@ -334,7 +335,7 @@
         </main>
     </div>
 
-    <script src="{% static 'src/js/an-autocomplete.js' %}"></script>
+    <script src="{% estatico 'src/js/an-autocomplete.js' %}"></script>
 
     <script>
     (function () {

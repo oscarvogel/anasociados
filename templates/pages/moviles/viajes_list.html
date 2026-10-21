@@ -1,5 +1,6 @@
 {% extends 'layouts/base.html' %}
 {% load static %}
+{% load estaticos %}
 
 
 
@@ -439,6 +440,6 @@
 
 {% block extra_js %}
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="{% static 'src/moviles/viajes.js' %}?v=9"></script>
+    <script src="{% estatico 'src/moviles/viajes.js' %}"></script>
 {% endblock %}
 

@@ -1,5 +1,6 @@
 {% extends 'layouts/base.html' %}
 {% load static %}
+{% load estaticos %}
 
 {% block breadcrumbs %}{% endblock breadcrumbs %}
 
@@ -152,5 +153,5 @@
 {% endblock content %}
 
 {% block extra_js %}
-<script src="{% static 'src/js/user-management.js' %}"></script>
+<script src="{% estatico 'src/js/user-management.js' %}"></script>
 {% endblock extra_js %}

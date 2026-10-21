@@ -78,6 +78,35 @@ se transparentiza y las dos diagonales toman el mismo verde.
 navegador a 429 px. `manage.py check` y los tests no los veían: el botón
 estaba perfecto para el navegador.
 
+## El teléfono seguía viendo la versión vieja del CSS
+
+Desplegado el arreglo del botón de menú, Oscar entró desde su celular y **no
+veía las rayas**. El servidor ya servía el archivo nuevo (comprobado con un
+`curl` al CSS), la plantilla también, y en el navegador de la máquina el
+botón se veía bien. En el teléfono, no.
+
+La causa: **Nginx sirve los estáticos sin `Cache-Control`**. El navegador
+entonces guarda el CSS con la heurística del 10% sobre la antigüedad del
+archivo: como el CSS hacía días que no cambiaba, la vencimiento daba por
+horas o por días. El celular entraba con el HTML nuevo (el HTML va con
+`no-cache, no-store`) pero con el CSS viejo, y ahí seguían las rayas
+blancas.
+
+La solución es **poner la versión del archivo en la URL**: cada cambio de CSS
+es una URL nueva y el navegador no la tiene guardada.
+
+- `utiles/templatetags/estaticos.py`: el tag `{% estatico %}`, que hace lo
+  que `{% static %}` pero con `?v=<mtime>` al final.
+- `head.html` y `scripts.html`: todos los estáticos pasan por el tag.
+- Las plantillas públicas y las de móviles también. Las que tenían `?v=3` y
+  `?v=9` a mano quedan con la versión sola: no hay que acordarse de subirla
+  en cada cambio.
+
+Un detalle que costó: la versión se busca con los **finders** de staticfiles
+y no con `staticfiles_storage.path()`, que apunta a `STATIC_ROOT` (una copia
+vieja de `collectstatic`, sin los archivos del proyecto). Con los finders
+sale el archivo de fuente, que es el que sirve Nginx por alias.
+
 ## El PDF de los pendientes
 
 ### Lo que había pasado

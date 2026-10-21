@@ -51,7 +51,7 @@ class MenuMovilTest(TestCase):
             self.assertNotIn("white", cuerpo.lower())
 
     def test_el_boton_queda_por_encima_de_la_mascara(self):
-        """La mascara del menu abierto se paints sobre el boton que la cierra:
+        """La mascara del menu abierto se pinta sobre el boton que la cierra:
         sin esto la X no se puede apretar."""
         archivo = Path(settings.BASE_DIR) / "static" / "src" / "css" / "an-custom.css"
         texto = archivo.read_text(encoding="utf-8")
@@ -59,3 +59,34 @@ class MenuMovilTest(TestCase):
             ".an-app .pcoded-header .mobile-menu { z-index: 2; }",
             texto.replace("\n", " ").replace("  ", " "),
         )
+
+
+class EstaticosVersionadosTest(TestCase):
+    """
+    Los estaticos llevan la version del archivo en la URL.
+
+    Nginx los sirve sin Cache-Control, asi que el navegador se queda con el
+    archivo viejo por horas. Fue lo que paso con el boton de menu: el servidor
+    ya servia el CSS nuevo y el telefono seguia sin ver las rayas.
+    """
+
+    def setUp(self):
+        self.superusuario = User.objects.create_superuser("an", "an@example.com", "x")
+        self.peticion = RequestFactory().get("/")
+        self.peticion.user = self.superusuario
+
+    def test_el_css_de_an_lleva_la_version(self):
+        html = render_to_string("includes/head.html", request=self.peticion)
+        self.assertIn("an-custom.css?v=", html)
+
+    def test_el_js_de_an_lleva_la_version(self):
+        html = render_to_string("includes/scripts.html", request=self.peticion)
+        self.assertIn("an-autocomplete.js?v=", html)
+
+    def test_la_version_es_la_del_archivo(self):
+        """La version sale de la fecha de modificacion: cambia sola en cada
+        despliegue, sin que nadie se acuerde de subirla a mano."""
+        archivo = Path(settings.BASE_DIR) / "static" / "src" / "css" / "an-custom.css"
+        version = int(archivo.stat().st_mtime)
+        html = render_to_string("includes/head.html", request=self.peticion)
+        self.assertIn(f"an-custom.css?v={version}", html)
