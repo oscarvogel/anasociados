@@ -96,13 +96,19 @@
     <div class="hl-filtros">
         <span class="hl-filtros__rotulo">Estado</span>
         <a class="hl-pastilla {% if not estados_sel %}hl-pastilla--activa{% endif %}"
-           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}">Abiertos</a>
+           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">Abiertos</a>
+        {% comment %}
+            Los estados se acumulan: el chip de un estado que ya esta elegido
+            lo saca del filtro, y el de uno que no esta lo agrega, dejando los
+            demas como estaban. Por eso el link de cada pastilla lleva los
+            otros estados elegidos y, si este no estaba, tambien este.
+        {% endcomment %}
         {% for estado in estados_disponibles %}
             <a class="hl-pastilla {% if estado in estados_sel %}hl-pastilla--activa{% endif %}"
-               href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}&estado={{ estado|urlencode }}">{{ estado }}</a>
+               href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}{% for e in estados_sel %}{% if e != estado %}&estado={{ e|urlencode }}{% endif %}{% endfor %}{% if estado not in estados_sel %}&estado={{ estado|urlencode }}{% endif %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">{{ estado }}</a>
         {% endfor %}
         {% if estados_sel %}
-            <a class="hl-pastilla hl-pastilla--clear" href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}">Limpiar estado</a>
+            <a class="hl-pastilla hl-pastilla--clear" href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">Limpiar estado</a>
         {% endif %}
     </div>
 

@@ -14,8 +14,10 @@ choca con Duplicate entry. Y miden 10 caracteres, que es lo que entra en
 """
 import datetime
 import io
+import re
 import tempfile
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -198,6 +200,42 @@ class VistaHallazgosTest(TestCase):
         c = self.client.get(self.url, {"estado": "Cumplido"}).context
         self.assertEqual(c["total_general"], 1)
         self.assertEqual(c["grupos"][0]["hallazgos"][0].hallazgo, "Cerrado")
+
+    def test_se_pueden_elegir_dos_estados_a_la_vez(self):
+        """Los chips de estado se acumulan: elegir "Gestion en Curso" y
+        "Incumplido" muestra los dos."""
+        self.hallazgo(self.cliente, 1, "Uno en curso", dias=-5, estado="Gestión en Curso")
+        self.hallazgo(self.cliente, 2, "Dos incumplidos", dias=-5, estado="Incumplido")
+        self.hallazgo(self.cliente, 3, "Tres cumplidos", dias=-900, estado="Cumplido")
+        self.client.force_login(self.superusuario)
+        c = self.client.get(
+            self.url, {"estado": ["Gestión en Curso", "Incumplido"]}
+        ).context
+        self.assertEqual(c["total_general"], 2)
+        self.assertEqual(c["estados_sel"], ["Gestión en Curso", "Incumplido"])
+
+    def test_los_chips_de_estado_se_acumulan(self):
+        """El link de un estado que ya esta elegido lo saca del filtro, y el
+        de uno que no esta lo agrega dejando los demas como estaban."""
+        self.hallazgo(self.cliente, 1, "Algo", dias=-5)
+        self.client.force_login(self.superusuario)
+        html = self.client.get(self.url, {"estado": "Gestión en Curso"}).content.decode("utf-8")
+        enlaces = {
+            texto.strip(): href
+            for href, texto in re.findall(r'href="([^"]*)"[^>]*>([^<]*)</a>', html)
+        }
+
+        def estados_de(texto):
+            consulta = urlparse(enlaces[texto]).query
+            return parse_qs(consulta).get("estado", [])
+
+        # El chip del estado que ya esta elegido lo saca del filtro.
+        self.assertEqual(estados_de("Gestión en Curso"), [])
+        # El de uno que no esta lo agrega y deja al otro como estaba.
+        self.assertEqual(
+            sorted(estados_de("Incumplido")),
+            sorted(["Gestión en Curso", "Incumplido"]),
+        )
 
     def test_estado_inventado_se_ignora(self):
         self.hallazgo(self.cliente, 1, "Algo", dias=-5)

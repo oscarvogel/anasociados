@@ -192,6 +192,25 @@ cumplidos". Un toque y se cierran todos los marcados.
   gana un `padding-bottom` mientras está visible, para que el último hallazgo
   no quede debajo.
 
+## Elegir más de un estado a la vez
+
+Los chips de estado eran links que **se pisaban entre sí**: cada uno armaba la
+URL con un solo estado, así que elegir "Gestión en Curso" y después
+"Incumplido" dejaba solo el último. La vista ya filtraba con varios estados
+(`estado__in`), pero la pantalla no dejaba llegar a eso.
+
+Ahora los chips **se acumulan**, sin JavaScript:
+
+- El link de un estado que **ya está elegido lo saca** del filtro.
+- El de uno que **no está lo agrega**, dejando los demás como estaban.
+
+El truco está en cómo se arma el link de cada pastilla: lleva los otros
+estados elegidos y, si ese no estaba, también el suyo. "Abiertos" y "Limpiar
+estado" siguen vaciando el filtro.
+
+De paso, los links de estado también conservan la búsqueda (`q`), que antes
+se perdía.
+
 ## El WhatsApp
 
 **No estaba roto.** Se llegó, se eligió empresa y área, se preparó el resumen
