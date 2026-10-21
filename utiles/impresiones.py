@@ -1,6 +1,7 @@
 import datetime
 import io
 import os
+import re
 from io import BytesIO
 from venv import logger
 from syh.models import Cliente, EmisionCarbono, ExcesosVelocidad, IndiceAccidentabilidad, ParametroSistema
@@ -10,7 +11,6 @@ from reportlab.pdfgen import canvas
 from core_an import settings
 from syh.models import Movimientos
 from utiles.funciones_usuario import FormatoFecha, dividir_texto, getTempFileName
-import matplotlib.pyplot as plt
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Table, TableStyle, Paragraph
 from reportlab.lib import colors
@@ -222,134 +222,184 @@ class ResumenCobro(Impresiones):
             ))
 
 class ImprimeHallazgos(Impresiones):
+    """
+    Reporte PDF de los hallazgos.
 
-    def __init__(self) -> None:
+    Este reporte existio para el boton "Imprimir" del Tablero, que desaparecio
+    con el rediseño de la pantalla de hallazgos. Vuelve, con tres cosas
+    arregladas:
+
+    - No revienta cuando no hay empresa ni area filtradas: el resumen por
+      estado sale de los propios hallazgos del reporte y no de una consulta que
+      necesita cliente y area.
+    - No escribe archivos en el servidor: antes guardaba "grafico_torta.png" en
+      el directorio de trabajo en cada pedido.
+    - El archivo se llama con la empresa y la fecha, para reconocerlo en el
+      celular cuando se lo manda por WhatsApp al encargado.
+
+    La cabecera lo pone la clase base y ya trae el sello "Impreso dd/mm/aaaa
+    hh:mm:ss": es lo que zanja eldiskusion de "pero si te lo mande hace 15
+    dias, sigue apareciendo como incumplido".
+    """
+
+    # Columnas del reporte. Los anchos estan en puntos de una hoja carta (612
+    # de ancho): el hallazgo se parte en 45 caracteres para no pisar la columna
+    # del responsable.
+    COLUMNAS = {
+        "Fecha": 10,
+        "Vence": 55,
+        "Estado": 115,
+        "Hallazgo": 195,
+        "Responsable": 430,
+    }
+    # El color de cada estado, del mismo sistema visual del portal.
+    COLOR_ESTADO = {
+        "Cumplido": "#287044",
+        "Gestión en Curso": "#805b12",
+        "Incumplido": "#a33e36",
+    }
+    COLOR_OTRO = "#667363"
+
+    def __init__(self, archivo=None):
         super().__init__()
+        if archivo:
+            self.archivo = archivo
+
+    def nombre_archivo(self, cliente=None, empresas=1):
+        """Un nombre que se entienda en el celular: empresa y fecha."""
+        partes = ["hallazgos"]
+        if empresas > 1:
+            # El reporte es de varias empresas: poner el nombre de la primera
+            # seria mentir en la etiqueta del archivo.
+            partes.append(f"{empresas}-empresas")
+        elif cliente:
+            limpio = re.sub(r"[^A-Za-z0-9]+", "-", str(cliente)).strip("-").lower()
+            if limpio:
+                partes.append(limpio[:40])
+        partes.append(datetime.datetime.now().strftime("%Y%m%d"))
+        return "-".join(partes) + ".pdf"
 
     def imprime_hallazgo(self, queryset, filtro_cliente=None, filtro_area=None):
-        if queryset.exists():
-            if filtro_cliente:
-                cliente = queryset.first().cliente
-            else:
-                cliente = None
-                
-            if filtro_area:
-                area = queryset.first().area
-            else:
-                area = None
-            titulo = f"Reporte de Movimientos para {cliente} - Área: {area}"
+        hallazgos = list(queryset)
+
+        # La empresa y el area salen de los hallazgos del reporte. Antes se
+        # tomaban de los parametros del filtro, y si no habia filtro no habia
+        # ni titulo: el reporte reventaba al hacer el resumen.
+        cliente = filtro_cliente
+        area = filtro_area
+        if hallazgos:
+            cliente = cliente or hallazgos[0].cliente
+            area = area or hallazgos[0].area
+
+        if cliente and area:
+            titulo = f"Hallazgos de {cliente} - {area}"
+        elif cliente:
+            titulo = f"Hallazgos de {cliente}"
+        elif area:
+            titulo = f"Hallazgos de {area}"
         else:
-            titulo = "Reporte de Movimientos"
+            titulo = "Hallazgos"
 
         self.titulo = titulo
+        empresas = len({movimiento.cliente_id for movimiento in hallazgos})
+        self.archivo = self.nombre_archivo(cliente, empresas)
         width, height = letter
         self.inicia()
-        self.ubicacion = {
-            'Fecha': 10,
-            'Hallazgo': 62,
-            'Cumplimiento': 430,
-            'Estado': 500
-        }
-        # Crear el PDF
+        self.ubicacion = dict(self.COLUMNAS)
         self.cabecera()
-        data = [['Fecha', 'Periodo', 'Estado', 'Hallazgo']]
-        for movimiento in queryset:
-            self.fila -=10
-            self.check_break_page()
-            self.pdf.drawString(x=self.ubicacion['Fecha'], y=self.fila, text=FormatoFecha(movimiento.fecha, formato='dma'))
-            self.pdf.drawString(x=self.ubicacion['Estado'], y=self.fila, text=str(movimiento.estado))
-            self.pdf.drawString(x=self.ubicacion['Cumplimiento'], y=self.fila, text=FormatoFecha(movimiento.fecha_cumplimiento, formato='dma'))
-            lineas = dividir_texto(movimiento.hallazgo, 80)
-            for linea in lineas:
-                self.pdf.drawString(x=self.ubicacion['Hallazgo'], y=self.fila, text=linea)
-                self.fila -= 10
-            # Paragraph(movimiento.hallazgo, getSampleStyleSheet()['BodyText'])
-            data.append([
-                str(movimiento.fecha),
-                movimiento.periodo,
-                movimiento.hallazgo,
-                movimiento.estado
-            ])
-        
+
+        for movimiento in hallazgos:
+            lineas = dividir_texto(movimiento.hallazgo or "", 45)
+            self.fila -= 10
+            # El alto que se pide es el de la fila completa: un hallazgo largo
+            # no puede quedar partido entre dos paginas.
+            self.check_break_page(alto=10 * len(lineas) + 20)
+            self.pdf.setFont(self.nombre_fuente, 8)
+            fila = self.fila
+            self.pdf.drawString(
+                x=self.ubicacion["Fecha"],
+                y=fila,
+                text=FormatoFecha(movimiento.fecha, formato="dma"),
+            )
+            self.pdf.drawString(
+                x=self.ubicacion["Vence"],
+                y=fila,
+                text=(
+                    FormatoFecha(movimiento.fecha_cumplimiento, formato="dma")
+                    if movimiento.fecha_cumplimiento
+                    else "-"
+                ),
+            )
+            self.pdf.drawString(
+                x=self.ubicacion["Estado"], y=fila, text=str(movimiento.estado or "")
+            )
+            for numero, linea in enumerate(lineas):
+                self.pdf.drawString(
+                    x=self.ubicacion["Hallazgo"], y=fila - 10 * numero, text=linea
+                )
+            if movimiento.responsable:
+                self.pdf.drawString(
+                    x=self.ubicacion["Responsable"], y=fila, text=movimiento.responsable
+                )
+            self.fila = fila - 10 * len(lineas)
+
+        # Que hay y en que estado. Sale de los hallazgos del reporte: asi el
+        # resumen y la lista no pueden contradecirse entre si.
         self.fila -= 30
-        self.check_break_page()
-        
-        datos_grafico, sizes = self.crea_grafico_torta(cliente, area)
+        self.check_break_page(alto=220)
+        self.pdf.setFont(self.nombre_fuente, 10)
+        self.pdf.drawString(
+            x=10, y=self.fila, text=f"Total de hallazgos: {len(hallazgos)}"
+        )
+        self.fila -= 20
+        self.resumen_por_estado(hallazgos)
 
-        # url_grafico = Movimientos.obtener_url_grafico(cliente, area)
-        # # Posicion inicial donde empezar la impresion del grafico
-        # y_position = self.fila
-
-        # # Cargar la imagen del gráfico de torta
-        # img_reader = ImageReader(url_grafico)
-        # img_width, img_height = img_reader.getSize()
-
-        # # Escalar la imagen para mantener la relación de aspecto
-        # aspect = img_height / img_width
-        # new_width = 400  # Ancho deseado
-        # new_height = new_width * aspect
-
-        
-        # Generar y añadir el gráfico
-        # generator = GraficoTorta()
-        # datos = Movimientos.obtener_datos_tareas(cliente, area)
-        # imagen_grafico = generator.generar_grafico_torta(datos, cliente, area, formato='reportlab')
-
-
-        # Dibujar la imagen manteniendo la relación de aspecto y comenzando desde la última posición de impresión
-        # self.check_break_page(alto=300)
-        # self.pdf.drawImage(imagen_grafico, 0, self.fila - 300, width=300, height=250)
-        
-        colores = ['#ff9999','#66b3ff','#99ff99']  # Colores para cada segmento
-
-        # Crear una tabla con los colores y los datos
-        data = [['Color', 'Estado', 'Porcentaje']]
-        for i, dato in enumerate(datos_grafico):
-            color = colors.toColor(colores[i])
-            estado = dato['label']
-            porcentaje = f"{(dato['value'] / sum(sizes)) * 100:.1f}%"
-            data.append([Paragraph(f'<font color="{color}">&#9608;</font>', getSampleStyleSheet()['BodyText']), estado, porcentaje])
-
-        # Definir el estilo de la tabla
-        table = Table(data, colWidths=[50, 150, 100])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ]))
-        self.fila -= 250
-        self.check_break_page(alto=400)
-        # Ajustar la tabla y agregarla al PDF
-        table.wrapOn(self.pdf, width, height)
-        table.drawOn(self.pdf, 30, self.fila - 100)
         self.finaliza()
         return self.response
 
-    def crea_grafico_torta(self, cliente, area):
+    def resumen_por_estado(self, hallazgos):
+        """Tabla con cuantos hallazgos hay de cada estado."""
+        conteo = {}
+        for movimiento in hallazgos:
+            estado = str(movimiento.estado or "Sin estado")
+            conteo[estado] = conteo.get(estado, 0) + 1
+        total = sum(conteo.values()) or 1
 
-        # Obtiene los datos de las tareas agrupadas por estado
-        tareas_por_estado = Movimientos.contar_tareas_por_estado(cliente.id, area.id)
-        # Formatea los datos para Morris.js
-        datos_grafico = [
-            {"label": tarea["estado"], "value": tarea["cantidad"]}
-            for tarea in tareas_por_estado
+        data = [["Estado", "Hallazgos", "Porcentaje"]]
+        estilos = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2c4a1d")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d9e2d4")),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ]
-        # Crear el gráfico de torta
-        labels = [dato["label"] for dato in datos_grafico]
-        sizes = [dato["value"] for dato in datos_grafico]
-        colors = ['#ff9999','#66b3ff','#99ff99']  # Colores para cada segmento
+        for numero, (estado, cantidad) in enumerate(
+            sorted(conteo.items(), key=lambda par: -par[1])
+        ):
+            color = self.COLOR_ESTADO.get(estado, self.COLOR_OTRO)
+            data.append(
+                [
+                    Paragraph(
+                        f'<font color="{color}">&#9608;</font> {estado}',
+                        getSampleStyleSheet()["BodyText"],
+                    ),
+                    str(cantidad),
+                    f"{(cantidad / total) * 100:.1f}%",
+                ]
+            )
+            estilos.append(
+                ("BACKGROUND", (0, numero + 1), (-1, numero + 1), colors.HexColor("#f7f9f5"))
+            )
 
-        fig, ax = plt.subplots()
-        ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')  # Igualar los ejes para que el gráfico sea un círculo perfecto
+        tabla = Table(data, colWidths=[240, 80, 80])
+        tabla.setStyle(TableStyle(estilos))
+        _, alto = tabla.wrapOn(self.pdf, 612, 792)
+        tabla.drawOn(self.pdf, 30, self.fila - 10 - alto)
+        self.fila -= 10 + alto
 
-        # Guardar el gráfico como PNG
-        plt.savefig('grafico_torta.png')
-        return datos_grafico, sizes
 
 class ResumenMensual(Impresiones):
     

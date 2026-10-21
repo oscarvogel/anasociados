@@ -18,15 +18,26 @@
                 {% endif %}
             </p>
         </div>
-        <form method="get" class="hl-buscador" action="{% url 'syh:visualizar_movimientos' %}">
-            <input type="search" name="q" value="{{ busqueda }}" maxlength="100"
-                   placeholder="Buscar un hallazgo, un responsable&hellip;"
-                   aria-label="Buscar hallazgos">
-            <button type="submit" class="btn btn-primary">Buscar</button>
-            {% if busqueda %}
-                <a class="hl-limpiar" href="{% url 'syh:visualizar_movimientos' %}">Limpiar</a>
-            {% endif %}
-        </form>
+        <div class="hl-cabecera__acciones">
+            <form method="get" class="hl-buscador" action="{% url 'syh:visualizar_movimientos' %}">
+                <input type="search" name="q" value="{{ busqueda }}" maxlength="100"
+                       placeholder="Buscar un hallazgo, un responsable&hellip;"
+                       aria-label="Buscar hallazgos">
+                <button type="submit" class="btn btn-primary">Buscar</button>
+                {% if busqueda %}
+                    <a class="hl-limpiar" href="{% url 'syh:visualizar_movimientos' %}">Limpiar</a>
+                {% endif %}
+            </form>
+            {% comment %}
+                El PDF sale con los mismos filtros que la pantalla: lo que se ve
+                arriba es lo que se descarga. Es el reporte que se le pasa al
+                encargado por WhatsApp.
+            {% endcomment %}
+            <a class="hl-boton hl-boton--pdf" href="{{ url_imprimir_hallazgos }}">
+                <i class="feather icon-download" aria-hidden="true"></i>
+                Descargar PDF
+            </a>
+        </div>
     </div>
 
     {% if not busqueda %}
@@ -232,6 +243,7 @@
     .hl-tarjeta--verde .hl-numero { color: #1d6b55; }
 
     .hl-cabecera { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .hl-cabecera__acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
     .hl-sub { margin: 0; color: #6b7a74; font-size: 13.5px; line-height: 1.5; }
     .hl-buscador { display: flex; gap: 8px; align-items: center; }
     .hl-buscador input[type="search"] {
@@ -367,6 +379,13 @@
     .hl-form__acciones { display: flex; align-items: center; gap: 10px; }
     .hl-boton { padding: 9px 16px; border: 0; border-radius: 8px; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
     .hl-boton--principal { background: #23473a; color: #fff; }
+    .hl-boton--pdf {
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        padding: 11px 16px; border: 1px solid #23473a; border-radius: 8px;
+        background: #23473a; color: #fff; font-size: 13.5px; font-weight: 700;
+        text-decoration: none; white-space: nowrap;
+    }
+    .hl-boton--pdf:hover { background: #2c5f47; color: #fff; }
     .hl-form__estado { color: #1d6b55; font-size: 13px; }
     .hl-form__estado.is-error { color: #a13b26; }
 
@@ -377,8 +396,10 @@
         .hl-tarjetas { grid-template-columns: repeat(2, 1fr); gap: 9px; }
         .hl-numero { font-size: 26px; }
         .hl-cabecera { flex-direction: column; }
+        .hl-cabecera__acciones { width: 100%; }
         .hl-buscador { width: 100%; }
         .hl-buscador input[type="search"] { width: 100%; }
+        .hl-boton--pdf { width: 100%; }
         .hl-hallazgo__fila { flex-direction: column; }
         .hl-foto-tarjeta { width: 100%; }
     }

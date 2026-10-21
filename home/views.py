@@ -7,6 +7,7 @@ from django.views.generic import CreateView
 from django.contrib.auth import logout
 
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 
 from usuarios.models import AreasProfile, Profile
 from syh.models import Area, Cliente, EmisionCarbono, ExcesosVelocidad, IndiceAccidentabilidad, Movimientos
@@ -103,6 +104,15 @@ def index(request):
     except Exception:
       meta_porcentaje = 85
 
+  # El PDF de los hallazgos de lo que se esta viendo. Solo se arma si hay una
+  # empresa elegida: sin filtro el PDF traeria los pendientes de TODAS las
+  # empresas, que no es lo que se esta mirando.
+  url_imprimir_hallazgos = ''
+  if cliente_id:
+    url_imprimir_hallazgos = reverse('syh:imprimir_hallazgos') + '?empresa=' + str(cliente_id)
+    if area_id:
+      url_imprimir_hallazgos += '&area=' + str(area_id)
+
   context = {
     'segment'  : 'index',
     'datos_grafico': datos_grafico,
@@ -124,6 +134,7 @@ def index(request):
     'porcentaje_por_area': porcentaje_por_area,
     'grafico_estados_mensual': json.dumps(grafico_estados_mensual),
     'meta_porcentaje': meta_porcentaje,
+    'url_imprimir_hallazgos': url_imprimir_hallazgos,
     #'products' : Product.objects.all()
   }
   return render(request, "pages/index.html", context)

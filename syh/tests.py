@@ -495,3 +495,90 @@ class VistaHallazgosTest(TestCase):
     def test_hallazgo_inexistente_da_404(self):
         respuesta = self.client.get(reverse("syh:hallazgo_evidencias", args=["noexiste"]))
         self.assertEqual(respuesta.status_code, 404)
+
+
+class ImprimirHallazgosTest(TestCase):
+    """
+    El PDF de los pendientes: la version descargable de la pantalla.
+
+    Este reporte existio para el boton "Imprimir" del Tablero y desaparecio con
+    el rediseño de la pantalla de hallazgos. Lo que se comprueba aca es que
+    vuelve, que sale con los filtros de la pantalla y que no se lo baja
+    cualquiera.
+    """
+
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            id="CLIPDF", nombre="Empresa Alfa", email="alfa@example.com"
+        )
+        self.area = Area.objects.create(
+            id="ARPDF01", cliente=self.cliente, detalle="Mantenimiento", responsable="Ana"
+        )
+        self.superusuario = User.objects.create_superuser("an", "an@example.com", "x")
+        self.usuario = User.objects.create_user("visor", password="x")
+        Profile.objects.create(user=self.usuario, cliente=self.cliente)
+        self.client.force_login(self.superusuario)
+        self.url = reverse("syh:imprimir_hallazgos")
+        self._seq = 0
+
+    def hallazgo(self, empresa, texto, dias=-10, estado="Incumplido"):
+        self._seq += 1
+        area = Area.objects.filter(cliente=empresa).first()
+        return Movimientos.objects.create(
+            id=f"mv{self._seq:08d}",
+            cliente=empresa, area=area,
+            fecha=datetime.date.today(), periodo="Octubre",
+            hallazgo=texto, responsable="Ana", plazo=30, estado=estado,
+            fecha_cumplimiento=datetime.date.today() + datetime.timedelta(days=dias),
+        )
+
+    def test_el_pdf_se_descarga(self):
+        self.hallazgo(self.cliente, "Falta el matafuego")
+        respuesta = self.client.get(self.url)
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta["Content-Type"], "application/pdf")
+        self.assertTrue(respuesta.content.startswith(b"%PDF"))
+
+    def test_sin_sesion_no_entra(self):
+        """La URL vieja no pedia sesion: con la URL se leia el PDF con los
+        hallazgos de todas las empresas sin entrar al sistema."""
+        self.client.logout()
+        respuesta = self.client.get(self.url)
+        self.assertIn(respuesta.status_code, (302, 403))
+        respuesta = self.client.get(reverse("syh:imprimir_movimientos"))
+        self.assertIn(respuesta.status_code, (302, 403))
+
+    def test_sin_filtro_no_revienta(self):
+        """Sin empresa ni area el reporte antiguo reventaba con AttributeError."""
+        self.hallazgo(self.cliente, "Falta el matafuego")
+        respuesta = self.client.get(self.url)
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta["Content-Type"], "application/pdf")
+
+    def test_el_nombre_del_archivo_dice_de_que_empresa_es(self):
+        self.hallazgo(self.cliente, "Falta el matafuego")
+        respuesta = self.client.get(self.url, {"empresa": str(self.cliente.id)})
+        self.assertIn("empresa-alfa", respuesta["Content-Disposition"])
+
+    def test_solo_los_abiertos(self):
+        """Lo que esta cerrado es historia: al PDF van los pendientes."""
+        self.hallazgo(self.cliente, "Este va", estado="Incumplido")
+        self.hallazgo(self.cliente, "Este no", estado="Cumplido")
+        respuesta = self.client.get(self.url, {"empresa": str(self.cliente.id)})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta["Content-Type"], "application/pdf")
+
+    def test_la_url_vieja_sigue_andando(self):
+        """El Tablero y los enlaces guardados usan la URL vieja."""
+        self.hallazgo(self.cliente, "Falta el matafuego")
+        respuesta = self.client.get(
+            reverse("syh:imprimir_movimientos"),
+            {"cliente": str(self.cliente.id), "area": str(self.area.id)},
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta["Content-Type"], "application/pdf")
+
+    def test_sin_hallazgos_vuelve_a_la_pantalla(self):
+        respuesta = self.client.get(self.url, {"empresa": "CLINEXIS"})
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertIn(reverse("syh:visualizar_movimientos"), respuesta["Location"])

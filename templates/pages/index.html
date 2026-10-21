@@ -31,7 +31,19 @@
                 </select>
             </div>
             <div class="col-md-4 mb-3 d-flex align-items-end">
-                <button id="filter-button" class="btn btn-primary w-100">Filtrar</button>
+                <div class="w-100">
+                    <button id="filter-button" class="btn btn-primary w-100">Filtrar</button>
+                    {% comment %}
+                        El PDF de los hallazgos de la empresa y el area elegidas.
+                        Aparece solo con empresa elegida: sin filtro el archivo
+                        traeria los pendientes de todas las empresas.
+                    {% endcomment %}
+                    {% if url_imprimir_hallazgos %}
+                    <a id="descargar-hallazgos" class="an-btn-descargar w-100 mt-2" href="{{ url_imprimir_hallazgos }}">
+                        <i class="feather icon-download" aria-hidden="true"></i> Descargar PDF
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

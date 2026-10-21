@@ -11,8 +11,10 @@ from django.db import models
 from django.db.models import Count, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse, HttpResponse, FileResponse
+from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
+from urllib.parse import urlencode
 from celery.result import AsyncResult
 from django.core.mail import send_mail
 
@@ -135,19 +137,16 @@ def _armar_grupo(empresa, hallazgos, hoy, limite, vista):
     }
 
 
-@login_required
-def visualizar_movimientos(request):
+def _filtros_hallazgos(request):
     """
-    Hallazgos agrupados por empresa, con lo pendiente arriba.
+    Los filtros de la pantalla de hallazgos, en un solo lugar.
 
-    La idea es otra que la del admin: se abre y se ve, primero, cuanto hay
-    pendiente en total y despues una seccion por empresa ordenada por
-    urgencia. Los filtros son los mismos que se necesite (empresa, estado),
-    pero son links y no una barra con boton "Aplicar".
+    La pantalla y el PDF tienen que mostrar lo mismo. Si el PDF saliera con
+    otro filtro, en el celular se verian una cosa y en el archivo otra, y el
+    PDF deja de servir para pasarlo al encargado.
 
-    `login_required` no es cosmetico: sin el, un usuario anonimo hacia
-    `Profile.objects.get(user=AnonymousUser)`, que tira TypeError (no
-    Profile.DoesNotExist) y el except no lo agarraba. La pagina daba 500.
+    Devuelve la consulta ya filtrada, mas los datos del filtro para poder
+    mostrar en pantalla lo que se esta filtrando.
     """
     try:
         profile = Profile.objects.get(user=request.user)
@@ -167,10 +166,19 @@ def visualizar_movimientos(request):
             base = base.filter(area_id__in=areas_permitidas)
 
     # --- filtros -------------------------------------------------------
-    empresa_sel = (request.GET.get("empresa") or "").strip()
+    # "empresa" es el nombre del filtro de la pantalla de hallazgos y
+    # "cliente" el del boton viejo del Tablero. Se aceptan los dos.
+    empresa_sel = (request.GET.get("empresa") or request.GET.get("cliente") or "").strip()
     if empresa_sel and not cliente:
         # Solo el superusuario puede ver otra empresa que la suya.
         base = base.filter(cliente_id=empresa_sel)
+
+    # El area es un filtro del Tablero. En la pantalla de hallazgos el area se
+    # elige dentro de cada empresa, asi que no aparece, pero el PDF que se
+    # baja desde el Tablero si la necesita.
+    area_sel = (request.GET.get("area") or "").strip()
+    if area_sel:
+        base = base.filter(area_id=area_sel)
 
     busqueda = (request.GET.get("q") or "").strip()[:MAX_TERMINOS_BUSQUEDA]
 
@@ -197,6 +205,80 @@ def visualizar_movimientos(request):
     vista = request.GET.get("vista") or "pendientes"
     if vista not in VISTAS_VALIDAS:
         vista = "pendientes"
+
+    return {
+        "base": base,
+        "cliente": cliente,
+        "areas_profile": areas_profile,
+        "empresa_sel": empresa_sel,
+        "area_sel": area_sel,
+        "busqueda": busqueda,
+        "estados_sel": estados_sel,
+        "vista": vista,
+    }
+
+
+def _aplicar_vista(queryset, vista, hoy):
+    """
+    La misma franja que muestra la pantalla, pero sobre la consulta.
+
+    La pantalla arma los grupos en memoria; el PDF necesita lo mismo en SQL
+    para no traer de mas. "pendientes" y "todos" no recortan nada: son todos
+    los hallazgos abiertos.
+    """
+    if vista == "vencidos":
+        return queryset.filter(fecha_cumplimiento__lt=hoy)
+    if vista == "por_vencer":
+        return queryset.filter(
+            fecha_cumplimiento__gte=hoy,
+            fecha_cumplimiento__lte=hoy + datetime.timedelta(days=DIAS_POR_VENCER),
+        )
+    if vista == "por_revisar":
+        return queryset.filter(evidencias_pendientes__gt=0)
+    return queryset
+
+
+def _url_imprimir_hallazgos(empresa_sel, area_sel, estados_sel, busqueda, vista):
+    """La URL del PDF con los filtros que se estan viendo en pantalla."""
+    parametros = {}
+    if empresa_sel:
+        parametros["empresa"] = empresa_sel
+    if area_sel:
+        parametros["area"] = area_sel
+    for estado in estados_sel or []:
+        parametros.setdefault("estado", []).append(estado)
+    if busqueda:
+        parametros["q"] = busqueda
+    if vista:
+        parametros["vista"] = vista
+    url = reverse("syh:imprimir_hallazgos")
+    if parametros:
+        url += "?" + urlencode(parametros, doseq=True)
+    return url
+
+
+@login_required
+def visualizar_movimientos(request):
+    """
+    Hallazgos agrupados por empresa, con lo pendiente arriba.
+
+    La idea es otra que la del admin: se abre y se ve, primero, cuanto hay
+    pendiente en total y despues una seccion por empresa ordenada por
+    urgencia. Los filtros son los mismos que se necesite (empresa, estado),
+    pero son links y no una barra con boton "Aplicar".
+
+    `login_required` no es cosmetico: sin el, un usuario anonimo hacia
+    `Profile.objects.get(user=AnonymousUser)`, que tira TypeError (no
+    Profile.DoesNotExist) y el except no lo agarraba. La pagina daba 500.
+    """
+    filtros = _filtros_hallazgos(request)
+    cliente = filtros["cliente"]
+    areas_profile = filtros["areas_profile"]
+    base = filtros["base"]
+    empresa_sel = filtros["empresa_sel"]
+    busqueda = filtros["busqueda"]
+    estados_sel = filtros["estados_sel"]
+    vista = filtros["vista"]
 
     hoy = django.utils.timezone.localdate()
     mostrar_todos = busqueda or request.GET.get("todos") == "1"
@@ -252,6 +334,12 @@ def visualizar_movimientos(request):
             "estados_sel": estados_sel,
             "estados_disponibles": ESTADOS_VALIDOS,
             "estados_abiertos": list(ESTADOS_ABIERTOS),
+            # El PDF de lo que se esta viendo. Se arma con los mismos filtros
+            # que la pantalla, para que el archivo y la pantalla digan lo
+            # mismo.
+            "url_imprimir_hallazgos": _url_imprimir_hallazgos(
+                empresa_sel, filtros["area_sel"], estados_sel, busqueda, vista
+            ),
         },
     )
 
@@ -365,31 +453,42 @@ def hallazgo_evidencias(request, movimiento_id):
         ]
     })
 
-def imprimir_movimientos(request):
-    
-    filtro_cliente = request.GET.get('cliente', None)
-    filtro_area = request.GET.get('area', None)
-    filtro_estados = request.GET.getlist('estado', None)
+@login_required
+def imprimir_hallazgos(request):
+    """
+    PDF de los hallazgos pendientes, con los filtros de la pantalla.
 
-    queryset = Movimientos.objects.all()
+    Es la version descargable de la pantalla de hallazgos: mismo filtro de
+    empresa, area, estado, busqueda y franja.
 
-    if filtro_cliente:
-        queryset = queryset.filter(cliente=filtro_cliente)
-    
-    if filtro_area:
-        queryset = queryset.filter(area=filtro_area)
+    El PDF trae TODOS los hallazgos del filtro y no los 8 por empresa que se
+    ven en pantalla: un reporte truncado no sirve para pasarlo al encargado.
+    """
+    filtros = _filtros_hallazgos(request)
+    hoy = django.utils.timezone.localdate()
+    queryset = _aplicar_vista(filtros["base"], filtros["vista"], hoy)
 
-    if filtro_estados:
-        queryset = queryset.filter(estado__in=filtro_estados)
-
-    print(queryset.query)    
-    # Si el queryset está vacío, redirigir a la vista 'visualizar_movimientos'
+    # Sin hallazgos no hay PDF que devolver: se vuelve a la pantalla.
     if not queryset.exists():
-        return redirect('syh:visualizar_movimientos')
+        return redirect("syh:visualizar_movimientos")
 
-    queryset = queryset.order_by('-estado', '-fecha')
     impresion = ImprimeHallazgos()
-    return impresion.imprime_hallazgo(queryset=queryset, filtro_cliente=filtro_cliente, filtro_area=filtro_area)
+    return impresion.imprime_hallazgo(queryset=queryset)
+
+
+@login_required
+def imprimir_movimientos(request):
+    """
+    La URL vieja del boton "Imprimir" del Tablero.
+
+    Se deja viva porque el Tablero la usa y hay enlaces guardados, pero el
+    trabajo lo hace la vista de hallazgos: sus parametros (cliente, area,
+    estado) son los mismos y el PDF sale con los filtros de la pantalla.
+
+    Antes esta vista no pedia sesion: con la URL se leia el PDF con los
+    hallazgos de TODAS las empresas, sin entrar al sistema.
+    """
+    return imprimir_hallazgos(request)
         
 
 

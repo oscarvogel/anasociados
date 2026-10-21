@@ -15,6 +15,9 @@ urlpatterns = [
     path('movimientos/<str:movimiento_id>/evidencias/', views.hallazgo_evidencias, name='hallazgo_evidencias'),
     path('movimientos/<str:movimiento_id>/actualizar/', views.hallazgo_actualizar, name='hallazgo_actualizar'),
     path('imprimir_movimientos', views.imprimir_movimientos, name='imprimir_movimientos'),
+    # PDF de los hallazgos pendientes, con los filtros de la pantalla de
+    # hallazgos. Es la version descargable de esa pantalla.
+    path('imprimir_hallazgos', views.imprimir_hallazgos, name='imprimir_hallazgos'),
     path('obtener-areas/', views.obtener_areas, name='obtener_areas'),
     path('api/obtener-areas-vue/', views.obtener_areas_vue, name='obtener_areas_vue'),
     path('api/estados-mensuales/', views.api_estados_mensuales, name='api_estados_mensuales'),

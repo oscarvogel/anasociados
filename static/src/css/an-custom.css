@@ -154,6 +154,45 @@
 .an-app .pcoded-navbar .pcoded-inner-navbar > li.active:before,
 .an-app .pcoded-navbar .pcoded-inner-navbar > li.pcoded-trigger:before { background: var(--an-color-accent) !important; }
 .an-app .pcoded-header { border-bottom: 1px solid var(--an-color-border); background: #fff; box-shadow: 0 2px 12px rgb(44 74 29 / 5%); }
+/* Las tres rayas del boton de menu son blancas en el tema: estaban pensadas
+   para el header azul oscuro de Colorlib. El diseno AN tiene el header blanco,
+   asi que quedaban blancas sobre blanco y no se veian. Desde el celular el menu
+   no abria porque el boton que lo abre era invisible. */
+.an-app .pcoded-header .mobile-menu span,
+.an-app .pcoded-header .mobile-menu span::before,
+.an-app .pcoded-header .mobile-menu span::after { background-color: var(--an-color-primary-strong); }
+/* Boton de descarga del PDF de hallazgos. Accion secundaria: va al lado de
+   un boton primario, asi que va con la paleta del portal y no con el
+   btn-secondary de Bootstrap, que es azul y queda fuera del diseno. */
+.an-app .an-btn-descargar {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 38px; padding: 8px 16px; border: 1px solid var(--an-color-primary);
+  border-radius: var(--an-radius-sm); color: var(--an-color-primary-strong);
+  background: #fff; font-weight: 700; text-decoration: none;
+}
+.an-app .an-btn-descargar:hover { background: var(--an-color-surface-soft); color: var(--an-color-primary-strong); }
+.an-app .an-card .an-btn-descargar { margin-top: .5rem; }
+
+/* La mascara del menu abierto se pinta por encima del boton que la cierra:
+   sin esto la X no se puede apretar. */
+.an-app .pcoded-header .mobile-menu { z-index: 2; }
+/* Con el menu abierto el boton se vuelve una X: la barra del medio se
+   transparentiza y las dos diagonales toman el color del diseno. */
+.an-app .pcoded-header .mobile-menu.on span { background-color: transparent; }
+.an-app .pcoded-header .mobile-menu.on span::before,
+.an-app .pcoded-header .mobile-menu.on span::after { background-color: var(--an-color-primary-strong); }
+/* Con el menu abierto el tema oscurece el fondo, pero la mascara le queda
+   pegada al alto del header y deja una franja gris suelta arriba de todo.
+   Se vuelve una capa fija que cubre la pantalla entera. */
+.an-app .pcoded-navbar.mob-open ~ .pcoded-header::before {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
 .an-app .an-topbar__brand { display: inline-flex; align-items: center; gap: .65rem; }
 .an-app .an-topbar__brand img { width: 38px; height: 38px; object-fit: contain; }
 .an-app .an-topbar__brand .b-title { color: var(--an-color-primary-strong); font-weight: 800; }
