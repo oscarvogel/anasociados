@@ -221,6 +221,65 @@ mano dentro del `href`.
    nuevo tenía que agregarse a todos los links (y por eso el área faltaba en
    todos). Armarlos con un tag los deja juntos en un solo lugar.
 
+## Despliegue
+
+**22/10/2026, 10:18**, contra `vps-3177145-x.dattaweb.com:5438`, proyecto en
+`/var/www/an`.
+
+```
+git push origin main                   # 22b8bef..b283e64
+ssh anasociados "cd /var/www/an && git pull --ff-only origin main"
+systemctl restart an.service           # gunicorn 23.0.0, 3 workers, sin errores
+```
+
+El pull entró como **fast-forward limpio**: el servidor tiene archivos locales
+sin versionar (dos PNG de gráficos, un PDF de resumen y dos `.sh`), pero son
+artefactos generados y no tocan código. La base **no se toca**: no hay
+migraciones.
+
+Tres commits, uno por tema:
+
+```
+54405de feat: los hallazgos se pueden filtrar por area
+4f8e700 fix: la inicial del avatar ya no queda colgando fuera del circulo
+b283e64 docs: bitacora del filtro por area y el avatar
+```
+
+**Nginx sirve los estáticos por alias** (`location /static/ { alias
+/var/www/an/static/; }`), así que el CSS nuevo se ve **sin `collectstatic`**.
+
+### Verificación en producción
+
+- `https://portal.anasociados.com.ar/` responde.
+- El CSS que devuelve el servidor tiene las tres reglas nuevas: el bloque de
+  usuario redefinido, el `::after` del tema desactivado y el `line-height: 1`
+  del avatar.
+- `/syh/movimientos/` responde **200** con y sin filtros, y en el HTML:
+  la pastilla de "Área", el área elegida, los links con `area=` y el link del
+  PDF con `empresa` y `area`.
+- En el navegador, a 1638x969, contra el portal real:
+
+```
+.an-topbar__avatar   line-height: 14px        (era 70px)
+.an-topbar__user     display: inline-flex     (era inline-block)
+::after del tema     content: none            (el chevron duplicado)
+letra "o"   x=1482.2 y=25.6 w=11.2 h=19
+circulo     x=1470.8 y=18.6 w=34  h=34       -> la letra esta dentro
+```
+
+La sesión que se usó para verificar se **borró** de la base al terminar
+(comprobado: la misma cookie ahora recibe un 302 en vez de un 200) y los
+scripts de comprobación se eliminaron del servidor.
+
+### Una nota de PowerShell
+
+Los mensajes de commit con **here-strings** (`-m @'...'@`) no served: PowerShell
+partió el texto en palabras y `git` los Tomó como rutas ("pathspec 'de' did not
+match"). Con `-F <archivo>` el mensaje va como está. También: el pipe de
+PowerShell a un comando nativo mete **BOM** (U+FEFF) y Python lo rechaza como
+carácter no imprimible: para mandar un script al servidor conviene `scp`, que
+manda los bytes crudos.
+
 ## Pendientes
 
 - **El área no se puede elegir desde la URL sin empresa.** Sin empresa
@@ -232,5 +291,6 @@ mano dentro del `href`.
 - Sigue igual lo de la tanda anterior: el PDF no lleva las fotos de los
   hallazgos; el envío por WhatsApp necesita `WHATSAPP_ENABLED` y
   `WHATSAPP_API_KEY` en el `.env` del VPS.
-- **Lo que falta es el despliegue**: esto está verificado contra la base
-  real desde la máquina de desarrollo, pero no está subido al VPS.
+- **Falta probarlo en el teléfono.** Lo verificado en producción es con
+  navegador de escritorio; el recorrido de Oscar desde el celular (que es de
+  donde mandaron las capturas) queda para él.
