@@ -115,6 +115,39 @@ desactiva con:
 Lo que hizo falta fue medir los estilos calculados (`getComputedStyle`) en la
 página real, no adivinar.
 
+## El menú de usuario seguía en azul
+
+Lo pidió Oscar con una captura, después del despliegue de lo de arriba: al
+abrir el menú de usuario (Mi perfil / Cambiar contraseña) la banda de arriba
+seguía **azul**, y con ella el triángulo que une el panel con el header.
+
+Es el tema: pinta ese menú con su propio azul, `#04a9f5`.
+
+```css
+.pcoded-header .dropdown .profile-notification .pro-head { background: #04a9f5; }
+.pcoded-header .dropdown.drp-user.show:before          { color: #04a9f5; }
+.pcoded-header .dropdown .profile-notification .pro-body li:hover { background: rgba(4,169,245,.1); }
+```
+
+En el diseño AN el header es verde, así que el menú va en el mismo verde del
+avatar (`--an-color-primary`), con el texto del panel en el color de texto de
+AN y el hover en verde claro.
+
+Medido después del arreglo:
+
+```
+.pro-head                 background rgb(59, 93, 48)   = --an-color-primary
+drp-user.show:before      color      rgb(59, 93, 48)   = --an-color-primary
+pro-body li a             color      rgb(38, 51, 38)   = --an-color-text
+pro-body li:hover         background rgb(242, 246, 236) = --an-color-surface-soft
+pro-body li:hover > a     color      rgb(44, 74, 29)   = --an-color-primary-strong
+```
+
+**Ojo con la especificidad:** las reglas del tema tienen cuatro clases
+(`.pcoded-header .dropdown .profile-notification .pro-head`) y las de AN dos
+(`.an-app .an-topbar__avatar`). Con dos, el tema gana: por eso las reglas
+nuevas van con `.an-app` delante, para quedar en cinco.
+
 ## El filtro por área
 
 ### Lo que faltaba

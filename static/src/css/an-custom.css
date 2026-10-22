@@ -215,6 +215,36 @@
   line-height: 1; font-weight: 800; border-radius: 50%; color: #fff; background: var(--an-color-primary);
 }
 .an-app .an-topbar__username { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* El menu de usuario (Mi perfil, Cambiar contraseña) lo pinta el tema con su
+   azul (#04a9f5): la banda de arriba del panel y el triangulo que lo une con
+   el header. En el diseno AN el header es verde, asi que el menu va en el
+   mismo verde del avatar. */
+.an-app .pcoded-header .dropdown .profile-notification .pro-head {
+  color: #fff;
+  background: var(--an-color-primary);
+}
+.an-app .pcoded-header .dropdown.drp-user.show:before { color: var(--an-color-primary); }
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li a {
+  color: var(--an-color-text);
+  font-weight: 600;
+}
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li a i { color: var(--an-color-muted); }
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li:hover,
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li:focus,
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li:active {
+  background: var(--an-color-surface-soft);
+}
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li:hover > a,
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li:focus > a,
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li:active > a {
+  color: var(--an-color-primary-strong);
+  background: transparent;
+}
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li:hover > a i,
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li:focus > a i,
+.an-app .pcoded-header .dropdown .profile-notification .pro-body li:active > a i {
+  color: var(--an-color-primary);
+}
 .an-app .an-profile-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .an-app .pcoded-navbar .navbar-brand.header-logo { min-height: 70px; background: #fff; }
 .an-app .pcoded-navbar .navbar-brand.header-logo .b-brand { display: flex; align-items: center; gap: .65rem; }
