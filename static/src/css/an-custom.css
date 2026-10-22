@@ -198,8 +198,22 @@
 .an-app .an-topbar__brand .b-title { color: var(--an-color-primary-strong); font-weight: 800; }
 .an-app .an-topbar__actions > li > a { display: inline-flex; min-height: 44px; align-items: center; color: var(--an-color-muted); }
 .an-app .an-topbar__actions > li > a:hover { color: var(--an-color-primary); }
-.an-app .an-topbar__user { display: inline-flex; align-items: center; gap: .55rem; padding: 0 .75rem; color: var(--an-color-text); font-weight: 700; }
-.an-app .an-topbar__avatar { display: inline-grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; color: #fff; background: var(--an-color-primary); }
+/* El tema (Datta) le pone line-height:70px a los .dropdown-toggle del header y
+   les agrega su propio chevron con :after. Con ese line-height, la inicial del
+   avatar se dibujaba con una caja de linea de 70px dentro del circulo de 34px y
+   quedaba colgando por abajo del circulo, "fuera de escuadra"; el :after
+   dejaba ademas un segundo chevron suelto contra el borde derecho del header.
+   Por eso el bloque de usuario se define con mas especificidad que la del
+   tema, y el avatar con un line-height propio. */
+.an-app .pcoded-header .navbar-nav .dropdown.drp-user > .an-topbar__user {
+  display: inline-flex; align-items: center; gap: .55rem; line-height: 1.4;
+  vertical-align: middle; padding: 0 .75rem; color: var(--an-color-text); font-weight: 700;
+}
+.an-app .pcoded-header .dropdown.drp-user > .an-topbar__user::after { content: none; }
+.an-app .an-topbar__avatar {
+  display: inline-grid; width: 34px; height: 34px; place-items: center;
+  line-height: 1; font-weight: 800; border-radius: 50%; color: #fff; background: var(--an-color-primary);
+}
 .an-app .an-topbar__username { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .an-app .an-profile-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .an-app .pcoded-navbar .navbar-brand.header-logo { min-height: 70px; background: #fff; }
