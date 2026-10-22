@@ -1,5 +1,6 @@
 {% extends 'layouts/base.html' %}
 {% load static %}
+{% load hallazgos %}
 
 {% block breadcrumbs %}{% endblock breadcrumbs %}
 
@@ -20,6 +21,12 @@
         </div>
         <div class="hl-cabecera__acciones">
             <form method="get" class="hl-buscador" action="{% url 'syh:visualizar_movimientos' %}">
+                {% comment %}
+                    Los filtros que ya estaban elegidos van escondidos: el
+                    buscador es un formulario GET y, sin esto, al buscar se
+                    perdian la empresa y el area elegidas.
+                {% endcomment %}
+                {% hl_query_oculto 'empresa' 'area' 'estado' 'vista' %}
                 <input type="search" name="q" value="{{ busqueda }}" maxlength="100"
                        placeholder="Buscar un hallazgo, un responsable&hellip;"
                        aria-label="Buscar hallazgos">
@@ -43,22 +50,22 @@
     {% if not busqueda %}
     <div class="hl-tarjetas">
         <a class="hl-tarjeta hl-tarjeta--roja {% if vista == 'vencidos' %}hl-tarjeta--activa{% endif %}"
-           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista=vencidos{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}">
+           href="{% hl_query vista='vencidos' %}">
             <span class="hl-numero">{{ vencidos_general }}</span>
             <span class="hl-rotulo">Vencidos</span>
         </a>
         <a class="hl-tarjeta hl-tarjeta--ambar {% if vista == 'por_vencer' %}hl-tarjeta--activa{% endif %}"
-           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista=por_vencer{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}">
+           href="{% hl_query vista='por_vencer' %}">
             <span class="hl-numero">{{ por_vencer_general }}</span>
             <span class="hl-rotulo">Vencen en 5 días</span>
         </a>
         <a class="hl-tarjeta hl-tarjeta--verde {% if vista == 'por_revisar' %}hl-tarjeta--activa{% endif %}"
-           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista=por_revisar{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}">
+           href="{% hl_query vista='por_revisar' %}">
             <span class="hl-numero">{{ por_revisar_general }}</span>
             <span class="hl-rotulo">Con evidencia por revisar</span>
         </a>
         <a class="hl-tarjeta {% if vista == 'pendientes' %}hl-tarjeta--activa{% endif %}"
-           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista=pendientes{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}">
+           href="{% hl_query vista='pendientes' %}">
             <span class="hl-numero">{{ total_general }}</span>
             <span class="hl-rotulo">Todos los abiertos</span>
         </a>
@@ -67,8 +74,10 @@
 
     {% comment %}
         Filtros como links, no como un formulario con boton "Aplicar": no hay
-        nada que aplicar. El de empresa va plegado porque con 16 empresas las
-        pastillas a la vista empujaban los hallazgos fuera de la pantalla.
+        nada que aplicar. El de empresa y el de area van plegados porque con 16
+        empresas y 35 areas las pastillas a la vista empujaban los hallazgos
+        fuera de la pantalla. Cada link se arma con `hl_query`, que cambia solo
+        el filtro del link y deja los otros como estaban.
     {% endcomment %}
     <div class="hl-filtros hl-filtros--plegable">
         <details {% if empresa_sel %}open{% endif %}>
@@ -83,11 +92,38 @@
                 </span>
             </summary>
             <div class="hl-filtros__lista">
+                {% comment %}
+                    Cambiar la empresa deja el area en cero: el area es de una
+                    empresa y el area elegida puede no existir en la nueva.
+                {% endcomment %}
                 <a class="hl-pastilla {% if not empresa_sel %}hl-pastilla--activa{% endif %}"
-                   href="?vista={{ vista }}{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">Todas</a>
+                   href="{% hl_query empresa=None area=None %}">Todas</a>
                 {% for pk, emp in empresas_disponibles.items %}
                     <a class="hl-pastilla {% if empresa_sel == pk %}hl-pastilla--activa{% endif %}"
-                       href="?empresa={{ pk|urlencode }}&vista={{ vista }}{% for e in estados_sel %}&estado={{ e|urlencode }}{% endfor %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">{{ emp.nombre }}</a>
+                       href="{% hl_query empresa=pk area=None %}">{{ emp.nombre }}</a>
+                {% endfor %}
+            </div>
+        </details>
+    </div>
+
+    <div class="hl-filtros hl-filtros--plegable">
+        <details {% if area_sel %}open{% endif %}>
+            <summary>
+                <span class="hl-filtros__rotulo">Área</span>
+                <span class="hl-filtros__valor">
+                    {% if area_sel %}
+                        {{ area_sel_nombre }}
+                    {% else %}
+                        Todas
+                    {% endif %}
+                </span>
+            </summary>
+            <div class="hl-filtros__lista">
+                <a class="hl-pastilla {% if not area_sel %}hl-pastilla--activa{% endif %}"
+                   href="{% hl_query area=None %}">Todas</a>
+                {% for area in areas_disponibles %}
+                    <a class="hl-pastilla {% if area_sel == area.pk %}hl-pastilla--activa{% endif %}"
+                       href="{% hl_query area=area.pk %}">{{ area.nombre }}</a>
                 {% endfor %}
             </div>
         </details>
@@ -96,19 +132,19 @@
     <div class="hl-filtros">
         <span class="hl-filtros__rotulo">Estado</span>
         <a class="hl-pastilla {% if not estados_sel %}hl-pastilla--activa{% endif %}"
-           href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">Abiertos</a>
+           href="{% hl_query estado=None %}">Abiertos</a>
         {% comment %}
             Los estados se acumulan: el chip de un estado que ya esta elegido
             lo saca del filtro, y el de uno que no esta lo agrega, dejando los
-            demas como estaban. Por eso el link de cada pastilla lleva los
-            otros estados elegidos y, si este no estaba, tambien este.
+            demas como estaban. Por eso cada pastilla lleva, ya calculada, la
+            lista de estados que quedan elegidos si se la aprieta.
         {% endcomment %}
-        {% for estado in estados_disponibles %}
-            <a class="hl-pastilla {% if estado in estados_sel %}hl-pastilla--activa{% endif %}"
-               href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}{% for e in estados_sel %}{% if e != estado %}&estado={{ e|urlencode }}{% endif %}{% endfor %}{% if estado not in estados_sel %}&estado={{ estado|urlencode }}{% endif %}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">{{ estado }}</a>
+        {% for opcion in estados_opciones %}
+            <a class="hl-pastilla {% if opcion.elegido %}hl-pastilla--activa{% endif %}"
+               href="{% hl_query estado=opcion.seleccionados %}">{{ opcion.estado }}</a>
         {% endfor %}
         {% if estados_sel %}
-            <a class="hl-pastilla hl-pastilla--clear" href="?{% if empresa_sel %}empresa={{ empresa_sel|urlencode }}&{% endif %}vista={{ vista }}{% if busqueda %}&q={{ busqueda|urlencode }}{% endif %}">Limpiar estado</a>
+            <a class="hl-pastilla hl-pastilla--clear" href="{% hl_query estado=None %}">Limpiar estado</a>
         {% endif %}
     </div>
 
@@ -368,18 +404,22 @@
     .hl-pastilla--activa { background: #23473a; border-color: #23473a; color: #fff; }
     .hl-pastilla--clear { border-style: dashed; color: #8a3521; }
 
-    /* El filtro de empresa va plegado: son 16 y a la vista empujaban los
-       hallazgos fuera de la pantalla. */
-    .hl-filtros--plegado details { margin-bottom: 12px; }
-    .hl-filtros--plegado summary {
+    /* Los filtros de empresa y de area van plegados: son 16 empresas y 35
+       areas, y a la vista empujaban los hallazgos fuera de la pantalla.
+       (La clase se llama "plegable", como en la plantilla: antes el CSS de
+       aqui y el que usa la plantilla no coincidian y el filtro nunca se
+       plegaba de verdad.) */
+    .hl-filtros--plegable { display: block; }
+    .hl-filtros--plegable details { margin-bottom: 12px; }
+    .hl-filtros--plegable summary {
         display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px;
         border: 1px solid #d9e3de; border-radius: 20px; background: #fff;
         cursor: pointer; list-style: none; font-size: 12.5px; font-weight: 600;
     }
-    .hl-filtros--plegado summary::-webkit-details-marker { display: none; }
-    .hl-filtros--plegado summary::after { content: "▾"; color: #6b7a74; font-size: 11px; }
-    .hl-filtros--plegado[open] summary::after { content: "▴"; }
-    .hl-filtros--plegado summary .hl-filtros__rotulo { min-width: 0; }
+    .hl-filtros--plegable summary::-webkit-details-marker { display: none; }
+    .hl-filtros--plegable summary::after { content: "▾"; color: #6b7a74; font-size: 11px; }
+    .hl-filtros--plegable[open] summary::after { content: "▴"; }
+    .hl-filtros--plegable summary .hl-filtros__rotulo { min-width: 0; }
     .hl-filtros__valor { color: #1d6b55; font-weight: 700; }
     .hl-filtros__lista {
         display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;

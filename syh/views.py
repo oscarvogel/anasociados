@@ -64,6 +64,42 @@ def _empresas_visibles(cliente, areas_profile):
     return {c.pk: c for c in consulta.order_by("nombre")}
 
 
+def _areas_visibles(cliente, areas_profile, empresa_sel):
+    """
+    Areas que el usuario puede filtrar, para el selector de area.
+
+    El area pertenece a una empresa: si ya se eligio una empresa, solo se
+    ofrecen las de esa empresa. Sin empresa elegida se ofrecen todas las que
+    el usuario puede ver, con el nombre de la empresa al lado porque hay areas
+    que se llaman igual en empresas distintas ("Transporte", "Silvicultura").
+    """
+    consulta = Area.objects.select_related("cliente")
+    if areas_profile:
+        ids = {a.area_id for a in areas_profile if a.area_id}
+        if ids:
+            consulta = consulta.filter(pk__in=ids)
+    if empresa_sel:
+        consulta = consulta.filter(cliente_id=empresa_sel)
+    elif cliente:
+        consulta = consulta.filter(cliente_id=cliente.pk)
+
+    areas = list(consulta.order_by("cliente__nombre", "detalle"))
+    varias_empresas = len({a.cliente_id for a in areas}) > 1
+    return [
+        {
+            "pk": area.pk,
+            "detalle": area.detalle,
+            "empresa": area.cliente.nombre,
+            "nombre": (
+                f"{area.detalle} · {area.cliente.nombre}"
+                if varias_empresas
+                else area.detalle
+            ),
+        }
+        for area in areas
+    ]
+
+
 def _anotar_evidencias(queryset):
     """Cuantas evidencias tiene cada hallazgo y cuantas esperan revision.
 
@@ -264,8 +300,8 @@ def visualizar_movimientos(request):
 
     La idea es otra que la del admin: se abre y se ve, primero, cuanto hay
     pendiente en total y despues una seccion por empresa ordenada por
-    urgencia. Los filtros son los mismos que se necesite (empresa, estado),
-    pero son links y no una barra con boton "Aplicar".
+    urgencia. Los filtros son los mismos que se necesite (empresa, area,
+    estado), pero son links y no una barra con boton "Aplicar".
 
     `login_required` no es cosmetico: sin el, un usuario anonimo hacia
     `Profile.objects.get(user=AnonymousUser)`, que tira TypeError (no
@@ -276,6 +312,7 @@ def visualizar_movimientos(request):
     areas_profile = filtros["areas_profile"]
     base = filtros["base"]
     empresa_sel = filtros["empresa_sel"]
+    area_sel = filtros["area_sel"]
     busqueda = filtros["busqueda"]
     estados_sel = filtros["estados_sel"]
     vista = filtros["vista"]
@@ -291,6 +328,13 @@ def visualizar_movimientos(request):
         por_empresa.setdefault(movimiento.cliente_id, []).append(movimiento)
 
     empresas_disponibles = _empresas_visibles(cliente, areas_profile)
+    areas_disponibles = _areas_visibles(cliente, areas_profile, empresa_sel)
+    # El nombre del area elegida, para el resumen del filtro. Si no esta en la
+    # lista (una URL vieja, por ejemplo) se muestra el identificador, que al
+    # menos dice que el filtro esta puesto.
+    area_sel_nombre = next(
+        (a["nombre"] for a in areas_disponibles if a["pk"] == area_sel), area_sel
+    )
 
     grupos = [
         _armar_grupo(empresa, por_empresa[clave], hoy, limite, vista)
@@ -331,9 +375,24 @@ def visualizar_movimientos(request):
             "vistas": VISTAS_VALIDAS,
             "empresa_sel": empresa_sel,
             "empresas_disponibles": empresas_disponibles,
+            "area_sel": area_sel,
+            "area_sel_nombre": area_sel_nombre,
+            "areas_disponibles": areas_disponibles,
             "estados_sel": estados_sel,
             "estados_disponibles": ESTADOS_VALIDOS,
             "estados_abiertos": list(ESTADOS_ABIERTOS),
+            # Los estados se acumulan: cada pastilla lleva los estados que
+            # quedan elegidos si se la aprieta. Asi el link se arma en el
+            # servidor y no en la plantilla.
+            "estados_opciones": [
+                {
+                    "estado": estado,
+                    "elegido": estado in estados_sel,
+                    "seleccionados": [e for e in estados_sel if e != estado]
+                    + ([] if estado in estados_sel else [estado]),
+                }
+                for estado in ESTADOS_VALIDOS
+            ],
             # El PDF de lo que se esta viendo. Se arma con los mismos filtros
             # que la pantalla, para que el archivo y la pantalla digan lo
             # mismo.

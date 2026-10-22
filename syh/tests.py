@@ -16,6 +16,7 @@ import datetime
 import io
 import re
 import tempfile
+from html import unescape
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -26,7 +27,7 @@ from django.urls import reverse
 from PIL import Image
 
 from syh.models import Area, Cliente, Evidencia, Movimientos
-from usuarios.models import Profile
+from usuarios.models import AreasProfile, Profile
 
 
 class TestGetPorcentajeCumplidosPorArea(TestCase):
@@ -193,6 +194,124 @@ class VistaHallazgosTest(TestCase):
         c = self.client.get(self.url, {"empresa": beta.pk}).context
         self.assertEqual(c["grupos"], [], "no puede acotar a una empresa que no es suya")
 
+    # --- filtro por area ------------------------------------------------
+
+    def test_filtrar_por_area(self):
+        """El area es un filtro de la pantalla: al elegirla quedan solo los
+        hallazgos de esa area."""
+        taller = Area.objects.create(
+            id="ARVIS2", cliente=self.cliente, detalle="Taller", responsable="Beto"
+        )
+        self.hallazgo(self.cliente, 1, "De Mantenimiento")
+        self.hallazgo(self.cliente, 2, "Del Taller", area=taller)
+        self.client.force_login(self.superusuario)
+        c = self.client.get(self.url, {"area": taller.pk}).context
+        self.assertEqual(c["total_general"], 1)
+        self.assertEqual(c["grupos"][0]["hallazgos"][0].hallazgo, "Del Taller")
+        self.assertEqual(c["area_sel"], taller.pk)
+        self.assertEqual(c["area_sel_nombre"], "Taller")
+
+    def test_el_area_y_la_empresa_se_pueden_elegir_juntas(self):
+        taller = Area.objects.create(
+            id="ARVIS2", cliente=self.cliente, detalle="Taller", responsable="Beto"
+        )
+        self.hallazgo(self.cliente, 1, "De Mantenimiento")
+        self.hallazgo(self.cliente, 2, "Del Taller", area=taller)
+        self.client.force_login(self.superusuario)
+        c = self.client.get(
+            self.url, {"empresa": self.cliente.pk, "area": taller.pk}
+        ).context
+        self.assertEqual(c["total_general"], 1)
+        self.assertEqual(c["grupos"][0]["hallazgos"][0].hallazgo, "Del Taller")
+
+    def test_usuario_normal_no_puede_ver_el_area_de_otra_empresa(self):
+        beta = self.empresa("CLBETA", "Empresa Beta")
+        area_beta = Area.objects.filter(cliente=beta).first()
+        self.hallazgo(beta, 1, "Secreto de Beta")
+        c = self.client.get(self.url, {"area": area_beta.pk}).context
+        self.assertEqual(c["grupos"], [], "no puede acotar a un area que no es de su empresa")
+
+    def test_las_areas_disponibles_son_las_de_la_empresa_elegida(self):
+        """Elegida la empresa, el area se elige dentro de esa empresa."""
+        beta = self.empresa("CLBETA", "Empresa Beta")
+        self.client.force_login(self.superusuario)
+        c = self.client.get(self.url, {"empresa": beta.pk}).context
+        self.assertEqual(
+            [a["pk"] for a in c["areas_disponibles"]],
+            [a.pk for a in Area.objects.filter(cliente=beta)],
+        )
+
+    def test_sin_empresa_elegida_el_area_dice_de_quien_es(self):
+        """Hay areas que se llaman igual en empresas distintas ("Transporte"),
+        asi que sin empresa elegida el nombre tiene que decir de quien es."""
+        beta = self.empresa("CLBETA", "Empresa Beta")
+        self.client.force_login(self.superusuario)
+        c = self.client.get(self.url).context
+        nombres = {a["pk"]: a["nombre"] for a in c["areas_disponibles"]}
+        area_beta = Area.objects.filter(cliente=beta).first()
+        self.assertIn("Empresa Beta", nombres[area_beta.pk])
+        self.assertIn("Empresa Alfa", nombres[self.area.pk])
+
+    def test_usuario_con_areas_perfiladas_solo_ve_las_suyas(self):
+        Area.objects.create(
+            id="ARVIS9", cliente=self.cliente, detalle="Bodega", responsable="Ana"
+        )
+        AreasProfile.objects.create(user=self.usuario, area=self.area)
+        c = self.client.get(self.url).context
+        self.assertEqual([a["pk"] for a in c["areas_disponibles"]], [self.area.pk])
+
+    def test_el_link_del_area_conserva_los_otros_filtros(self):
+        """El link del area no puede pisar la empresa ni los estados."""
+        self.hallazgo(self.cliente, 1, "Algo", dias=-5)
+        self.client.force_login(self.superusuario)
+        html = self.client.get(
+            self.url, {"empresa": self.cliente.pk, "estado": "Gestión en Curso"}
+        ).content.decode("utf-8")
+        enlaces = {
+            texto.strip(): href
+            for href, texto in re.findall(r'href="([^"]*)"[^>]*>([^<]*)</a>', html)
+        }
+        consulta = parse_qs(urlparse(unescape(enlaces["Mantenimiento"])).query)
+        self.assertEqual(consulta["area"], [self.area.pk])
+        self.assertEqual(consulta["empresa"], [self.cliente.pk])
+        self.assertEqual(consulta["estado"], ["Gestión en Curso"])
+
+    def test_el_link_de_empresa_deja_el_area_en_cero(self):
+        """El area es de una empresa: al cambiar de empresa deja de aplicar,
+        porque puede no existir en la nueva."""
+        self.hallazgo(self.cliente, 1, "Algo", dias=-5)
+        self.client.force_login(self.superusuario)
+        html = self.client.get(self.url, {"area": self.area.pk}).content.decode("utf-8")
+        enlaces = {
+            texto.strip(): href
+            for href, texto in re.findall(r'href="([^"]*)"[^>]*>([^<]*)</a>', html)
+        }
+        consulta = parse_qs(urlparse(unescape(enlaces["Empresa Alfa"])).query)
+        self.assertNotIn("area", consulta)
+
+    def test_el_buscador_conserva_los_filtros(self):
+        """El buscador es un formulario GET: si no lleva los filtros
+        escondidos, al buscar se pierde la empresa y el area."""
+        self.hallazgo(self.cliente, 1, "Algo", dias=-5)
+        self.client.force_login(self.superusuario)
+        html = self.client.get(
+            self.url, {"empresa": self.cliente.pk, "area": self.area.pk}
+        ).content.decode("utf-8")
+        self.assertIn('name="empresa"', html)
+        self.assertIn('name="area"', html)
+        self.assertIn(f'value="{self.cliente.pk}"', html)
+        self.assertIn(f'value="{self.area.pk}"', html)
+
+    def test_el_pdf_de_la_pantalla_lleva_el_area(self):
+        """Lo que se descarga es lo que se esta viendo."""
+        self.hallazgo(self.cliente, 1, "Algo", dias=-5)
+        self.client.force_login(self.superusuario)
+        html = self.client.get(self.url, {"area": self.area.pk}).content.decode("utf-8")
+        enlace_pdf = re.search(r'href="([^"]*imprimir_hallazgos[^"]*)"', html)
+        self.assertIsNotNone(enlace_pdf, "no se encuentra el boton de descargar el PDF")
+        consulta = parse_qs(urlparse(unescape(enlace_pdf.group(1))).query)
+        self.assertEqual(consulta["area"], [self.area.pk])
+
     def test_filtrar_por_estado(self):
         self.hallazgo(self.cliente, 1, "Abierto", dias=-5)
         self.hallazgo(self.cliente, 2, "Cerrado", dias=-900, estado="Cumplido")
@@ -226,7 +345,9 @@ class VistaHallazgosTest(TestCase):
         }
 
         def estados_de(texto):
-            consulta = urlparse(enlaces[texto]).query
+            # Los links salen con `&amp;` (HTML valido): hay que deshacerlo
+            # antes de parsear la consulta.
+            consulta = urlparse(unescape(enlaces[texto])).query
             return parse_qs(consulta).get("estado", [])
 
         # El chip del estado que ya esta elegido lo saca del filtro.
@@ -353,12 +474,12 @@ class VistaHallazgosTest(TestCase):
         movimiento.refresh_from_db()
         self.assertEqual(movimiento.estado, "Incumplido")
 
-    def hallazgo(self, empresa, secuencia, texto, dias=-10, estado="Incumplido"):
+    def hallazgo(self, empresa, secuencia, texto, dias=-10, estado="Incumplido", area=None):
         # El id va con contador, corto a proposito: `syh_evidencia.movimiento`
         # queda en varchar(10) cuando la base se construye desde cero, asi que
         # un id mas largo no deja crear evidencias.
         self._seq += 1
-        area = Area.objects.filter(cliente=empresa).first()
+        area = area or Area.objects.filter(cliente=empresa).first()
         return Movimientos.objects.create(
             id=f"mv{self._seq:08d}",
             cliente=empresa, area=area,
