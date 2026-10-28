@@ -236,6 +236,10 @@ class ImprimeHallazgos(Impresiones):
       el directorio de trabajo en cada pedido.
     - El archivo se llama con la empresa y la fecha, para reconocerlo en el
       celular cuando se lo manda por WhatsApp al encargado.
+    - El resumen por estado cuenta todos los estados del recorte (empresa,
+      area, busqueda), no solo los que quedaron en la lista por los chips de
+      estado. Si no, al filtrar por "Incumplido" y "Gestion en Curso" los
+      porcentajes sumaban 100% y los cumplidos desaparecian.
 
     La cabecera lo pone la clase base y ya trae el sello "Impreso dd/mm/aaaa
     hh:mm:ss": es lo que zanja eldiskusion de "pero si te lo mande hace 15
@@ -279,8 +283,12 @@ class ImprimeHallazgos(Impresiones):
         partes.append(datetime.datetime.now().strftime("%Y%m%d"))
         return "-".join(partes) + ".pdf"
 
-    def imprime_hallazgo(self, queryset, filtro_cliente=None, filtro_area=None):
+    def imprime_hallazgo(self, queryset, filtro_cliente=None, filtro_area=None, resumen=None):
         hallazgos = list(queryset)
+        # Lo que va a la tabla resumen. Puede traer estados que la lista no
+        # muestra (los chips de estado solo recortan la lista). Si no llega,
+        # se usa la misma lista para no cambiar el comportamiento del admin.
+        hallazgos_resumen = list(resumen) if resumen is not None else hallazgos
 
         # La empresa y el area salen de los hallazgos del reporte. Antes se
         # tomaban de los parametros del filtro, y si no habia filtro no habia
@@ -343,16 +351,26 @@ class ImprimeHallazgos(Impresiones):
                 )
             self.fila = fila - 10 * len(lineas)
 
-        # Que hay y en que estado. Sale de los hallazgos del reporte: asi el
-        # resumen y la lista no pueden contradecirse entre si.
+        # Que hay y en que estado. La lista respeta los chips de estado, pero
+        # el resumen cuenta todo el recorte: si no, los porcentajes sumarian
+        # 100% entre los estados elegidos y ocultarian los cumplidos.
         self.fila -= 30
         self.check_break_page(alto=220)
         self.pdf.setFont(self.nombre_fuente, 10)
         self.pdf.drawString(
-            x=10, y=self.fila, text=f"Total de hallazgos: {len(hallazgos)}"
+            x=10, y=self.fila, text=f"Total de hallazgos: {len(hallazgos_resumen)}"
         )
+        if len(hallazgos_resumen) != len(hallazgos):
+            self.fila -= 12
+            self.pdf.setFont(self.nombre_fuente, 8)
+            self.pdf.drawString(
+                x=10,
+                y=self.fila,
+                text=f"La lista muestra {len(hallazgos)} por el filtro de estado.",
+            )
+            self.pdf.setFont(self.nombre_fuente, 10)
         self.fila -= 20
-        self.resumen_por_estado(hallazgos)
+        self.resumen_por_estado(hallazgos_resumen)
 
         self.finaliza()
         return self.response

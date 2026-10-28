@@ -22,11 +22,12 @@ from urllib.parse import parse_qs, urlparse
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
 from syh.models import Area, Cliente, Evidencia, Movimientos
+from syh.views import _filtros_hallazgos
 from usuarios.models import AreasProfile, Profile
 
 
@@ -726,6 +727,33 @@ class ImprimirHallazgosTest(TestCase):
         respuesta = self.client.get(self.url, {"empresa": str(self.cliente.id)})
         self.assertEqual(respuesta.status_code, 200)
         self.assertEqual(respuesta["Content-Type"], "application/pdf")
+
+    def test_el_resumen_cuenta_todos_los_estados(self):
+        """Los chips de estado recortan la lista, no el resumen.
+
+        Al filtrar por "Gestion en Curso" e "Incumplido" los porcentajes del
+        resumen daban 100% entre esos dos y los cumplidos desaparecian. El
+        resumen tiene que contar los tres estados del mismo recorte.
+        """
+        self.hallazgo(self.cliente, "Uno en curso", estado="Gestión en Curso")
+        self.hallazgo(self.cliente, "Dos incumplidos", estado="Incumplido")
+        self.hallazgo(self.cliente, "Tres cumplidos", estado="Cumplido")
+
+        request = RequestFactory().get(
+            self.url,
+            {
+                "empresa": str(self.cliente.id),
+                "estado": ["Gestión en Curso", "Incumplido"],
+            },
+        )
+        request.user = self.superusuario
+        filtros = _filtros_hallazgos(request)
+
+        self.assertEqual(len(filtros["base"]), 2)
+        self.assertEqual(
+            sorted({movimiento.estado for movimiento in filtros["resumen"]}),
+            ["Cumplido", "Gestión en Curso", "Incumplido"],
+        )
 
     def test_la_url_vieja_sigue_andando(self):
         """El Tablero y los enlaces guardados usan la URL vieja."""

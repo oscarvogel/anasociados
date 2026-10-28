@@ -217,6 +217,19 @@ def _filtros_hallazgos(request):
         base = base.filter(area_id=area_sel)
 
     busqueda = (request.GET.get("q") or "").strip()[:MAX_TERMINOS_BUSQUEDA]
+    if busqueda:
+        base = base.filter(
+            Q(hallazgo__icontains=busqueda)
+            | Q(responsable__icontains=busqueda)
+            | Q(id__icontains=busqueda)
+        )
+
+    # El resumen del PDF cuenta TODOS los estados del mismo recorte (empresa,
+    # area, busqueda): los chips de estado no lo achican. Se arma antes de
+    # aplicar el filtro de estado justamente para eso. Si saliera de la lista
+    # filtrada, al elegir dos estados los porcentajes sumarian 100% como si el
+    # resto no existiera.
+    resumen = _anotar_evidencias(base)
 
     estados_sel = [e for e in request.GET.getlist("estado") if e in ESTADOS_VALIDOS]
     if estados_sel:
@@ -226,13 +239,6 @@ def _filtros_hallazgos(request):
         # Pero si estas BUSCANDO algo puntual, el termino manda: si escribiste
         # el nombre de algo cerrado es porque lo queres encontrar.
         base = base.filter(estado__in=ESTADOS_ABIERTOS)
-
-    if busqueda:
-        base = base.filter(
-            Q(hallazgo__icontains=busqueda)
-            | Q(responsable__icontains=busqueda)
-            | Q(id__icontains=busqueda)
-        )
 
     base = _anotar_evidencias(base).order_by(
         models.F("fecha_cumplimiento").asc(nulls_last=True), "pk"
@@ -244,6 +250,7 @@ def _filtros_hallazgos(request):
 
     return {
         "base": base,
+        "resumen": resumen,
         "cliente": cliente,
         "areas_profile": areas_profile,
         "empresa_sel": empresa_sel,
@@ -579,13 +586,16 @@ def imprimir_hallazgos(request):
     filtros = _filtros_hallazgos(request)
     hoy = django.utils.timezone.localdate()
     queryset = _aplicar_vista(filtros["base"], filtros["vista"], hoy)
+    # El resumen cuenta todos los estados del recorte, no solo los que
+    # quedaron en la lista por los chips de estado.
+    resumen = _aplicar_vista(filtros["resumen"], filtros["vista"], hoy)
 
     # Sin hallazgos no hay PDF que devolver: se vuelve a la pantalla.
     if not queryset.exists():
         return redirect("syh:visualizar_movimientos")
 
     impresion = ImprimeHallazgos()
-    return impresion.imprime_hallazgo(queryset=queryset)
+    return impresion.imprime_hallazgo(queryset=queryset, resumen=resumen)
 
 
 @login_required
